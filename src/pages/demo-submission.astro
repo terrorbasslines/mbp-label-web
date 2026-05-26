@@ -1,0 +1,32 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import DemoSubmissionForm from "../components/DemoSubmissionForm.astro";
+import SectionHeader from "../components/SectionHeader.astro";
+---
+
+<BaseLayout title="Demo Submission" description="Submit private demo details to The MasterBeat Project with frontend validation prepared for Cloudflare backend integration.">
+  <section class="border-b border-white/10 bg-black/45 py-20">
+    <div class="section-shell grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
+      <div>
+        <p class="eyebrow">Demo submission</p>
+        <h1 class="page-title mt-4">Send your demo</h1>
+      </div>
+      <p class="text-lg leading-8 text-haze">
+        Send private streaming details, artist information and context for review. The first version validates the form in the browser and keeps uploads disabled until the Cloudflare backend is connected.
+      </p>
+    </div>
+  </section>
+
+  <section class="py-20">
+    <div class="section-shell grid gap-10 lg:grid-cols-[0.72fr_1.28fr]">
+      <aside class="space-y-5">
+        <SectionHeader eyebrow="Before submitting" title="Strong records first" copy="The label is focused on hardstyle, hardcore, hard dance and energetic electronic music with professional sound, artwork potential and clear release intent." />
+        <div class="rounded-lg border border-white/10 bg-white/[0.035] p-5">
+          <p class="font-display text-2xl font-black uppercase text-white">Preferred links</p>
+          <p class="mt-3 text-sm leading-6 text-steel">Private SoundCloud, Dropbox, Google Drive or equivalent review links. Keep downloads enabled only when you are comfortable sharing them.</p>
+        </div>
+      </aside>
+      <DemoSubmissionForm />
+    </div>
+  </section>
+</BaseLayout>

@@ -1,0 +1,51 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import ButtonLink from "../components/ButtonLink.astro";
+import SectionHeader from "../components/SectionHeader.astro";
+import { siteConfig } from "../data/site";
+---
+
+<BaseLayout title="Contact" description="Contact The MasterBeat Project for demos, label inquiries and music industry communication.">
+  <section class="border-b border-white/10 bg-black/45 py-20">
+    <div class="section-shell">
+      <p class="eyebrow">Contact</p>
+      <h1 class="page-title mt-4">Reach the label</h1>
+      <p class="mt-6 max-w-3xl text-lg leading-8 text-haze">
+        Use the demo form for unreleased music. For partnerships, catalogue questions and professional label communication, contact the label directly.
+      </p>
+    </div>
+  </section>
+
+  <section class="py-20">
+    <div class="section-shell grid gap-6 lg:grid-cols-3">
+      <div class="rounded-lg border border-white/10 bg-carbon/80 p-6">
+        <p class="eyebrow">General</p>
+        <h2 class="mt-3 font-display text-3xl font-black uppercase text-white">Label inquiries</h2>
+        <a class="mt-5 inline-block text-neon-cyan hover:text-white" href={`mailto:${siteConfig.email}`}>{siteConfig.email}</a>
+      </div>
+      <div class="rounded-lg border border-white/10 bg-carbon/80 p-6">
+        <p class="eyebrow">Demos</p>
+        <h2 class="mt-3 font-display text-3xl font-black uppercase text-white">Music review</h2>
+        <a class="mt-5 inline-block text-neon-cyan hover:text-white" href="/demo-submission">Open demo submission</a>
+      </div>
+      <div class="rounded-lg border border-white/10 bg-carbon/80 p-6">
+        <p class="eyebrow">Social</p>
+        <h2 class="mt-3 font-display text-3xl font-black uppercase text-white">Follow MBP</h2>
+        <div class="mt-5 flex flex-wrap gap-2">
+          {
+            siteConfig.socials.filter((social) => social.href.startsWith("http")).map((social) => (
+              <a class="rounded-md border border-white/10 px-3 py-2 text-sm font-semibold text-haze hover:border-neon-cyan/60 hover:text-white" href={social.href} target="_blank" rel="noreferrer">{social.label}</a>
+            ))
+          }
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="border-y border-white/10 bg-rail-grid bg-[length:100%_100%,44px_44px] py-20">
+    <div class="section-shell flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+      <SectionHeader eyebrow="Artists" title="Submitting unreleased music?" copy="Use the structured demo page so the future backend can capture the right metadata cleanly." />
+      <ButtonLink href="/demo-submission">Submit Demo</ButtonLink>
+    </div>
+  </section>
+</BaseLayout>

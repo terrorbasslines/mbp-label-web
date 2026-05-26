@@ -1,0 +1,98 @@
+---
+const genres = ["Hardstyle", "Rawstyle", "Euphoric hardstyle", "Hardcore", "Uptempo", "Hard dance", "Electronic", "Other"];
+---
+
+<form class="surface rounded-lg p-5 sm:p-7" data-demo-form data-endpoint="/api/demo-submission" novalidate>
+  <div class="grid gap-5 md:grid-cols-2">
+    <label>
+      <span class="field-label">Artist name</span>
+      <input class="field-control" name="artistName" type="text" autocomplete="name" required minlength="2" placeholder="Your artist name" />
+    </label>
+
+    <label>
+      <span class="field-label">Email</span>
+      <input class="field-control" name="email" type="email" autocomplete="email" required placeholder="artist@example.com" />
+    </label>
+
+    <label>
+      <span class="field-label">Country</span>
+      <input class="field-control" name="country" type="text" autocomplete="country-name" required placeholder="Country" />
+    </label>
+
+    <label>
+      <span class="field-label">Artist / social links</span>
+      <input class="field-control" name="links" type="url" inputmode="url" required placeholder="https://soundcloud.com/artist" />
+    </label>
+
+    <label>
+      <span class="field-label">Track title</span>
+      <input class="field-control" name="trackTitle" type="text" required minlength="2" placeholder="Track title" />
+    </label>
+
+    <label>
+      <span class="field-label">Genre</span>
+      <select class="field-control" name="genre" required>
+        <option value="">Select genre</option>
+        {genres.map((genre) => <option value={genre}>{genre}</option>)}
+      </select>
+    </label>
+
+    <label class="md:col-span-2">
+      <span class="field-label">Private streaming link</span>
+      <input class="field-control" name="streamingLink" type="url" inputmode="url" required placeholder="Private SoundCloud, Dropbox, Google Drive or similar" />
+    </label>
+
+    <label class="md:col-span-2">
+      <span class="field-label">Optional file upload</span>
+      <input class="field-control cursor-not-allowed opacity-60" name="fileUpload" type="file" accept="audio/*,.wav,.mp3,.aiff,.flac,image/*" disabled />
+      <span class="mt-2 block text-xs leading-5 text-steel">Direct audio and artwork upload will be enabled after Cloudflare R2 storage is connected.</span>
+    </label>
+
+    <label class="md:col-span-2">
+      <span class="field-label">Short message</span>
+      <textarea class="field-control min-h-36 resize-y" name="message" required minlength="20" maxlength="1200" placeholder="Tell us what makes the track fit The MasterBeat Project."></textarea>
+    </label>
+  </div>
+
+  <label class="mt-6 flex gap-3 text-sm leading-6 text-haze">
+    <input class="mt-1 h-4 w-4 rounded border-white/20 bg-black text-neon-violet" name="agreement" type="checkbox" required />
+    <span>I confirm that I own or control the submitted music and agree that The MasterBeat Project may review the private link for label consideration.</span>
+  </label>
+
+  <div class="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <button class="inline-flex min-h-12 items-center justify-center rounded-md bg-white px-6 py-3 text-sm font-black uppercase tracking-[0.14em] text-black transition hover:bg-neon-cyan" type="submit">
+      Validate Demo
+    </button>
+    <p class="text-sm text-steel" data-demo-status aria-live="polite">No files are uploaded from this form yet.</p>
+  </div>
+</form>
+
+<script>
+  const form = document.querySelector("[data-demo-form]");
+  const status = document.querySelector("[data-demo-status]");
+
+  if (form instanceof HTMLFormElement && status instanceof HTMLElement) {
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+
+      if (!form.checkValidity()) {
+        status.textContent = "Please complete the required fields before submitting.";
+        form.reportValidity();
+        return;
+      }
+
+      const formData = new FormData(form);
+      const agreement = formData.get("agreement");
+
+      if (!agreement) {
+        status.textContent = "Agreement is required before a demo can be reviewed.";
+        return;
+      }
+
+      // TODO: Replace this local-only validation message with a POST to /api/demo-submission
+      // after the Cloudflare Pages Function is connected to D1, R2 and notification email.
+      status.textContent = "Demo details validated locally. Backend submission is ready to connect at /api/demo-submission.";
+      form.reset();
+    });
+  }
+</script>

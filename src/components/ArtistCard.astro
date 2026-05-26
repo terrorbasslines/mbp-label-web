@@ -1,0 +1,31 @@
+---
+import type { Artist } from "../data/site";
+
+interface Props {
+  artist: Artist;
+}
+
+const { artist } = Astro.props;
+
+const accentClasses = {
+  violet: "border-neon-violet/40 shadow-[0_0_36px_rgba(177,0,255,.12)]",
+  blue: "border-neon-blue/40 shadow-[0_0_36px_rgba(30,77,255,.12)]",
+  red: "border-neon-red/40 shadow-[0_0_36px_rgba(255,42,31,.12)]",
+  amber: "border-neon-amber/40 shadow-[0_0_36px_rgba(255,196,0,.10)]",
+  green: "border-neon-green/40 shadow-[0_0_36px_rgba(38,226,26,.10)]"
+};
+---
+
+<article class:list={["rounded-lg border bg-carbon/80 p-5", accentClasses[artist.accent]]}>
+  <div class="flex items-center gap-4">
+    <div class="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-md border border-white/10 bg-black">
+      <img src={artist.image} alt="" class="h-full w-full object-cover" loading="lazy" />
+    </div>
+    <div>
+      <p class="text-xs font-bold uppercase tracking-[0.18em] text-neon-cyan">{artist.role}</p>
+      <h3 class="mt-2 font-display text-3xl font-black uppercase leading-none text-white">{artist.name}</h3>
+      <p class="mt-1 text-sm text-steel">{artist.origin}</p>
+    </div>
+  </div>
+  <p class="mt-5 text-sm leading-6 text-haze">{artist.description}</p>
+</article>

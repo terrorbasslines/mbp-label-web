@@ -1,0 +1,25 @@
+{
+  "name": "mbp-label-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro check && astro build",
+    "preview": "astro preview",
+    "cf:dev": "wrangler pages dev dist --compatibility-date=2026-05-26",
+    "cf:deploy": "npm run build && wrangler pages deploy dist --project-name mbp-label-web"
+  },
+  "dependencies": {
+    "astro": "^5.0.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.4",
+    "@cloudflare/workers-types": "^4.20250109.0",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2",
+    "wrangler": "^3.91.0"
+  }
+}

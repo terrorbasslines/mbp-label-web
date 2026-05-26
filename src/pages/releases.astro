@@ -1,0 +1,51 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import ReleaseCard from "../components/ReleaseCard.astro";
+import SectionHeader from "../components/SectionHeader.astro";
+import ButtonLink from "../components/ButtonLink.astro";
+import { releases } from "../data/site";
+---
+
+<BaseLayout title="Releases" description="Selected releases and catalogue lanes from The MasterBeat Project.">
+  <section class="border-b border-white/10 bg-black/45 py-20">
+    <div class="section-shell">
+      <p class="eyebrow">Catalogue</p>
+      <h1 class="page-title mt-4">Releases</h1>
+      <p class="mt-6 max-w-3xl text-lg leading-8 text-haze">
+        A clean release surface for hardstyle, hardcore and electronic catalogue work, prepared for future streaming links, catalogue IDs, artwork metadata and artist relations.
+      </p>
+    </div>
+  </section>
+
+  <section class="py-20">
+    <div class="section-shell">
+      <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {releases.map((release) => <ReleaseCard release={release} />)}
+      </div>
+    </div>
+  </section>
+
+  <section class="border-y border-white/10 bg-black/40 py-20">
+    <div class="section-shell grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
+      <SectionHeader eyebrow="Release system" title="Ready for catalogue data" copy="The current content is local and static. The structure is ready to move releases into D1 or a headless CMS when the backend is introduced." />
+      <div class="grid gap-4 sm:grid-cols-2">
+        {["Artwork", "Metadata", "Artists", "Streaming links"].map((item) => (
+          <div class="rounded-lg border border-white/10 bg-white/[0.035] p-5">
+            <p class="font-display text-2xl font-black uppercase text-white">{item}</p>
+            <p class="mt-2 text-sm leading-6 text-steel">Reserved for production release information and public distribution references.</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="py-20">
+    <div class="section-shell flex flex-col gap-5 rounded-lg border border-white/10 bg-carbon/70 p-6 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p class="eyebrow">New music</p>
+        <h2 class="mt-2 font-display text-3xl font-black uppercase text-white">Send a serious demo</h2>
+      </div>
+      <ButtonLink href="/demo-submission">Submit Demo</ButtonLink>
+    </div>
+  </section>
+</BaseLayout>

@@ -1,0 +1,38 @@
+---
+import { navItems, siteConfig } from "../data/site";
+
+const pathname = Astro.url.pathname.replace(/\/$/, "") || "/";
+---
+
+<header class="sticky top-0 z-40 border-b border-white/10 bg-obsidian/82 backdrop-blur-xl">
+  <div class="section-shell flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+    <a href="/" class="group flex items-center gap-3" aria-label={`${siteConfig.name} home`}>
+      <span class="grid h-11 w-11 place-items-center overflow-hidden rounded-md border border-white/10 bg-black">
+        <img src="/assets/brand/logo-clear.png" alt="" class="h-10 w-10 object-contain transition duration-300 group-hover:scale-105" />
+      </span>
+      <span class="leading-none">
+        <span class="block font-display text-lg font-black uppercase text-white">The MasterBeat</span>
+        <span class="block font-mono text-[0.65rem] font-semibold uppercase tracking-[0.28em] text-steel">Project</span>
+      </span>
+    </a>
+
+    <nav aria-label="Primary navigation" class="flex flex-wrap items-center gap-1.5">
+      {
+        navItems.map((item) => {
+          const active = item.href === "/" ? pathname === "/" : pathname === item.href;
+          return (
+            <a
+              href={item.href}
+              class:list={[
+                "rounded-md px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] transition duration-200",
+                active ? "bg-white text-black" : "text-haze hover:bg-white/10 hover:text-white"
+              ]}
+            >
+              {item.label}
+            </a>
+          );
+        })
+      }
+    </nav>
+  </div>
+</header>

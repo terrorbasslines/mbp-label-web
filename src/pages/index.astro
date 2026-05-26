@@ -1,0 +1,95 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import ButtonLink from "../components/ButtonLink.astro";
+import SectionHeader from "../components/SectionHeader.astro";
+import ReleaseCard from "../components/ReleaseCard.astro";
+import ArtistCard from "../components/ArtistCard.astro";
+import { artists, labelStats, releases, siteConfig } from "../data/site";
+---
+
+<BaseLayout>
+  <section class="stage-rail relative min-h-[78svh] overflow-hidden border-b border-white/10">
+    <img src="/assets/brand/stage-hero.png" alt="" class="absolute inset-0 h-full w-full object-cover" fetchpriority="high" />
+    <div class="absolute inset-0 bg-gradient-to-r from-black via-black/65 to-black/20"></div>
+    <div class="absolute inset-0 bg-gradient-to-t from-obsidian via-transparent to-black/30"></div>
+    <div class="section-shell relative flex min-h-[78svh] items-center py-20">
+      <div class="max-w-4xl">
+        <p class="eyebrow">Electronic music label</p>
+        <h1 class="display-title mt-5">{siteConfig.name}</h1>
+        <p class="mt-6 max-w-2xl text-pretty text-lg leading-8 text-haze sm:text-xl">
+          A hardstyle and electronic label platform built for powerful releases, serious artist development and a premium digital presence.
+        </p>
+        <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+          <ButtonLink href="/demo-submission">Submit Demo</ButtonLink>
+          <ButtonLink href="/releases" variant="secondary">Explore Releases</ButtonLink>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="border-b border-white/10 bg-obsidian py-14">
+    <div class="section-shell grid gap-4 md:grid-cols-3">
+      {
+        labelStats.map((stat) => (
+          <div class="rounded-lg border border-white/10 bg-white/[0.035] p-5">
+            <p class="font-display text-4xl font-black uppercase leading-none text-white">{stat.value}</p>
+            <p class="mt-2 text-sm uppercase tracking-[0.14em] text-steel">{stat.label}</p>
+          </div>
+        ))
+      }
+    </div>
+  </section>
+
+  <section class="py-20">
+    <div class="section-shell">
+      <div class="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+        <SectionHeader eyebrow="Latest releases" title="Harder catalogue energy" copy="Selected release lanes for the public label site, ready to connect to a future catalogue backend." />
+        <ButtonLink href="/releases" variant="ghost">View All</ButtonLink>
+      </div>
+      <div class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {releases.map((release) => <ReleaseCard release={release} />)}
+      </div>
+    </div>
+  </section>
+
+  <section class="border-y border-white/10 bg-black/40 py-20">
+    <div class="section-shell">
+      <div class="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+        <SectionHeader eyebrow="Featured artists" title="Roster-ready profiles" copy="Artist cards are structured for future profile pages, press assets, streaming links and release history." />
+        <ButtonLink href="/artists" variant="ghost">Meet Artists</ButtonLink>
+      </div>
+      <div class="mt-10 grid gap-5 md:grid-cols-2">
+        {artists.slice(0, 4).map((artist) => <ArtistCard artist={artist} />)}
+      </div>
+    </div>
+  </section>
+
+  <section class="py-20">
+    <div class="section-shell grid gap-10 lg:grid-cols-[0.92fr_1.08fr] lg:items-center">
+      <div>
+        <SectionHeader eyebrow="Demo submission" title="Send music with intent" copy="The demo flow is ready for frontend validation today and future Cloudflare Workers, D1 metadata storage and R2 file handling." />
+        <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+          <ButtonLink href="/demo-submission">Open Demo Form</ButtonLink>
+          <ButtonLink href="/contact" variant="secondary">Contact Label</ButtonLink>
+        </div>
+      </div>
+      <div class="clip-diagonal overflow-hidden border border-white/10 bg-black">
+        <img src="/assets/brand/season4-banner.png" alt="The MasterBeat Project purple stage banner" class="h-full min-h-72 w-full object-cover" loading="lazy" />
+      </div>
+    </div>
+  </section>
+
+  <section class="border-t border-white/10 bg-rail-grid bg-[length:100%_100%,44px_44px] py-20">
+    <div class="section-shell grid gap-8 lg:grid-cols-[0.7fr_1fr]">
+      <SectionHeader eyebrow="About the label" title="Built for hard electronic releases" />
+      <div class="max-w-3xl text-pretty text-lg leading-8 text-haze">
+        <p>
+          The MasterBeat Project presents hardstyle, hardcore and electronic music with a clear visual system, professional release structure and a brand world that feels direct, dark and mainstage-ready.
+        </p>
+        <p class="mt-5">
+          This first website version gives the label a deployable public base: pages for releases, artists, demos, contact, privacy and a backend-ready submission architecture.
+        </p>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

@@ -1,0 +1,17 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import ButtonLink from "../components/ButtonLink.astro";
+---
+
+<BaseLayout title="Page Not Found" description="The requested page was not found.">
+  <section class="min-h-[62vh] border-b border-white/10 bg-black/45 py-20">
+    <div class="section-shell">
+      <p class="eyebrow">404</p>
+      <h1 class="page-title mt-4">Page not found</h1>
+      <p class="mt-6 max-w-2xl text-lg leading-8 text-haze">The requested MBP page does not exist or has moved.</p>
+      <div class="mt-8">
+        <ButtonLink href="/">Back Home</ButtonLink>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
