@@ -144,6 +144,8 @@ DEMO_REPLY_TO_EMAIL=demos@themasterbeatproject.com
 
 The same Resend configuration is used for artist claim invite emails. If these values are missing, admin actions still save decisions and generate claim links, but the dashboard will show `email_not_configured` and no outbound email will be sent.
 
+If the dashboard shows `email_failed_401_check_resend_api_key`, replace `RESEND_API_KEY` in Cloudflare Pages with a real active Resend API key. A placeholder such as `re_xxxxx` is treated as not configured. If it shows `email_failed_403_check_sender_domain`, verify the sender domain/address in Resend before sending from `demos@themasterbeatproject.com`.
+
 Then open:
 
 ```text

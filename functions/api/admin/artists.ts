@@ -13,6 +13,12 @@ type ArtistRow = {
   updated_at: string;
 };
 
+type ArtistClaimRow = {
+  artist_id: string;
+  email: string;
+  role: string;
+};
+
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const admin = await requireAdmin(request, env);
   if (isResponse(admin)) return admin;
@@ -21,15 +27,30 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   if (isResponse(db)) return db;
 
   const result = await db.prepare("SELECT * FROM artists ORDER BY name ASC").all<ArtistRow>();
+  const claimResult = await db
+    .prepare(
+      `SELECT ua.artist_id, u.email, u.role
+       FROM user_artists ua
+       INNER JOIN users u ON u.id = ua.user_id`
+    )
+    .all<ArtistClaimRow>();
+  const claimsByArtist = new Map((claimResult.results ?? []).map((claim) => [claim.artist_id, claim]));
+
   return json({
     ok: true,
     artists: (result.results ?? [])
       .filter((artist) => !isCollabArtistName(artist.name))
-      .map((artist) => ({
-        ...artist,
-        links: JSON.parse(artist.links_json || "[]"),
-        is_featured: Boolean(artist.is_featured)
-      }))
+      .map((artist) => {
+        const claim = claimsByArtist.get(artist.id);
+        return {
+          ...artist,
+          links: JSON.parse(artist.links_json || "[]"),
+          is_featured: Boolean(artist.is_featured),
+          claimed: Boolean(claim),
+          claimed_email: claim?.email ?? null,
+          claimed_role: claim?.role ?? null
+        };
+      })
   });
 };
 

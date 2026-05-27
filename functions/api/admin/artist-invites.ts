@@ -19,6 +19,11 @@ type ArtistRow = {
   slug: string;
 };
 
+type ExistingClaimRow = {
+  email: string;
+  role: string;
+};
+
 const MANAGEMENT_ADMIN_NAMES = new Set(["romee storm", "alexair", "rodrigo stadt"]);
 
 function siteOrigin(request: Request) {
@@ -62,6 +67,26 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const artist = await db.prepare("SELECT id, name, slug FROM artists WHERE id = ? LIMIT 1").bind(artistId).first<ArtistRow>();
   if (!artist) {
     return json({ ok: false, error: "Artist not found." }, { status: 404 });
+  }
+
+  const existingClaim = await db
+    .prepare(
+      `SELECT u.email, u.role
+       FROM user_artists ua
+       INNER JOIN users u ON u.id = ua.user_id
+       WHERE ua.artist_id = ?
+       LIMIT 1`
+    )
+    .bind(artist.id)
+    .first<ExistingClaimRow>();
+  if (existingClaim) {
+    return json(
+      {
+        ok: false,
+        error: `Artist profile is already claimed by ${existingClaim.email} (${existingClaim.role}).`
+      },
+      { status: 409 }
+    );
   }
 
   const forcedAdmin = MANAGEMENT_ADMIN_NAMES.has(artist.name.toLowerCase());

@@ -31,6 +31,10 @@ type UserRow = {
   id: string;
 };
 
+type ClaimedArtistRow = {
+  user_id: string;
+};
+
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   try {
     if (!env.SESSION_SECRET) {
@@ -74,6 +78,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     const artist = await db.prepare("SELECT slug, name FROM artists WHERE id = ? LIMIT 1").bind(claim.artist_id).first<ArtistRow>();
     if (!artist) {
       return json({ ok: false, error: "Artist profile for this invitation no longer exists." }, { status: 404 });
+    }
+
+    const claimedArtist = await db.prepare("SELECT user_id FROM user_artists WHERE artist_id = ? LIMIT 1").bind(claim.artist_id).first<ClaimedArtistRow>();
+    if (claimedArtist) {
+      return json({ ok: false, error: "This artist profile is already claimed." }, { status: 409 });
     }
 
     const existing = await db.prepare("SELECT id FROM users WHERE lower(email) = lower(?) LIMIT 1").bind(email).first<UserRow>();

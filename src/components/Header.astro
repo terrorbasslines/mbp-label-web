@@ -2,6 +2,7 @@
 import { navItems, siteConfig } from "../data/site";
 
 const pathname = Astro.url.pathname.replace(/\/$/, "") || "/";
+const loginActive = pathname === "/artist-dashboard";
 ---
 
 <header class="sticky top-0 z-40 border-b border-white/10 bg-obsidian/82 backdrop-blur-xl">
@@ -33,6 +34,15 @@ const pathname = Astro.url.pathname.replace(/\/$/, "") || "/";
           );
         })
       }
+      <a
+        href="/artist-dashboard"
+        class:list={[
+          "rounded-md px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] transition duration-200",
+          loginActive ? "bg-white text-black" : "text-haze hover:bg-white/10 hover:text-white"
+        ]}
+      >
+        Login
+      </a>
     </nav>
   </div>
 </header>

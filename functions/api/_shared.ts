@@ -295,8 +295,23 @@ export function isResponse(value: unknown): value is Response {
   return value instanceof Response;
 }
 
+function emailFailureStatus(status: number) {
+  if (status === 401) return "email_failed_401_check_resend_api_key";
+  if (status === 403) return "email_failed_403_check_sender_domain";
+  return `email_failed_${status}`;
+}
+
+function emailConfig(env: Env) {
+  const apiKey = env.RESEND_API_KEY?.trim();
+  const from = env.DEMO_FROM_EMAIL?.trim();
+  const replyTo = env.DEMO_REPLY_TO_EMAIL?.trim() || from;
+  if (!apiKey || !from || apiKey === "re_xxxxx") return null;
+  return { apiKey, from, replyTo };
+}
+
 export async function sendDemoDecisionEmail(env: Env, input: { to: string; artistName: string; trackTitle: string; status: string; reason: string }) {
-  if (!env.RESEND_API_KEY || !env.DEMO_FROM_EMAIL) {
+  const config = emailConfig(env);
+  if (!config) {
     return { sent: false, status: "email_not_configured" };
   }
 
@@ -319,27 +334,28 @@ export async function sendDemoDecisionEmail(env: Env, input: { to: string; artis
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
-      authorization: `Bearer ${env.RESEND_API_KEY}`,
+      authorization: `Bearer ${config.apiKey}`,
       "content-type": "application/json"
     },
     body: JSON.stringify({
-      from: env.DEMO_FROM_EMAIL,
+      from: config.from,
       to: input.to,
-      reply_to: env.DEMO_REPLY_TO_EMAIL ?? env.DEMO_FROM_EMAIL,
+      reply_to: config.replyTo,
       subject,
       text
     })
   });
 
   if (!response.ok) {
-    return { sent: false, status: `email_failed_${response.status}` };
+    return { sent: false, status: emailFailureStatus(response.status) };
   }
 
   return { sent: true, status: "email_sent" };
 }
 
 export async function sendArtistInviteEmail(env: Env, input: { to: string; artistName: string; claimUrl: string; role: string }) {
-  if (!env.RESEND_API_KEY || !env.DEMO_FROM_EMAIL) {
+  const config = emailConfig(env);
+  if (!config) {
     return { sent: false, status: "email_not_configured" };
   }
 
@@ -358,20 +374,20 @@ export async function sendArtistInviteEmail(env: Env, input: { to: string; artis
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
-      authorization: `Bearer ${env.RESEND_API_KEY}`,
+      authorization: `Bearer ${config.apiKey}`,
       "content-type": "application/json"
     },
     body: JSON.stringify({
-      from: env.DEMO_FROM_EMAIL,
+      from: config.from,
       to: input.to,
-      reply_to: env.DEMO_REPLY_TO_EMAIL ?? env.DEMO_FROM_EMAIL,
+      reply_to: config.replyTo,
       subject: `Claim your ${input.artistName} profile on The MasterBeat Project`,
       text
     })
   });
 
   if (!response.ok) {
-    return { sent: false, status: `email_failed_${response.status}` };
+    return { sent: false, status: emailFailureStatus(response.status) };
   }
 
   return { sent: true, status: "email_sent" };

@@ -26,6 +26,10 @@
     text-rendering: optimizeLegibility;
   }
 
+  [hidden] {
+    display: none !important;
+  }
+
   ::selection {
     background: rgba(177, 0, 255, 0.45);
     color: #ffffff;

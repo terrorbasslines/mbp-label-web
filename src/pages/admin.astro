@@ -299,15 +299,22 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                   </div>
                 </div>
                 <p class="mt-3 text-sm leading-6 text-haze">${escapeHtml(artist.profile || "No profile yet.")}</p>
-                <form class="mt-4 grid gap-2 border-t border-white/10 pt-4 md:grid-cols-[1fr_auto_auto]" data-invite-form="${escapeHtml(artist.id)}">
-                  <input class="field-control" name="email" type="email" placeholder="artist@email.com" />
-                  <select class="field-control" name="role">
-                    <option value="artist" ${defaultRole === "artist" ? "selected" : ""}>Artist</option>
-                    <option value="admin" ${defaultRole === "admin" ? "selected" : ""}>Admin</option>
-                  </select>
-                  <button class="rounded-md bg-white px-4 py-3 text-xs font-black uppercase text-black hover:bg-neon-cyan" type="submit">Invite</button>
-                  <p class="text-xs text-steel md:col-span-3" data-invite-status="${escapeHtml(artist.id)}">Create claim link for this profile.</p>
-                </form>
+                ${
+                  artist.claimed
+                    ? `<div class="mt-4 rounded-md border border-neon-cyan/25 bg-neon-cyan/5 p-3 text-xs text-haze">
+                        <p class="font-bold uppercase tracking-[0.12em] text-neon-cyan">Profile claimed</p>
+                        <p class="mt-2">Claimed by ${escapeHtml(artist.claimed_email || "artist account")} (${escapeHtml(artist.claimed_role || "artist")}). New claim links are disabled for this profile.</p>
+                      </div>`
+                    : `<form class="mt-4 grid gap-2 border-t border-white/10 pt-4 md:grid-cols-[1fr_auto_auto]" data-invite-form="${escapeHtml(artist.id)}">
+                        <input class="field-control" name="email" type="email" placeholder="artist@email.com" />
+                        <select class="field-control" name="role">
+                          <option value="artist" ${defaultRole === "artist" ? "selected" : ""}>Artist</option>
+                          <option value="admin" ${defaultRole === "admin" ? "selected" : ""}>Admin</option>
+                        </select>
+                        <button class="rounded-md bg-white px-4 py-3 text-xs font-black uppercase text-black hover:bg-neon-cyan" type="submit">Invite</button>
+                        <p class="text-xs text-steel md:col-span-3" data-invite-status="${escapeHtml(artist.id)}">Create claim link for this profile.</p>
+                      </form>`
+                }
               </article>
             `;
             }
