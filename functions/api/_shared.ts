@@ -5,6 +5,7 @@ export interface Env {
   RESEND_API_KEY?: string;
   DEMO_FROM_EMAIL?: string;
   DEMO_REPLY_TO_EMAIL?: string;
+  DEMO_BUCKET?: R2Bucket;
 }
 
 export interface AdminSession {

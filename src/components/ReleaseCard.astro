@@ -19,8 +19,8 @@ const accentClasses = {
 <article class="group clip-diagonal relative overflow-hidden border border-white/10 bg-graphite/90">
   <div class:list={["absolute inset-0 bg-gradient-to-br opacity-70 transition duration-300 group-hover:opacity-100", accentClasses[release.accent]]}></div>
   <div class="relative grid min-h-full grid-rows-[auto_1fr]">
-    <div class="aspect-square overflow-hidden border-b border-white/10 bg-black/55">
-      <img src={release.artwork} alt={`${release.title} artwork`} class="h-full w-full object-cover transition duration-500 group-hover:scale-105" loading="lazy" />
+    <div class="aspect-square overflow-hidden border-b border-white/10 bg-black/55 p-3">
+      <img src={release.artwork} alt={`${release.title} artwork`} class="h-full w-full object-contain transition duration-500 group-hover:scale-[1.03]" loading="lazy" />
     </div>
     <div class="p-5">
       <p class="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-neon-cyan">{release.catalog}</p>

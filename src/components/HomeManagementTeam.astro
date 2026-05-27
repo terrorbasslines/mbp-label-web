@@ -1,0 +1,82 @@
+---
+const leaders = [
+  { name: "Terror Basslines", role: "CEO", focus: "Label strategy, catalogue direction and MBP brand leadership." },
+  { name: "Romee Storm", role: "A&R", focus: "Artist relations, demo review and release development." },
+  { name: "Alexair", role: "A&R", focus: "Roster scouting, music feedback and catalogue quality control." },
+  { name: "Rodrigo Stadt", role: "MBP Ambassador", focus: "Community presence, label representation and artist support." }
+];
+---
+
+<div data-management-team>
+  <div class="mt-10 grid gap-5 md:grid-cols-2" data-management-grid>
+    {
+      leaders.map((leader) => (
+        <article class="rounded-lg border border-white/10 bg-carbon/80 p-5">
+          <div class="flex items-center gap-4">
+            <div class="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-md border border-white/10 bg-black font-display text-3xl font-black text-white">
+              {leader.name.slice(0, 1)}
+            </div>
+            <div>
+              <p class="text-xs font-bold uppercase tracking-[0.18em] text-neon-cyan">{leader.role}</p>
+              <h3 class="mt-2 font-display text-3xl font-black uppercase leading-none text-white">{leader.name}</h3>
+              <p class="mt-1 text-sm text-steel">The MasterBeat Project</p>
+            </div>
+          </div>
+          <p class="mt-5 text-sm leading-6 text-haze">{leader.focus}</p>
+        </article>
+      ))
+    }
+  </div>
+</div>
+
+<script is:inline define:vars={{ leaders }}>
+  // @ts-nocheck
+  const managementGrid = document.querySelector("[data-management-grid]");
+  const managementLeaders = leaders;
+
+  const escapeTeamHtml = (value) =>
+    String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+
+  async function loadManagementTeam() {
+    if (!managementGrid) return;
+
+    try {
+      const response = await fetch("/api/catalog");
+      const data = await response.json();
+      if (!data.ok || !Array.isArray(data.artists)) return;
+
+      const byName = new Map(data.artists.map((artist) => [String(artist.name || "").toLowerCase(), artist]));
+      managementGrid.innerHTML = managementLeaders
+        .map((leader) => {
+          const artist = byName.get(leader.name.toLowerCase());
+          const slug = artist?.slug || leader.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+          const artistPath = `/artist/${encodeURIComponent(slug)}`;
+          return `
+            <article class="rounded-lg border border-white/10 bg-carbon/80 p-5">
+              <div class="flex items-center gap-4">
+                <a href="${escapeTeamHtml(artistPath)}" class="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-md border border-white/10 bg-black font-display text-3xl font-black text-white" aria-label="${escapeTeamHtml(leader.name)} profile">
+                  ${artist?.image_url ? `<img src="${escapeTeamHtml(artist.image_url)}" alt="" class="h-full w-full object-contain" loading="lazy" />` : escapeTeamHtml(leader.name.slice(0, 1))}
+                </a>
+                <div>
+                  <p class="text-xs font-bold uppercase tracking-[0.18em] text-neon-cyan">${escapeTeamHtml(leader.role)}</p>
+                  <h3 class="mt-2 font-display text-3xl font-black uppercase leading-none text-white"><a class="hover:text-neon-cyan" href="${escapeTeamHtml(artistPath)}">${escapeTeamHtml(leader.name)}</a></h3>
+                  <p class="mt-1 text-sm text-steel">The MasterBeat Project management</p>
+                </div>
+              </div>
+              <p class="mt-5 text-sm leading-6 text-haze">${escapeTeamHtml(artist?.profile || leader.focus)}</p>
+            </article>
+          `;
+        })
+        .join("");
+    } catch {
+      // Static leadership cards are already rendered.
+    }
+  }
+
+  loadManagementTeam();
+</script>

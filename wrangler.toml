@@ -8,7 +8,7 @@ binding = "DB"
 database_name = "mbp_label_web"
 database_id = "02d488b8-edac-40c0-9376-efff10152f85"
 
-# Optional future direct uploads.
-# [[r2_buckets]]
-# binding = "DEMO_BUCKET"
-# bucket_name = "mbp-demo-submissions"
+# Optional demo audio/artwork uploads.
+[[r2_buckets]]
+binding = "DEMO_BUCKET"
+bucket_name = "mbp-demo-submissions"

@@ -44,8 +44,8 @@ const genres = ["Hardstyle", "Rawstyle", "Euphoric hardstyle", "Hardcore", "Upte
 
     <label class="md:col-span-2">
       <span class="field-label">Optional file upload</span>
-      <input class="field-control cursor-not-allowed opacity-60" name="fileUpload" type="file" accept="audio/*,.wav,.mp3,.aiff,.flac,image/*" disabled />
-      <span class="mt-2 block text-xs leading-5 text-steel">Direct audio and artwork upload will be enabled after Cloudflare R2 storage is connected.</span>
+      <input class="field-control" name="fileUpload" type="file" accept="audio/*,.wav,.mp3,.aiff,.aif,.flac,image/*" />
+      <span class="mt-2 block text-xs leading-5 text-steel">Optional audio or artwork files are stored privately in Cloudflare R2 for admin review.</span>
     </label>
 
     <label class="md:col-span-2">
@@ -63,7 +63,7 @@ const genres = ["Hardstyle", "Rawstyle", "Euphoric hardstyle", "Hardcore", "Upte
     <button class="inline-flex min-h-12 items-center justify-center rounded-md bg-white px-6 py-3 text-sm font-black uppercase tracking-[0.14em] text-black transition hover:bg-neon-cyan" type="submit">
       Submit Demo
     </button>
-    <p class="text-sm text-steel" data-demo-status aria-live="polite">No files are uploaded from this form yet.</p>
+    <p class="text-sm text-steel" data-demo-status aria-live="polite">Private links are required. File upload is optional.</p>
   </div>
 </form>
 
@@ -90,27 +90,13 @@ const genres = ["Hardstyle", "Rawstyle", "Euphoric hardstyle", "Hardcore", "Upte
         return;
       }
 
-      const payload = {
-        artistName: formData.get("artistName"),
-        email: formData.get("email"),
-        country: formData.get("country"),
-        links: formData.get("links"),
-        trackTitle: formData.get("trackTitle"),
-        genre: formData.get("genre"),
-        streamingLink: formData.get("streamingLink"),
-        message: formData.get("message"),
-        agreement: true
-      };
-
+      formData.set("agreement", "true");
       status.textContent = "Submitting demo...";
 
       try {
         const response = await fetch(form.dataset.endpoint || "/api/demo-submission", {
           method: "POST",
-          headers: {
-            "content-type": "application/json"
-          },
-          body: JSON.stringify(payload)
+          body: formData
         });
         const data = await response.json();
         if (!response.ok || data.ok === false) {

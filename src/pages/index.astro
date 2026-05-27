@@ -3,8 +3,9 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import ButtonLink from "../components/ButtonLink.astro";
 import SectionHeader from "../components/SectionHeader.astro";
 import ReleaseCard from "../components/ReleaseCard.astro";
-import ArtistCard from "../components/ArtistCard.astro";
-import { artists, labelStats, releases, siteConfig } from "../data/site";
+import HomeLatestReleases from "../components/HomeLatestReleases.astro";
+import HomeManagementTeam from "../components/HomeManagementTeam.astro";
+import { labelStats, releases, siteConfig } from "../data/site";
 
 const homeJsonLd = {
   "@context": "https://schema.org",
@@ -53,10 +54,11 @@ const homeJsonLd = {
   <section class="py-20">
     <div class="section-shell">
       <div class="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-        <SectionHeader eyebrow="Latest releases" title="Harder catalogue energy" copy="Selected release lanes for the public label site, ready to connect to a future catalogue backend." />
+        <SectionHeader eyebrow="Latest releases" title="Newest MBP releases" copy="The latest official The MasterBeat Project catalogue entries, pulled from the live Cloudflare D1 release database." />
         <ButtonLink href="/releases" variant="ghost">View All</ButtonLink>
       </div>
-      <div class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <HomeLatestReleases />
+      <div class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4" data-home-static-releases>
         {releases.map((release) => <ReleaseCard release={release} />)}
       </div>
     </div>
@@ -65,12 +67,10 @@ const homeJsonLd = {
   <section class="border-y border-white/10 bg-black/40 py-20">
     <div class="section-shell">
       <div class="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-        <SectionHeader eyebrow="Featured artists" title="Roster-ready profiles" copy="Artist cards are structured for future profile pages, press assets, streaming links and release history." />
+        <SectionHeader eyebrow="Label management" title="Management and A&R team" copy="The core MBP leadership team behind label strategy, A&R, demo review, catalogue quality and artist relations." />
         <ButtonLink href="/artists" variant="ghost">Meet Artists</ButtonLink>
       </div>
-      <div class="mt-10 grid gap-5 md:grid-cols-2">
-        {artists.slice(0, 4).map((artist) => <ArtistCard artist={artist} />)}
-      </div>
+      <HomeManagementTeam />
     </div>
   </section>
 

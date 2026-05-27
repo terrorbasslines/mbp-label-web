@@ -11,7 +11,11 @@ export const siteConfig = {
     "The MasterBeat Project is a hardstyle, hard dance and electronic music label releasing high-energy tracks, artist profiles and official MBP catalogue links.",
   socials: [
     { label: "Linktree", href: "https://linktr.ee/themasterbeatproject" },
-    { label: "SoundCloud", href: "https://soundcloud.com/the-masterbeat-project" },
+    { label: "Instagram", href: "https://www.instagram.com/themasterbeatproject/" },
+    { label: "YouTube", href: "https://www.youtube.com/@TheMasterBeatProject" },
+    { label: "Facebook", href: "https://www.facebook.com/themasterbeatproject/" },
+    { label: "Spotify", href: "https://open.spotify.com/artist/6gvTgDZfvlNEffTG2bCL84" },
+    { label: "SoundCloud", href: "https://www.soundcloud.com/the-masterbeat-project" },
     { label: "Email", href: "mailto:contact@themasterbeatproject.com" }
   ]
 };

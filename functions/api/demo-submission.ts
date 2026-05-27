@@ -1,11 +1,49 @@
 import { id, isResponse, json, methodNotAllowed, readJson, requireDb, requiredString, type Env } from "./_shared";
 
+function safeFileName(value: string) {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 120);
+}
+
+async function readPayload(request: Request) {
+  const contentType = request.headers.get("content-type") ?? "";
+
+  if (contentType.includes("multipart/form-data")) {
+    const formData = await request.formData();
+    const file = formData.get("fileUpload");
+    return {
+      body: {
+        artistName: formData.get("artistName"),
+        email: formData.get("email"),
+        country: formData.get("country"),
+        links: formData.get("links"),
+        trackTitle: formData.get("trackTitle"),
+        genre: formData.get("genre"),
+        streamingLink: formData.get("streamingLink"),
+        message: formData.get("message"),
+        agreement: formData.get("agreement") === "on" || formData.get("agreement") === "true"
+      },
+      file: file instanceof File && file.size > 0 ? file : null
+    };
+  }
+
+  const body = await readJson<Record<string, unknown>>(request);
+  if (body instanceof Response) return body;
+
+  return { body, file: null };
+}
+
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const db = requireDb(env);
   if (isResponse(db)) return db;
 
-  const body = await readJson<Record<string, unknown>>(request);
-  if (body instanceof Response) return body;
+  const payload = await readPayload(request);
+  if (payload instanceof Response) return payload;
+  const { body, file } = payload;
 
   const artistName = requiredString(body.artistName, "artistName", 2, 160);
   const email = requiredString(body.email, "email", 5, 240);
@@ -34,19 +72,52 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   const submissionId = id("demo");
+  let storedFileNote = "";
+
+  if (file) {
+    if (!env.DEMO_BUCKET) {
+      return json({ ok: false, error: "Cloudflare R2 binding DEMO_BUCKET is not configured for file uploads yet." }, { status: 503 });
+    }
+
+    const maxBytes = 100 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      return json({ ok: false, error: "File upload is too large. Maximum size is 100 MB." }, { status: 400 });
+    }
+
+    const allowedType = file.type.startsWith("audio/") || file.type.startsWith("image/") || /\.(wav|mp3|aiff|aif|flac)$/i.test(file.name);
+    if (!allowedType) {
+      return json({ ok: false, error: "Upload must be an audio file or artwork image." }, { status: 400 });
+    }
+
+    const fileName = safeFileName(file.name || "demo-upload");
+    const fileKey = `demo-submissions/${submissionId}/${fileName}`;
+    await env.DEMO_BUCKET.put(fileKey, file.stream(), {
+      httpMetadata: { contentType: file.type || "application/octet-stream" },
+      customMetadata: {
+        submissionId,
+        artistName,
+        trackTitle,
+        originalName: file.name
+      }
+    });
+
+    storedFileNote = `\n\nUploaded file stored in R2:\n- Name: ${file.name}\n- Type: ${file.type || "unknown"}\n- Size: ${file.size} bytes\n- R2 key: ${fileKey}`;
+  }
+
   await db
     .prepare(
       `INSERT INTO demo_submissions
        (id, artist_name, email, country, links, track_title, genre, streaming_link, message, agreement, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)`
     )
-    .bind(submissionId, artistName, email, country, links, trackTitle, genre, streamingLink, message)
+    .bind(submissionId, artistName, email, country, links, trackTitle, genre, streamingLink, `${message}${storedFileNote}`)
     .run();
 
   return json(
     {
       ok: true,
       id: submissionId,
+      fileUploaded: Boolean(file),
       message: "Demo received. The MasterBeat Project will review it from the admin dashboard."
     },
     { status: 201 }

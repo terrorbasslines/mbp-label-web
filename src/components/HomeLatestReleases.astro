@@ -1,0 +1,67 @@
+<div class="hidden" data-home-latest-live>
+  <div class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4" data-home-latest-grid></div>
+</div>
+
+<script>
+  // @ts-nocheck
+  const homeLatestLive = document.querySelector("[data-home-latest-live]");
+  const homeLatestGrid = document.querySelector("[data-home-latest-grid]");
+  const homeStaticReleases = document.querySelector("[data-home-static-releases]");
+
+  const escapeLatestHtml = (value) =>
+    String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+
+  async function loadHomeLatestReleases() {
+    if (!homeLatestLive || !homeLatestGrid) return;
+
+    try {
+      const response = await fetch("/api/catalog");
+      const data = await response.json();
+      const releases = Array.isArray(data.releases) ? data.releases.slice(0, 4) : [];
+      if (!data.ok || releases.length === 0) return;
+
+      homeLatestLive.classList.remove("hidden");
+      homeStaticReleases?.classList.add("hidden");
+      homeLatestGrid.innerHTML = releases
+        .map((release) => {
+          const releasePath = `/release/${encodeURIComponent(String(release.slug || release.catalog_number || "").toLowerCase())}`;
+          const links = Array.isArray(release.platform_links) ? release.platform_links : [];
+          const isPresave = release.status === "presave" || links.length === 0;
+          const smartLink = release.presave_url || release.ffm_url;
+          return `
+            <article class="group clip-diagonal relative overflow-hidden border border-white/10 bg-graphite/90">
+              <div class="relative grid min-h-full grid-rows-[auto_1fr]">
+                <a class="aspect-square overflow-hidden border-b border-white/10 bg-black/70 p-3" href="${escapeLatestHtml(releasePath)}">
+                  ${
+                    release.artwork_url
+                      ? `<img src="${escapeLatestHtml(release.artwork_url)}" alt="${escapeLatestHtml(release.title)} artwork" class="h-full w-full object-contain transition duration-500 group-hover:scale-[1.03]" loading="lazy" />`
+                      : `<div class="grid h-full w-full place-items-center bg-black font-display text-5xl font-black text-white">MBP</div>`
+                  }
+                </a>
+                <div class="p-5">
+                  <p class="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-neon-cyan">${escapeLatestHtml(release.catalog_number)} | ${isPresave ? "Pre-save" : "Published"}</p>
+                  <h3 class="mt-3 font-display text-2xl font-black uppercase leading-none text-white"><a class="hover:text-neon-cyan" href="${escapeLatestHtml(releasePath)}">${escapeLatestHtml(release.title)}</a></h3>
+                  <p class="mt-2 text-sm font-semibold text-haze">${escapeLatestHtml(release.artist_display)}</p>
+                  <p class="mt-4 text-sm leading-6 text-steel">${isPresave ? "Pre-save is open. Streaming platform links update automatically when FFM publishes destinations." : "Choose your preferred streaming service or open the full MBP release page."}</p>
+                  <div class="mt-5 flex flex-wrap gap-2 text-xs font-bold uppercase tracking-[0.12em] text-white/80">
+                    ${smartLink ? `<a class="rounded bg-white/10 px-2.5 py-1.5 hover:bg-neon-cyan hover:text-black" href="${escapeLatestHtml(smartLink)}" target="_blank" rel="noreferrer">${isPresave ? "Pre-save" : "Smart link"}</a>` : ""}
+                    <a class="rounded bg-white/10 px-2.5 py-1.5 hover:bg-neon-cyan hover:text-black" href="${escapeLatestHtml(releasePath)}">Details</a>
+                  </div>
+                </div>
+              </div>
+            </article>
+          `;
+        })
+        .join("");
+    } catch {
+      // Static fallback remains visible when the live catalogue is unavailable.
+    }
+  }
+
+  loadHomeLatestReleases();
+</script>

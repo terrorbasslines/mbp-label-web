@@ -54,7 +54,6 @@ export function parseFfmRelease(catalogNumber: string, ffmUrl: string, html: str
   const [artistPart, ...trackParts] = title.split(" - ");
   const artist = artistPart?.trim() || "Unknown Artist";
   const trackTitle = trackParts.join(" - ").trim() || title;
-  const status = /pre[- ]?save|pre[- ]?order|coming soon/i.test(description ?? normalized) ? "presave" : "published";
   const links = new Map<string, ParsedFfmRelease["platformLinks"][number]>();
   const serviceRegex = /service:"([^"]+)".{0,500}?serviceName:"([^"]+)".{0,2500}?url:"(https:\/\/api\.ffm\.to\/sl\/e\/c\/[^"]+)"/gs;
 
@@ -82,6 +81,12 @@ export function parseFfmRelease(catalogNumber: string, ffmUrl: string, html: str
     }
   }
 
+  const platformLinks = [...links.values()];
+  const status =
+    platformLinks.length === 0 || /pre[- ]?save|pre[- ]?order|coming soon/i.test(description ?? normalized)
+      ? "presave"
+      : "published";
+
   return {
     catalogNumber,
     ffmUrl,
@@ -91,7 +96,7 @@ export function parseFfmRelease(catalogNumber: string, ffmUrl: string, html: str
     description,
     artworkUrl,
     status,
-    platformLinks: [...links.values()]
+    platformLinks
   };
 }
 

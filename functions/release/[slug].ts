@@ -7,6 +7,7 @@ type ReleaseRow = {
   catalog_number: string;
   title: string;
   artist_display: string;
+  primary_artist_id?: string | null;
   release_date?: string | null;
   release_type?: string | null;
   genre?: string | null;
@@ -22,6 +23,18 @@ type PlatformLinkRow = {
   label: string;
   url: string;
   sort_order: number;
+};
+
+type ArtistRow = {
+  id: string;
+  slug: string;
+  name: string;
+};
+
+type ArtistReleaseRow = {
+  slug: string;
+  catalog_number: string;
+  title: string;
 };
 
 export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
@@ -42,7 +55,25 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
     .bind(release.id)
     .all<PlatformLinkRow>();
 
+  const artist = release.primary_artist_id
+    ? await env.DB.prepare("SELECT id, slug, name FROM artists WHERE id = ? LIMIT 1").bind(release.primary_artist_id).first<ArtistRow>()
+    : null;
+
+  const artistReleases = artist
+    ? await env.DB.prepare(
+        `SELECT r.slug, r.catalog_number, r.title
+         FROM releases r
+         INNER JOIN release_artists ra ON ra.release_id = r.id
+         WHERE ra.artist_id = ? AND r.status IN ('published', 'presave')
+         ORDER BY r.catalog_number DESC
+         LIMIT 12`
+      )
+        .bind(artist.id)
+        .all<ArtistReleaseRow>()
+    : { results: [] as ArtistReleaseRow[] };
+
   const platformLinks = links.results ?? [];
+  const isPresave = release.status === "presave" || platformLinks.length === 0;
   const canonicalPath = `/release/${release.slug}`;
   const description =
     release.description ||
@@ -95,7 +126,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
           <p>${escapeHtml(release.artist_display)}</p>
           <div class="meta">
             <span class="pill">${escapeHtml(release.catalog_number)}</span>
-            <span class="pill">${escapeHtml(release.status || "published")}</span>
+            <span class="pill">${isPresave ? "Pre-save" : escapeHtml(release.status || "published")}</span>
             ${release.genre ? `<span class="pill">${escapeHtml(release.genre)}</span>` : ""}
           </div>
         </section>
@@ -104,7 +135,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
             <img class="art" src="${escapeHtml(absoluteUrl(image))}" alt="${escapeHtml(release.title)} artwork" />
           </div>
           <article class="card">
-            <p>${escapeHtml(description)}</p>
+            <p>${escapeHtml(isPresave ? "Pre-save is open. Platform links update from FFM when the release goes live." : description)}</p>
             <div class="links">
               ${platformLinks
                 .map(
@@ -112,11 +143,24 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
                     `<a href="${escapeHtml(link.url)}" target="_blank" rel="noreferrer">${escapeHtml(link.label || link.platform)}</a>`
                 )
                 .join("")}
-              ${release.ffm_url ? `<a href="${escapeHtml(release.ffm_url)}" target="_blank" rel="noreferrer">Smart Link</a>` : ""}
+              ${release.ffm_url ? `<a href="${escapeHtml(release.ffm_url)}" target="_blank" rel="noreferrer">${isPresave ? "Pre-save" : "Smart Link"}</a>` : ""}
             </div>
+            ${
+              artist
+                ? `<h2>More from ${escapeHtml(artist.name)}</h2>
+                  <div class="list">
+                    ${(artistReleases.results ?? [])
+                      .map(
+                        (item) =>
+                          `<a href="/release/${escapeHtml(item.slug)}"><strong>${escapeHtml(item.catalog_number)}</strong> - ${escapeHtml(item.title)}</a>`
+                      )
+                      .join("")}
+                  </div>`
+                : ""
+            }
             <div class="actions">
               <a href="/releases">All releases</a>
-              <a href="/artists">Artists</a>
+              ${artist ? `<a href="/artist/${escapeHtml(artist.slug)}">All releases by ${escapeHtml(artist.name)}</a>` : `<a href="/artists">Artists</a>`}
             </div>
           </article>
         </section>
