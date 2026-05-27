@@ -72,7 +72,10 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   const submissionId = id("demo");
-  let storedFileNote = "";
+  let uploadKey: string | null = null;
+  let uploadName: string | null = null;
+  let uploadType: string | null = null;
+  let uploadSize: number | null = null;
 
   if (file) {
     if (!env.DEMO_BUCKET) {
@@ -101,16 +104,19 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       }
     });
 
-    storedFileNote = `\n\nUploaded file stored in R2:\n- Name: ${file.name}\n- Type: ${file.type || "unknown"}\n- Size: ${file.size} bytes\n- R2 key: ${fileKey}`;
+    uploadKey = fileKey;
+    uploadName = file.name || fileName;
+    uploadType = file.type || "application/octet-stream";
+    uploadSize = file.size;
   }
 
   await db
     .prepare(
       `INSERT INTO demo_submissions
-       (id, artist_name, email, country, links, track_title, genre, streaming_link, message, agreement, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)`
+       (id, artist_name, email, country, links, track_title, genre, streaming_link, message, agreement, upload_key, upload_name, upload_type, upload_size, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
     )
-    .bind(submissionId, artistName, email, country, links, trackTitle, genre, streamingLink, `${message}${storedFileNote}`)
+    .bind(submissionId, artistName, email, country, links, trackTitle, genre, streamingLink, message, uploadKey, uploadName, uploadType, uploadSize)
     .run();
 
   return json(

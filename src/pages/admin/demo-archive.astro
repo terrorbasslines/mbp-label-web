@@ -1,0 +1,229 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Demo Archive" description="Archived The MasterBeat Project demo submissions." noindex={true}>
+  <section class="border-b border-white/10 bg-black/50 py-16">
+    <div class="section-shell">
+      <p class="eyebrow">Demo history</p>
+      <h1 class="page-title mt-4">Archive demos</h1>
+      <p class="mt-5 max-w-3xl text-lg leading-8 text-haze">
+        Review approved and rejected demo submissions with notes, email status and playable submitted audio.
+      </p>
+    </div>
+  </section>
+
+  <section class="py-10">
+    <div class="section-shell">
+      <div data-archive-app class="space-y-8">
+        <div data-auth-required hidden class="surface mx-auto max-w-xl rounded-lg p-6">
+          <p class="eyebrow">Admin required</p>
+          <h2 class="mt-3 font-display text-3xl font-black uppercase text-white">Login needed</h2>
+          <p class="mt-3 text-sm leading-6 text-haze">Open the admin dashboard and log in before viewing archived demos.</p>
+          <a class="mt-5 inline-flex min-h-10 items-center justify-center rounded-md bg-white px-5 py-2 text-xs font-black uppercase tracking-[0.14em] text-black hover:bg-neon-cyan" href="/admin">
+            Admin login
+          </a>
+        </div>
+
+        <div data-archive-dashboard hidden class="space-y-6">
+          <div class="flex flex-col gap-4 rounded-lg border border-white/10 bg-carbon/80 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p class="eyebrow">Archive</p>
+              <h2 class="mt-2 font-display text-3xl font-black uppercase text-white">Demo submission history</h2>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <a class="rounded-md border border-white/10 px-4 py-2 text-sm font-bold text-haze hover:border-neon-cyan hover:text-white" href="/admin">Back to admin</a>
+              <button data-refresh-archive class="rounded-md border border-white/10 px-4 py-2 text-sm font-bold text-haze hover:border-neon-cyan hover:text-white" type="button">Refresh</button>
+            </div>
+          </div>
+
+          <div class="grid gap-5 md:grid-cols-3" data-archive-stats></div>
+          <div class="space-y-4" data-archive-list></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  // @ts-nocheck
+  const authRequired = document.querySelector("[data-auth-required]");
+  const archiveDashboard = document.querySelector("[data-archive-dashboard]");
+  const archiveStats = document.querySelector("[data-archive-stats]");
+  const archiveList = document.querySelector("[data-archive-list]");
+  let submissions = [];
+  let counts = { pending: 0, archived: 0, total: 0 };
+  let page = 1;
+  const pageSize = 12;
+
+  const escapeHtml = (value) =>
+    String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+
+  async function api(path, options = {}) {
+    const response = await fetch(path, {
+      credentials: "same-origin",
+      ...options,
+      headers: {
+        "content-type": "application/json",
+        ...(options.headers ?? {})
+      }
+    });
+    const data = await response.json().catch(() => ({ ok: false, error: "Invalid API response." }));
+    if (!response.ok || data.ok === false) {
+      throw new Error(data.error || `Request failed: ${response.status}`);
+    }
+    return data;
+  }
+
+  function formatFileSize(value) {
+    const size = Number(value || 0);
+    if (!size) return "";
+    if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
+    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  function formatDate(value) {
+    if (!value) return "not set";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  }
+
+  function renderSubmissionMedia(submission) {
+    const upload = submission.upload;
+    if (upload?.playback_url && upload.is_audio) {
+      return `
+        <div class="mt-4 rounded-md border border-white/10 bg-black/35 p-3">
+          <p class="text-xs font-bold uppercase tracking-[0.14em] text-steel">Uploaded audio ${upload.name ? `| ${escapeHtml(upload.name)}` : ""} ${upload.size ? `| ${escapeHtml(formatFileSize(upload.size))}` : ""}</p>
+          <audio class="mt-3 w-full" controls preload="metadata" src="${escapeHtml(upload.playback_url)}"></audio>
+        </div>
+      `;
+    }
+
+    if (submission.streaming_link) {
+      return `
+        <div class="mt-4 rounded-md border border-white/10 bg-black/35 p-3">
+          <p class="text-xs font-bold uppercase tracking-[0.14em] text-steel">Private streaming link</p>
+          <a class="mt-2 inline-flex rounded border border-white/10 px-3 py-2 text-xs font-bold uppercase text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(submission.streaming_link)}" target="_blank" rel="noreferrer">Open private stream</a>
+        </div>
+      `;
+    }
+
+    if (upload?.name) {
+      return `
+        <div class="mt-4 rounded-md border border-white/10 bg-black/35 p-3">
+          <p class="text-xs font-bold uppercase tracking-[0.14em] text-steel">Uploaded file</p>
+          <p class="mt-2 text-sm text-haze">${escapeHtml(upload.name)}${upload.size ? ` | ${escapeHtml(formatFileSize(upload.size))}` : ""}</p>
+        </div>
+      `;
+    }
+
+    return "";
+  }
+
+  function renderPager() {
+    const totalPages = Math.max(1, Math.ceil(submissions.length / pageSize));
+    if (totalPages <= 1) return "";
+    const start = (page - 1) * pageSize + 1;
+    const end = Math.min(submissions.length, page * pageSize);
+    return `
+      <div class="mt-5 flex flex-col gap-3 rounded-md border border-white/10 bg-black/30 p-3 sm:flex-row sm:items-center sm:justify-between">
+        <p class="text-xs uppercase tracking-[0.14em] text-steel">Showing ${start}-${end} of ${submissions.length}</p>
+        <div class="flex gap-2">
+          <button class="rounded border border-white/10 px-3 py-2 text-xs font-bold uppercase text-haze disabled:opacity-40" data-page-dir="-1" ${page <= 1 ? "disabled" : ""} type="button">Previous</button>
+          <span class="rounded border border-white/10 px-3 py-2 text-xs font-bold uppercase text-white">${page} / ${totalPages}</span>
+          <button class="rounded border border-white/10 px-3 py-2 text-xs font-bold uppercase text-haze disabled:opacity-40" data-page-dir="1" ${page >= totalPages ? "disabled" : ""} type="button">Next</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderArchive() {
+    if (!archiveStats || !archiveList) return;
+
+    archiveStats.innerHTML = [
+      ["Pending demos", counts.pending],
+      ["Archived demos", counts.archived],
+      ["Total demos", counts.total]
+    ]
+      .map(([label, value]) => `<div class="rounded-lg border border-white/10 bg-black/40 p-5"><p class="font-display text-4xl font-black uppercase text-white">${value}</p><p class="mt-2 text-sm uppercase tracking-[0.14em] text-steel">${label}</p></div>`)
+      .join("");
+
+    const totalPages = Math.max(1, Math.ceil(submissions.length / pageSize));
+    page = Math.min(Math.max(1, page), totalPages);
+    const visible = submissions.slice((page - 1) * pageSize, page * pageSize);
+
+    archiveList.innerHTML = submissions.length
+      ? visible
+          .map(
+            (submission) => `
+              <article class="rounded-md border border-white/10 bg-black/35 p-4">
+                <div class="grid gap-5 lg:grid-cols-[1fr_0.55fr]">
+                  <div>
+                    <p class="font-mono text-xs font-bold uppercase tracking-[0.16em] text-neon-cyan">${escapeHtml(submission.status)} | ${escapeHtml(submission.genre)}</p>
+                    <h3 class="mt-2 font-display text-2xl font-black uppercase text-white">${escapeHtml(submission.track_title)}</h3>
+                    <p class="text-sm text-steel">${escapeHtml(submission.artist_name)} | ${escapeHtml(submission.email)} | ${escapeHtml(submission.country)}</p>
+                    <p class="mt-3 text-sm leading-6 text-haze">${escapeHtml(submission.message)}</p>
+                    ${renderSubmissionMedia(submission)}
+                    <div class="mt-3 flex flex-wrap gap-2">
+                      ${submission.links ? `<a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:text-white" href="${escapeHtml(submission.links)}" target="_blank" rel="noreferrer">Artist links</a>` : ""}
+                    </div>
+                  </div>
+                  <div class="rounded-md border border-white/10 bg-black/30 p-4">
+                    <p class="text-xs font-bold uppercase tracking-[0.14em] text-steel">Decision note</p>
+                    <p class="mt-2 text-sm leading-6 text-haze">${escapeHtml(submission.decision_reason || "No decision note stored.")}</p>
+                    <dl class="mt-4 space-y-2 text-sm text-steel">
+                      <div class="flex justify-between gap-3"><dt>Status</dt><dd class="text-right text-haze">${escapeHtml(submission.status)}</dd></div>
+                      <div class="flex justify-between gap-3"><dt>Email</dt><dd class="text-right text-haze">${escapeHtml(submission.email_status || "not sent")}</dd></div>
+                      <div class="flex justify-between gap-3"><dt>Submitted</dt><dd class="text-right text-haze">${escapeHtml(formatDate(submission.created_at))}</dd></div>
+                      <div class="flex justify-between gap-3"><dt>Updated</dt><dd class="text-right text-haze">${escapeHtml(formatDate(submission.updated_at))}</dd></div>
+                    </dl>
+                  </div>
+                </div>
+              </article>
+            `
+          )
+          .join("") + renderPager()
+      : `<div class="surface rounded-lg p-6"><p class="text-sm text-steel">No archived demo submissions yet. Approved and rejected submissions will appear here.</p></div>`;
+  }
+
+  async function loadArchive() {
+    const data = await api("/api/admin/demo-submissions?scope=archive");
+    submissions = data.submissions || [];
+    counts = data.counts || { pending: 0, archived: submissions.length, total: submissions.length };
+    renderArchive();
+  }
+
+  async function checkSession() {
+    try {
+      const session = await api("/api/admin/session", { method: "GET", headers: {} });
+      if (!session.authenticated) throw new Error("Login required.");
+      authRequired?.setAttribute("hidden", "");
+      archiveDashboard?.removeAttribute("hidden");
+      await loadArchive();
+    } catch {
+      authRequired?.removeAttribute("hidden");
+      archiveDashboard?.setAttribute("hidden", "");
+    }
+  }
+
+  document.querySelector("[data-refresh-archive]")?.addEventListener("click", loadArchive);
+
+  document.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    const pager = target.closest("[data-page-dir]");
+    if (!pager) return;
+    const direction = Number(pager.getAttribute("data-page-dir"));
+    if (!Number.isFinite(direction)) return;
+    page += direction;
+    renderArchive();
+  });
+
+  checkSession();
+</script>
