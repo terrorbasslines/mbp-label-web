@@ -1,0 +1,129 @@
+import type { Env } from "../api/_shared";
+import { absoluteUrl, escapeHtml, htmlResponse, notFoundPage, pageShell, SITE_NAME, SITE_URL } from "../_seo";
+
+type ArtistRow = {
+  id: string;
+  slug: string;
+  name: string;
+  country?: string | null;
+  profile?: string | null;
+  image_url?: string | null;
+  links_json?: string | null;
+};
+
+type ReleaseRow = {
+  slug: string;
+  catalog_number: string;
+  title: string;
+  artist_display: string;
+  status?: string | null;
+};
+
+function parseLinks(value: string | null | undefined): Array<{ label: string; url: string }> {
+  try {
+    const parsed = JSON.parse(String(value ?? "[]"));
+    return Array.isArray(parsed) ? parsed.filter((item) => item?.url && item?.label) : [];
+  } catch {
+    return [];
+  }
+}
+
+export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
+  if (!env.DB) return notFoundPage("Artist not available");
+
+  const slug = String(params.slug ?? "").toLowerCase();
+  const artist = await env.DB.prepare("SELECT * FROM artists WHERE slug = ? LIMIT 1").bind(slug).first<ArtistRow>();
+  if (!artist) return notFoundPage("Artist not found");
+
+  const releases = await env.DB.prepare(
+    `SELECT r.slug, r.catalog_number, r.title, r.artist_display, r.status
+     FROM releases r
+     INNER JOIN release_artists ra ON ra.release_id = r.id
+     WHERE ra.artist_id = ? AND r.status IN ('published', 'presave')
+     ORDER BY r.catalog_number DESC`
+  )
+    .bind(artist.id)
+    .all<ReleaseRow>();
+
+  const artistLinks = parseLinks(artist.links_json);
+  const canonicalPath = `/artist/${artist.slug}`;
+  const description =
+    artist.profile ||
+    `${artist.name} is an artist connected to ${SITE_NAME}, a hardstyle, hard dance and electronic music label.`;
+  const image = artist.image_url || "/assets/brand/logo-clear.png";
+  const title = `${artist.name} - ${SITE_NAME} artist`;
+  const releaseRows = releases.results ?? [];
+  const jsonLd = [
+    {
+      "@context": "https://schema.org",
+      "@type": "MusicGroup",
+      "@id": `${SITE_URL}${canonicalPath}#artist`,
+      name: artist.name,
+      url: `${SITE_URL}${canonicalPath}`,
+      image: absoluteUrl(image),
+      description,
+      genre: ["Hardstyle", "Hard Dance", "Electronic Music"],
+      sameAs: artistLinks.map((link) => link.url),
+      memberOf: {
+        "@id": `${SITE_URL}/#organization`
+      }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
+        { "@type": "ListItem", position: 2, name: "Artists", item: `${SITE_URL}/artists` },
+        { "@type": "ListItem", position: 3, name: artist.name, item: `${SITE_URL}${canonicalPath}` }
+      ]
+    }
+  ];
+
+  return htmlResponse(
+    pageShell({
+      title,
+      description,
+      canonicalPath,
+      image,
+      ogType: "profile",
+      jsonLd,
+      content: `
+        <section class="hero">
+          <p class="eyebrow">Label artist</p>
+          <h1>${escapeHtml(artist.name)}</h1>
+          <p>${escapeHtml(artist.country || SITE_NAME)}</p>
+        </section>
+        <section class="grid">
+          <div>
+            <img class="art" src="${escapeHtml(absoluteUrl(image))}" alt="${escapeHtml(artist.name)} artist profile image" />
+          </div>
+          <article class="card">
+            <p>${escapeHtml(description)}</p>
+            <div class="links">
+              ${artistLinks
+                .map((link) => `<a href="${escapeHtml(link.url)}" target="_blank" rel="noreferrer">${escapeHtml(link.label)}</a>`)
+                .join("")}
+            </div>
+            <h2>Releases</h2>
+            <div class="list">
+              ${
+                releaseRows.length
+                  ? releaseRows
+                      .map(
+                        (release) =>
+                          `<a href="/release/${escapeHtml(release.slug)}"><strong>${escapeHtml(release.catalog_number)}</strong> - ${escapeHtml(release.title)}</a>`
+                      )
+                      .join("")
+                  : `<p>Release history is being prepared for this artist profile.</p>`
+              }
+            </div>
+            <div class="actions">
+              <a href="/artists">All artists</a>
+              <a href="/releases">All releases</a>
+            </div>
+          </article>
+        </section>
+      `
+    })
+  );
+};

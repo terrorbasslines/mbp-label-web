@@ -5,9 +5,19 @@ import SectionHeader from "../components/SectionHeader.astro";
 import ReleaseCard from "../components/ReleaseCard.astro";
 import ArtistCard from "../components/ArtistCard.astro";
 import { artists, labelStats, releases, siteConfig } from "../data/site";
+
+const homeJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "MusicGroup",
+  name: siteConfig.name,
+  url: siteConfig.url,
+  genre: ["Hardstyle", "Hard Dance", "Electronic Music", "Hardcore"],
+  description: siteConfig.seoDescription,
+  sameAs: siteConfig.socials.filter((social) => social.href.startsWith("http")).map((social) => social.href)
+};
 ---
 
-<BaseLayout>
+<BaseLayout title={siteConfig.name} description={siteConfig.seoDescription} jsonLd={homeJsonLd}>
   <section class="stage-rail relative min-h-[78svh] overflow-hidden border-b border-white/10">
     <img src="/assets/brand/stage-hero.png" alt="" class="absolute inset-0 h-full w-full object-cover" fetchpriority="high" />
     <div class="absolute inset-0 bg-gradient-to-r from-black via-black/65 to-black/20"></div>

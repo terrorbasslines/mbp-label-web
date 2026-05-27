@@ -2,9 +2,23 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import DemoSubmissionForm from "../components/DemoSubmissionForm.astro";
 import SectionHeader from "../components/SectionHeader.astro";
+import { siteConfig } from "../data/site";
+
+const demoJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "ContactPage",
+  name: "Submit a demo to The MasterBeat Project",
+  url: `${siteConfig.url}/demo-submission`,
+  description:
+    "Private demo submission form for hardstyle, hard dance, hardcore and electronic music producers sending unreleased tracks to The MasterBeat Project."
+};
 ---
 
-<BaseLayout title="Demo Submission" description="Submit private demo details to The MasterBeat Project with frontend validation prepared for Cloudflare backend integration.">
+<BaseLayout
+  title="Submit Hardstyle and Electronic Music Demos"
+  description="Send unreleased hardstyle, hard dance, hardcore or electronic music demos to The MasterBeat Project for label review."
+  jsonLd={demoJsonLd}
+>
   <section class="border-b border-white/10 bg-black/45 py-20">
     <div class="section-shell grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
       <div>

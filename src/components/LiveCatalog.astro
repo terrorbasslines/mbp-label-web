@@ -2,9 +2,9 @@
   <div class="section-shell">
     <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
       <div>
-        <p class="eyebrow">Live catalogue</p>
-        <h2 class="mt-3 font-display text-3xl font-black uppercase leading-none text-white sm:text-5xl">Database releases</h2>
-        <p class="mt-4 max-w-3xl text-base leading-7 text-steel">Release data loaded from Cloudflare D1, including playable platform links.</p>
+        <p class="eyebrow">Official catalogue</p>
+        <h2 class="mt-3 font-display text-3xl font-black uppercase leading-none text-white sm:text-5xl">MBP releases</h2>
+        <p class="mt-4 max-w-3xl text-base leading-7 text-steel">Browse official The MasterBeat Project releases with artwork, catalogue numbers and streaming platform links.</p>
       </div>
     </div>
     <div class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3" data-live-releases></div>
@@ -35,12 +35,17 @@
       liveCatalog.classList.remove("hidden");
       staticReleases?.classList.add("hidden");
       liveReleases.innerHTML = data.releases
-        .map(
-          (release) => `
+        .map((release) => {
+          const releasePath = `/release/${encodeURIComponent(String(release.slug || release.catalog_number || "").toLowerCase())}`;
+          return `
             <article class="clip-diagonal border border-white/10 bg-carbon/80 p-5">
-              ${release.artwork_url ? `<img class="mb-5 aspect-square w-full rounded-md border border-white/10 object-cover" src="${escapeHtml(release.artwork_url)}" alt="${escapeHtml(release.title)} artwork" loading="lazy" />` : ""}
+              ${
+                release.artwork_url
+                  ? `<a href="${escapeHtml(releasePath)}"><img class="mb-5 aspect-square w-full rounded-md border border-white/10 object-cover transition duration-200 hover:opacity-85" src="${escapeHtml(release.artwork_url)}" alt="${escapeHtml(release.title)} artwork" loading="lazy" /></a>`
+                  : ""
+              }
               <p class="font-mono text-xs font-bold uppercase tracking-[0.16em] text-neon-cyan">${escapeHtml(release.catalog_number)} | ${escapeHtml(release.status)}</p>
-              <h3 class="mt-3 font-display text-3xl font-black uppercase leading-none text-white">${escapeHtml(release.title)}</h3>
+              <h3 class="mt-3 font-display text-3xl font-black uppercase leading-none text-white"><a class="hover:text-neon-cyan" href="${escapeHtml(releasePath)}">${escapeHtml(release.title)}</a></h3>
               <p class="mt-2 text-sm font-semibold text-haze">${escapeHtml(release.artist_display)}</p>
               <p class="mt-4 text-sm leading-6 text-steel">${escapeHtml(release.description || release.genre || "The MasterBeat Project release.")}</p>
               <div class="mt-5 flex flex-wrap gap-2">
@@ -49,8 +54,8 @@
                   .join("")}
               </div>
             </article>
-          `
-        )
+          `;
+        })
         .join("");
     } catch {
       // Static fallback remains visible when the D1 catalogue is not configured yet.

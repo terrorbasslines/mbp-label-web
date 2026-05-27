@@ -1,0 +1,134 @@
+import type { Env } from "./api/_shared";
+
+export const SITE_URL = "https://themasterbeatproject.com";
+export const SITE_NAME = "The MasterBeat Project";
+export const SITE_DESCRIPTION =
+  "The MasterBeat Project is a hardstyle, hard dance and electronic music label releasing high-energy tracks, artist profiles and official MBP catalogue links.";
+export const DEFAULT_IMAGE = `${SITE_URL}/assets/brand/stage-hero.png`;
+export const LOGO_IMAGE = `${SITE_URL}/assets/brand/logo-clear.png`;
+
+export function escapeHtml(value: unknown) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+export function absoluteUrl(pathOrUrl: string | null | undefined) {
+  if (!pathOrUrl) return SITE_URL;
+  try {
+    return new URL(pathOrUrl, SITE_URL).toString();
+  } catch {
+    return SITE_URL;
+  }
+}
+
+export function safeJsonLd(value: unknown) {
+  return JSON.stringify(value).replace(/</g, "\\u003c");
+}
+
+export function htmlResponse(html: string, init: ResponseInit = {}) {
+  return new Response(html, {
+    ...init,
+    headers: {
+      "content-type": "text/html; charset=UTF-8",
+      "cache-control": "public, max-age=300",
+      ...(init.headers ?? {})
+    }
+  });
+}
+
+export function notFoundPage(title = "Page not found") {
+  return htmlResponse(
+    pageShell({
+      title,
+      description: "The requested The MasterBeat Project page was not found.",
+      canonicalPath: "/404",
+      noindex: true,
+      content: `
+        <section class="hero">
+          <p class="eyebrow">404</p>
+          <h1>Page not found</h1>
+          <p>The page is not available. Return to the official MBP catalogue or artist roster.</p>
+          <div class="actions">
+            <a href="/releases">Releases</a>
+            <a href="/artists">Artists</a>
+          </div>
+        </section>
+      `
+    }),
+    { status: 404 }
+  );
+}
+
+export function pageShell(input: {
+  title: string;
+  description: string;
+  canonicalPath: string;
+  image?: string | null;
+  ogType?: string;
+  noindex?: boolean;
+  jsonLd?: unknown[];
+  content: string;
+}) {
+  const canonical = absoluteUrl(input.canonicalPath);
+  const image = absoluteUrl(input.image || DEFAULT_IMAGE);
+  const title = `${input.title} | ${SITE_NAME}`;
+  const robots = input.noindex ? "noindex, nofollow" : "index, follow, max-image-preview:large";
+  const jsonLd = [
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#organization`,
+      name: SITE_NAME,
+      url: SITE_URL,
+      logo: LOGO_IMAGE,
+      image: DEFAULT_IMAGE,
+      description: SITE_DESCRIPTION,
+      sameAs: ["https://linktr.ee/themasterbeatproject", "https://soundcloud.com/the-masterbeat-project"]
+    },
+    ...(input.jsonLd ?? [])
+  ];
+
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${escapeHtml(title)}</title>
+    <meta name="description" content="${escapeHtml(input.description)}" />
+    <meta name="robots" content="${robots}" />
+    <link rel="canonical" href="${escapeHtml(canonical)}" />
+    <link rel="icon" type="image/png" href="/assets/brand/logo-clear.png" />
+    <meta property="og:site_name" content="${SITE_NAME}" />
+    <meta property="og:type" content="${escapeHtml(input.ogType || "website")}" />
+    <meta property="og:title" content="${escapeHtml(title)}" />
+    <meta property="og:description" content="${escapeHtml(input.description)}" />
+    <meta property="og:image" content="${escapeHtml(image)}" />
+    <meta property="og:url" content="${escapeHtml(canonical)}" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="${escapeHtml(title)}" />
+    <meta name="twitter:description" content="${escapeHtml(input.description)}" />
+    <meta name="twitter:image" content="${escapeHtml(image)}" />
+    ${jsonLd.map((item) => `<script type="application/ld+json">${safeJsonLd(item)}</script>`).join("\n    ")}
+    <style>
+      :root{color-scheme:dark;--bg:#050508;--panel:#11121a;--line:rgba(255,255,255,.12);--text:#fff;--muted:#b8bdd1;--cyan:#22f7ff;--violet:#8f35ff}
+      *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 12% 0%,rgba(143,53,255,.2),transparent 34%),var(--bg);color:var(--text);font-family:Inter,Arial,sans-serif}
+      a{color:inherit}.wrap{width:min(1180px,calc(100% - 32px));margin:0 auto}.top{border-bottom:1px solid var(--line);background:rgba(0,0,0,.76);position:sticky;top:0;backdrop-filter:blur(16px);z-index:10}.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 0}.brand{display:flex;align-items:center;gap:12px;text-decoration:none;font-weight:900;text-transform:uppercase;letter-spacing:.03em}.brand img{width:42px;height:42px;border-radius:6px;background:#000}.nav{display:flex;flex-wrap:wrap;gap:14px}.nav a{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;text-decoration:none;color:var(--muted)}.nav a:hover{color:var(--cyan)}
+      .hero{padding:82px 0 52px}.eyebrow{font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.22em;color:var(--cyan)}h1{margin:14px 0 0;font-size:clamp(42px,8vw,86px);line-height:.88;text-transform:uppercase;letter-spacing:0;font-weight:1000}p{color:var(--muted);line-height:1.7}.grid{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:32px;padding-bottom:72px}.art{width:100%;border:1px solid var(--line);border-radius:8px;background:#000;object-fit:cover;aspect-ratio:1}.card{border:1px solid var(--line);border-radius:8px;background:rgba(17,18,26,.82);padding:24px}.meta{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0}.pill{border:1px solid var(--line);border-radius:6px;padding:8px 10px;color:var(--cyan);font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.12em}.links{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}.links a,.actions a{border:1px solid var(--line);border-radius:6px;padding:10px 13px;text-decoration:none;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.1em}.links a:hover,.actions a:hover{border-color:var(--cyan);color:var(--cyan)}.list{display:grid;gap:12px;margin-top:20px}.list a{display:block;border:1px solid var(--line);border-radius:6px;padding:14px;text-decoration:none;background:rgba(255,255,255,.03)}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:26px}.footer{border-top:1px solid var(--line);padding:30px 0;color:var(--muted);font-size:13px}
+      @media (max-width: 760px){.top .wrap,.grid{display:block}.nav{margin-top:14px}.grid{padding-bottom:48px}.card{margin-top:18px}}
+    </style>
+  </head>
+  <body>
+    <header class="top"><div class="wrap"><a class="brand" href="/"><img src="/assets/brand/logo-clear.png" alt="" />${SITE_NAME}</a><nav class="nav"><a href="/releases">Releases</a><a href="/artists">Artists</a><a href="/demo-submission">Submit demo</a><a href="/contact">Contact</a></nav></div></header>
+    <main class="wrap">${input.content}</main>
+    <footer class="footer"><div class="wrap">${SITE_NAME} - Hardstyle, hard dance and electronic music label.</div></footer>
+  </body>
+</html>`;
+}
+
+export function dbMissing(env: Env) {
+  return !env.DB;
+}

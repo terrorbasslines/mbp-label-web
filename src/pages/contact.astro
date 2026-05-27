@@ -3,9 +3,22 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import ButtonLink from "../components/ButtonLink.astro";
 import SectionHeader from "../components/SectionHeader.astro";
 import { siteConfig } from "../data/site";
+
+const contactJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "ContactPage",
+  name: "Contact The MasterBeat Project",
+  url: `${siteConfig.url}/contact`,
+  description:
+    "Contact The MasterBeat Project for label inquiries, partnerships, hardstyle releases and electronic music communication."
+};
 ---
 
-<BaseLayout title="Contact" description="Contact The MasterBeat Project for demos, label inquiries and music industry communication.">
+<BaseLayout
+  title="Contact The MasterBeat Project"
+  description="Contact The MasterBeat Project for label inquiries, artist communication, partnerships and hardstyle or electronic music release questions."
+  jsonLd={contactJsonLd}
+>
   <section class="border-b border-white/10 bg-black/45 py-20">
     <div class="section-shell">
       <p class="eyebrow">Contact</p>

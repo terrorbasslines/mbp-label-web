@@ -4,16 +4,30 @@ import ArtistCard from "../components/ArtistCard.astro";
 import SectionHeader from "../components/SectionHeader.astro";
 import ButtonLink from "../components/ButtonLink.astro";
 import LiveArtists from "../components/LiveArtists.astro";
-import { artists } from "../data/site";
+import { artists, siteConfig } from "../data/site";
+
+const artistsJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  name: "The MasterBeat Project artists",
+  url: `${siteConfig.url}/artists`,
+  description:
+    "Artist roster for The MasterBeat Project, featuring hardstyle, hard dance and electronic music producers connected to the MBP catalogue.",
+  isPartOf: { "@id": `${siteConfig.url}/#website` }
+};
 ---
 
-<BaseLayout title="Artists" description="Artist profiles and roster presentation for The MasterBeat Project.">
+<BaseLayout
+  title="Hardstyle and Electronic Music Artists"
+  description="Discover The MasterBeat Project artists and producers connected to the MBP hardstyle, hard dance and electronic music catalogue."
+  jsonLd={artistsJsonLd}
+>
   <section class="border-b border-white/10 bg-black/45 py-20">
     <div class="section-shell">
-      <p class="eyebrow">Roster</p>
-      <h1 class="page-title mt-4">Artists</h1>
+      <p class="eyebrow">Label roster</p>
+      <h1 class="page-title mt-4">Hardstyle and electronic artists</h1>
       <p class="mt-6 max-w-3xl text-lg leading-8 text-haze">
-        A public artist profile surface for featured MBP collaborators, future biographies, release histories and press-ready links.
+        Browse the MBP artist roster, producer profiles and connected releases from The MasterBeat Project catalogue.
       </p>
     </div>
   </section>

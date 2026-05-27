@@ -4,16 +4,30 @@ import ReleaseCard from "../components/ReleaseCard.astro";
 import SectionHeader from "../components/SectionHeader.astro";
 import ButtonLink from "../components/ButtonLink.astro";
 import LiveCatalog from "../components/LiveCatalog.astro";
-import { releases } from "../data/site";
+import { releases, siteConfig } from "../data/site";
+
+const releasesJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  name: "The MasterBeat Project releases",
+  url: `${siteConfig.url}/releases`,
+  description:
+    "Official The MasterBeat Project catalogue with hardstyle, hard dance and electronic releases, MBP catalogue numbers and streaming links.",
+  isPartOf: { "@id": `${siteConfig.url}/#website` }
+};
 ---
 
-<BaseLayout title="Releases" description="Selected releases and catalogue lanes from The MasterBeat Project.">
+<BaseLayout
+  title="Hardstyle and Electronic Music Releases"
+  description="Explore official The MasterBeat Project releases, MBP catalogue numbers, artist credits and streaming links for hardstyle, hard dance and electronic music."
+  jsonLd={releasesJsonLd}
+>
   <section class="border-b border-white/10 bg-black/45 py-20">
     <div class="section-shell">
-      <p class="eyebrow">Catalogue</p>
-      <h1 class="page-title mt-4">Releases</h1>
-      <p class="mt-6 max-w-3xl text-lg leading-8 text-haze">
-        A clean release surface for hardstyle, hardcore and electronic catalogue work, prepared for future streaming links, catalogue IDs, artwork metadata and artist relations.
+        <p class="eyebrow">Official catalogue</p>
+        <h1 class="page-title mt-4">Hardstyle and electronic releases</h1>
+        <p class="mt-6 max-w-3xl text-lg leading-8 text-haze">
+        Explore official MBP catalogue releases with artist credits, release artwork and links to streaming platforms including Spotify, Apple Music, YouTube, SoundCloud and more when available.
       </p>
     </div>
   </section>
