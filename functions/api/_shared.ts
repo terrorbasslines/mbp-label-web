@@ -8,10 +8,17 @@ export interface Env {
   DEMO_BUCKET?: R2Bucket;
 }
 
-export interface AdminSession {
-  sub: "admin";
+export type SessionRole = "admin" | "artist";
+
+export interface AppSession {
+  sub: string;
+  role: SessionRole;
+  email?: string;
+  artistIds?: string[];
   exp: number;
 }
+
+export type AdminSession = AppSession & { role: "admin" };
 
 const encoder = new TextEncoder();
 
@@ -106,17 +113,75 @@ function base64UrlDecode(input: string) {
   return atob(padded);
 }
 
+function base64UrlToBytes(input: string) {
+  const binary = base64UrlDecode(input);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return bytes;
+}
+
+function bytesToHex(bytes: ArrayBuffer) {
+  return [...new Uint8Array(bytes)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function constantTimeEqual(left: string, right: string) {
+  if (left.length !== right.length) return false;
+  let mismatch = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    mismatch |= left.charCodeAt(index) ^ right.charCodeAt(index);
+  }
+  return mismatch === 0;
+}
+
 async function hmac(message: string, secret: string) {
   const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]);
   return crypto.subtle.sign("HMAC", key, encoder.encode(message));
 }
 
-export async function createSessionToken(env: Env) {
+export function randomToken(byteLength = 32) {
+  const bytes = crypto.getRandomValues(new Uint8Array(byteLength));
+  return base64UrlEncode(bytes.buffer as ArrayBuffer);
+}
+
+export async function sha256Hex(value: string) {
+  return bytesToHex(await crypto.subtle.digest("SHA-256", encoder.encode(value)));
+}
+
+export async function hashPassword(password: string) {
+  const iterations = 120000;
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const keyMaterial = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", hash: "SHA-256", salt, iterations },
+    keyMaterial,
+    256
+  );
+  return `pbkdf2_sha256$${iterations}$${base64UrlEncode(salt.buffer as ArrayBuffer)}$${base64UrlEncode(bits)}`;
+}
+
+export async function verifyPassword(password: string, stored: string) {
+  const [algorithm, iterationsText, saltText, hashText] = stored.split("$");
+  if (algorithm !== "pbkdf2_sha256" || !iterationsText || !saltText || !hashText) return false;
+
+  const iterations = Number(iterationsText);
+  if (!Number.isInteger(iterations) || iterations < 100000) return false;
+
+  const salt = base64UrlToBytes(saltText);
+  const keyMaterial = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", hash: "SHA-256", salt, iterations },
+    keyMaterial,
+    256
+  );
+  return constantTimeEqual(base64UrlEncode(bits), hashText);
+}
+
+export async function createSessionToken(env: Env, input: Omit<AppSession, "exp"> = { sub: "admin", role: "admin" }) {
   if (!env.SESSION_SECRET) {
     throw new Error("SESSION_SECRET is not configured.");
   }
-  const payload: AdminSession = {
-    sub: "admin",
+  const payload: AppSession = {
+    ...input,
     exp: Math.floor(Date.now() / 1000) + 60 * 60 * 8
   };
   const body = base64UrlEncode(JSON.stringify(payload));
@@ -134,7 +199,7 @@ function getCookie(request: Request, name: string) {
     ?.slice(prefix.length);
 }
 
-export async function verifySession(request: Request, env: Env): Promise<AdminSession | null> {
+export async function verifySession(request: Request, env: Env): Promise<AppSession | null> {
   if (!env.SESSION_SECRET) return null;
   const token = getCookie(request, "mbp_admin");
   if (!token) return null;
@@ -146,20 +211,39 @@ export async function verifySession(request: Request, env: Env): Promise<AdminSe
   if (expected !== signature) return null;
 
   try {
-    const session = JSON.parse(base64UrlDecode(body)) as AdminSession;
-    if (session.sub !== "admin" || session.exp < Math.floor(Date.now() / 1000)) return null;
-    return session;
+    const session = JSON.parse(base64UrlDecode(body)) as Partial<AppSession> & { sub?: string };
+    if (!session.sub || !session.exp || session.exp < Math.floor(Date.now() / 1000)) return null;
+    if (!session.role && session.sub === "admin") {
+      return { sub: "admin", role: "admin", exp: session.exp };
+    }
+    if (session.role !== "admin" && session.role !== "artist") return null;
+    return {
+      sub: session.sub,
+      role: session.role,
+      email: session.email,
+      artistIds: Array.isArray(session.artistIds) ? session.artistIds : [],
+      exp: session.exp
+    };
   } catch {
     return null;
   }
 }
 
-export async function requireAdmin(request: Request, env: Env): Promise<Response | AdminSession> {
+export async function requireSession(request: Request, env: Env): Promise<Response | AppSession> {
   const session = await verifySession(request, env);
   if (!session) {
-    return json({ ok: false, error: "Admin login required." }, { status: 401 });
+    return json({ ok: false, error: "Login required." }, { status: 401 });
   }
   return session;
+}
+
+export async function requireAdmin(request: Request, env: Env): Promise<Response | AdminSession> {
+  const session = await requireSession(request, env);
+  if (isResponse(session)) return session;
+  if (session.role !== "admin") {
+    return json({ ok: false, error: "Admin permission required." }, { status: 403 });
+  }
+  return session as AdminSession;
 }
 
 export function setSessionCookie(token: string) {

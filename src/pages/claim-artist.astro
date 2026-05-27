@@ -1,0 +1,80 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout
+  title="Claim Artist Profile"
+  description="Claim a The MasterBeat Project artist profile invitation and create your artist login."
+  noindex={true}
+>
+  <section class="border-b border-white/10 bg-black/50 py-16">
+    <div class="section-shell">
+      <p class="eyebrow">Artist access</p>
+      <h1 class="page-title mt-4">Claim artist profile</h1>
+      <p class="mt-5 max-w-3xl text-lg leading-8 text-haze">
+        Use the private invitation link from The MasterBeat Project to create your artist account.
+      </p>
+    </div>
+  </section>
+
+  <section class="py-14">
+    <div class="section-shell">
+      <form data-claim-form class="surface mx-auto grid max-w-xl gap-4 rounded-lg p-6">
+        <label>
+          <span class="field-label">Invitation token</span>
+          <input class="field-control" name="token" required autocomplete="off" />
+        </label>
+        <label>
+          <span class="field-label">Name</span>
+          <input class="field-control" name="name" required autocomplete="name" />
+        </label>
+        <label>
+          <span class="field-label">Email</span>
+          <input class="field-control" name="email" type="email" required autocomplete="email" />
+        </label>
+        <label>
+          <span class="field-label">Password</span>
+          <input class="field-control" name="password" type="password" minlength="8" required autocomplete="new-password" />
+        </label>
+        <button class="rounded-md bg-white px-5 py-3 text-sm font-black uppercase tracking-[0.14em] text-black hover:bg-neon-cyan" type="submit">
+          Create account
+        </button>
+        <p class="text-sm text-steel" data-claim-status>Google login can be added later after OAuth credentials are configured.</p>
+      </form>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  // @ts-nocheck
+  const form = document.querySelector("[data-claim-form]");
+  const status = document.querySelector("[data-claim-status]");
+  const tokenInput = form?.querySelector('input[name="token"]');
+  const token = new URL(location.href).searchParams.get("token");
+  if (tokenInput && token) tokenInput.value = token;
+
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const formData = new FormData(form);
+    status.textContent = "Creating account...";
+    try {
+      const response = await fetch("/api/auth/claim", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          token: formData.get("token"),
+          name: formData.get("name"),
+          email: formData.get("email"),
+          password: formData.get("password")
+        })
+      });
+      const data = await response.json().catch(() => ({ ok: false, error: "Invalid API response." }));
+      if (!response.ok || data.ok === false) throw new Error(data.error || "Claim failed.");
+      status.textContent = "Account created. Opening artist dashboard...";
+      location.href = "/artist-dashboard";
+    } catch (error) {
+      status.textContent = error.message;
+    }
+  });
+</script>

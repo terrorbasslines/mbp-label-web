@@ -36,10 +36,10 @@
           return `
             <article class="group clip-diagonal relative overflow-hidden border border-white/10 bg-graphite/90">
               <div class="relative grid min-h-full grid-rows-[auto_1fr]">
-                <a class="aspect-square overflow-hidden border-b border-white/10 bg-black/70 p-3" href="${escapeLatestHtml(releasePath)}">
+                <a class="aspect-square overflow-hidden border-b border-white/10 bg-black/70" href="${escapeLatestHtml(releasePath)}">
                   ${
                     release.artwork_url
-                      ? `<img src="${escapeLatestHtml(release.artwork_url)}" alt="${escapeLatestHtml(release.title)} artwork" class="h-full w-full object-contain transition duration-500 group-hover:scale-[1.03]" loading="lazy" />`
+                      ? `<img src="${escapeLatestHtml(release.artwork_url)}" alt="${escapeLatestHtml(release.title)} artwork" class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" loading="lazy" />`
                       : `<div class="grid h-full w-full place-items-center bg-black font-display text-5xl font-black text-white">MBP</div>`
                   }
                 </a>

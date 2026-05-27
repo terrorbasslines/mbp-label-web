@@ -56,6 +56,9 @@ const leaders = [
           const artist = byName.get(leader.name.toLowerCase());
           const slug = artist?.slug || leader.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
           const artistPath = `/artist/${encodeURIComponent(slug)}`;
+          const profile = artist?.profile && !String(artist.profile).toLowerCase().startsWith("imported from ")
+            ? artist.profile
+            : leader.focus;
           return `
             <article class="rounded-lg border border-white/10 bg-carbon/80 p-5">
               <div class="flex items-center gap-4">
@@ -68,7 +71,7 @@ const leaders = [
                   <p class="mt-1 text-sm text-steel">The MasterBeat Project management</p>
                 </div>
               </div>
-              <p class="mt-5 text-sm leading-6 text-haze">${escapeTeamHtml(artist?.profile || leader.focus)}</p>
+              <p class="mt-5 text-sm leading-6 text-haze">${escapeTeamHtml(profile)}</p>
             </article>
           `;
         })

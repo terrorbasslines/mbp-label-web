@@ -19,7 +19,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
   if (body instanceof Response) return body;
 
   const status = requiredString(body.status, "status", 6, 20);
-  const reason = requiredString(body.reason, "reason", 3, 2000);
+  const reason = requiredString(body.reason, "reason", 1, 2000);
   if (isResponse(status)) return status;
   if (isResponse(reason)) return reason;
   if (!["approved", "rejected"].includes(status)) {

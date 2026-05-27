@@ -28,6 +28,19 @@ function parseLinks(value: string | null | undefined): Array<{ label: string; ur
   }
 }
 
+const MANAGEMENT_PROFILES = new Map([
+  ["terror basslines", "CEO of The MasterBeat Project, leading label strategy, catalogue direction and MBP brand development."],
+  ["romee storm", "A&R for The MasterBeat Project, focused on artist relations, demo review and release development."],
+  ["alexair", "A&R for The MasterBeat Project, focused on roster scouting, music feedback and catalogue quality control."],
+  ["rodrigo stadt", "MBP Ambassador representing The MasterBeat Project community, label presence and artist support."]
+]);
+
+function publicProfile(artist: ArtistRow) {
+  const profile = artist.profile || "";
+  if (profile && !profile.toLowerCase().startsWith("imported from ")) return profile;
+  return MANAGEMENT_PROFILES.get(artist.name.toLowerCase()) || null;
+}
+
 export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
   if (!env.DB) return notFoundPage("Artist not available");
 
@@ -48,7 +61,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
   const artistLinks = parseLinks(artist.links_json);
   const canonicalPath = `/artist/${artist.slug}`;
   const description =
-    artist.profile ||
+    publicProfile(artist) ||
     `${artist.name} is an artist connected to ${SITE_NAME}, a hardstyle, hard dance and electronic music label.`;
   const image = artist.image_url || "/assets/brand/logo-clear.png";
   const title = `${artist.name} - ${SITE_NAME} artist`;

@@ -9,6 +9,20 @@ type RefreshCandidate = ReleaseRow & {
   ffm_url?: string | null;
 };
 
+const MANAGEMENT_PROFILES = new Map([
+  ["terror basslines", "CEO of The MasterBeat Project, leading label strategy, catalogue direction and MBP brand development."],
+  ["romee storm", "A&R for The MasterBeat Project, focused on artist relations, demo review and release development."],
+  ["alexair", "A&R for The MasterBeat Project, focused on roster scouting, music feedback and catalogue quality control."],
+  ["rodrigo stadt", "MBP Ambassador representing The MasterBeat Project community, label presence and artist support."]
+]);
+
+function publicArtistProfile(artist: ArtistRow) {
+  const name = String(artist.name ?? "").toLowerCase();
+  const profile = String(artist.profile ?? "");
+  if (profile && !profile.toLowerCase().startsWith("imported from ")) return profile;
+  return MANAGEMENT_PROFILES.get(name) ?? null;
+}
+
 async function refreshPresaveCandidates(db: D1Database) {
   const candidates = await db
     .prepare(
@@ -81,6 +95,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
     ok: true,
     artists: (artists.results ?? []).map((artist) => ({
       ...artist,
+      profile: publicArtistProfile(artist),
       links: JSON.parse(String(artist.links_json ?? "[]")),
       is_featured: Boolean(artist.is_featured)
     })),

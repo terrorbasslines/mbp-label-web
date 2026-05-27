@@ -10,6 +10,8 @@ Built with Astro, TypeScript and Tailwind CSS for Cloudflare Pages. The public f
 - Tailwind CSS
 - Cloudflare Pages static output
 - Cloudflare Pages Functions for admin, catalogue and demo submissions
+- Cloudflare D1 for catalogue, demo and account metadata
+- Cloudflare R2 for private demo upload files
 
 ## Local Setup
 
@@ -68,6 +70,10 @@ Planned endpoint:
 - `/admin`
 - `/api/admin/*`
 - `/api/catalog`
+- `/claim-artist`
+- `/artist-dashboard`
+- `/api/auth/claim`
+- `/api/artist/profile`
 
 Planned Cloudflare resources:
 
@@ -77,14 +83,15 @@ Planned Cloudflare resources:
 - Optional email secret: `RESEND_API_KEY`
 - Optional email variable: `DEMO_FROM_EMAIL`
 - Optional email variable: `DEMO_REPLY_TO_EMAIL`
-- Future R2 binding: `DEMO_BUCKET`
+- R2 binding: `DEMO_BUCKET`
 
 Current status:
 
 - Admin login and CRUD API are implemented through Cloudflare Pages Functions.
 - Frontend demo validation and D1 submission storage are implemented.
-- File upload is intentionally disabled until R2 is connected.
+- Optional demo file uploads are stored privately in Cloudflare R2 when `DEMO_BUCKET` is bound.
 - Demo approval/rejection is implemented in admin. Email sending is active only when Resend env variables are configured.
+- Artist claim invitations and artist profile editing are implemented with email/password login. Google OAuth can be added after OAuth credentials are created.
 
 ## D1 Setup
 
@@ -146,7 +153,15 @@ Use the admin dashboard to:
 - import FFM smartlinks in batches, for example `1` to `25`
 - add artists and profiles
 - add releases and playable platform links
+- create artist claim links with artist or admin role
 - approve or reject demos with a reason
+
+Artist claim flow:
+
+1. Open `/admin`.
+2. In the artist list, enter the artist email and create an invite.
+3. Send the generated `/claim-artist?token=...` link to the artist.
+4. The artist creates an account and edits their profile at `/artist-dashboard`.
 
 ## FFM Catalogue Import
 

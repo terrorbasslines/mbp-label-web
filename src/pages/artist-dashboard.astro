@@ -1,0 +1,184 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Artist Dashboard" description="Edit your The MasterBeat Project artist profile." noindex={true}>
+  <section class="border-b border-white/10 bg-black/50 py-16">
+    <div class="section-shell">
+      <p class="eyebrow">Artist portal</p>
+      <h1 class="page-title mt-4">Artist dashboard</h1>
+      <p class="mt-5 max-w-3xl text-lg leading-8 text-haze">
+        Update your public MBP artist profile, image and official links.
+      </p>
+    </div>
+  </section>
+
+  <section class="py-14">
+    <div class="section-shell">
+      <div data-artist-app>
+        <form data-artist-login class="surface mx-auto grid max-w-xl gap-4 rounded-lg p-6">
+          <p class="eyebrow">Login</p>
+          <label>
+            <span class="field-label">Email</span>
+            <input class="field-control" name="email" type="email" required autocomplete="email" />
+          </label>
+          <label>
+            <span class="field-label">Password</span>
+            <input class="field-control" name="password" type="password" required autocomplete="current-password" />
+          </label>
+          <button class="rounded-md bg-white px-5 py-3 text-sm font-black uppercase tracking-[0.14em] text-black hover:bg-neon-cyan" type="submit">
+            Login
+          </button>
+          <p class="text-sm text-steel" data-login-status>Use the login created from your artist claim invitation.</p>
+        </form>
+
+        <div data-profile-panel hidden class="surface mx-auto max-w-3xl rounded-lg p-6">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p class="eyebrow">Profile editor</p>
+              <h2 class="mt-2 font-display text-3xl font-black uppercase text-white" data-profile-title>Artist profile</h2>
+            </div>
+            <button data-logout class="rounded-md border border-white/10 px-4 py-2 text-sm font-bold text-haze hover:border-neon-cyan hover:text-white" type="button">
+              Logout
+            </button>
+          </div>
+          <form data-profile-form class="mt-6 grid gap-4">
+            <input name="artist_id" type="hidden" />
+            <label>
+              <span class="field-label">Artist name</span>
+              <input class="field-control" name="name" required />
+            </label>
+            <label>
+              <span class="field-label">Country / role</span>
+              <input class="field-control" name="country" />
+            </label>
+            <label>
+              <span class="field-label">Public profile</span>
+              <textarea class="field-control min-h-36" name="profile"></textarea>
+            </label>
+            <label>
+              <span class="field-label">Image URL</span>
+              <input class="field-control" name="image_url" type="url" />
+            </label>
+            <label>
+              <span class="field-label">Official links, one per line: label|url</span>
+              <textarea class="field-control min-h-28" name="links"></textarea>
+            </label>
+            <div class="flex flex-wrap items-center gap-3">
+              <button class="rounded-md bg-white px-5 py-3 text-sm font-black uppercase tracking-[0.14em] text-black hover:bg-neon-cyan" type="submit">
+                Save profile
+              </button>
+              <a data-public-profile class="rounded-md border border-white/10 px-5 py-3 text-sm font-bold uppercase tracking-[0.12em] text-haze hover:border-neon-cyan hover:text-white" href="/artists">
+                View public profile
+              </a>
+            </div>
+            <p class="text-sm text-steel" data-profile-status></p>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  // @ts-nocheck
+  const loginForm = document.querySelector("[data-artist-login]");
+  const loginStatus = document.querySelector("[data-login-status]");
+  const panel = document.querySelector("[data-profile-panel]");
+  const profileForm = document.querySelector("[data-profile-form]");
+  const profileStatus = document.querySelector("[data-profile-status]");
+  const profileTitle = document.querySelector("[data-profile-title]");
+  const publicProfile = document.querySelector("[data-public-profile]");
+
+  function linksToText(links) {
+    return Array.isArray(links) ? links.map((link) => `${link.label}|${link.url}`).join("\n") : "";
+  }
+
+  function textToLinks(value) {
+    return String(value || "")
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const [label, url] = line.split("|").map((item) => item.trim());
+        return { label, url };
+      })
+      .filter((link) => link.label && link.url);
+  }
+
+  async function api(path, options = {}) {
+    const response = await fetch(path, {
+      credentials: "same-origin",
+      ...options,
+      headers: { "content-type": "application/json", ...(options.headers || {}) }
+    });
+    const data = await response.json().catch(() => ({ ok: false, error: "Invalid API response." }));
+    if (!response.ok || data.ok === false) throw new Error(data.error || `Request failed: ${response.status}`);
+    return data;
+  }
+
+  async function loadProfile() {
+    const data = await api("/api/artist/profile", { method: "GET", headers: {} });
+    if (!data.artist) throw new Error("No artist profile is linked to this account yet.");
+    const artist = data.artist;
+    loginForm?.setAttribute("hidden", "");
+    panel?.removeAttribute("hidden");
+    profileTitle.textContent = artist.name;
+    profileForm.artist_id.value = artist.id;
+    profileForm.name.value = artist.name || "";
+    profileForm.country.value = artist.country || "";
+    profileForm.profile.value = artist.profile || "";
+    profileForm.image_url.value = artist.image_url || "";
+    profileForm.links.value = linksToText(artist.links);
+    publicProfile.href = `/artist/${artist.slug}`;
+  }
+
+  loginForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const formData = new FormData(loginForm);
+    loginStatus.textContent = "Logging in...";
+    try {
+      await api("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email: formData.get("email"), password: formData.get("password") })
+      });
+      await loadProfile();
+    } catch (error) {
+      loginStatus.textContent = error.message;
+    }
+  });
+
+  profileForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const formData = new FormData(profileForm);
+    profileStatus.textContent = "Saving...";
+    try {
+      await api("/api/artist/profile", {
+        method: "PUT",
+        body: JSON.stringify({
+          artist_id: formData.get("artist_id"),
+          name: formData.get("name"),
+          country: formData.get("country"),
+          profile: formData.get("profile"),
+          image_url: formData.get("image_url"),
+          links: textToLinks(formData.get("links"))
+        })
+      });
+      profileStatus.textContent = "Profile saved.";
+      await loadProfile();
+    } catch (error) {
+      profileStatus.textContent = error.message;
+    }
+  });
+
+  document.querySelector("[data-logout]")?.addEventListener("click", async () => {
+    await api("/api/auth/logout", { method: "POST", body: "{}" });
+    location.reload();
+  });
+
+  api("/api/auth/me", { method: "GET", headers: {} })
+    .then((session) => {
+      if (session.authenticated) return loadProfile();
+    })
+    .catch(() => {});
+</script>

@@ -188,6 +188,8 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   let artists = [];
   let releases = [];
   let submissions = [];
+  const pages = { artists: 1, releases: 1, submissions: 1 };
+  const pageSizes = { artists: 10, releases: 8, submissions: 5 };
 
   const escapeHtml = (value) =>
     String(value ?? "")
@@ -196,6 +198,8 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       .replaceAll(">", "&gt;")
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#39;");
+
+  const managementAdmins = new Set(["romee storm", "alexair", "rodrigo stadt"]);
 
   async function api(path, options = {}) {
     const response = await fetch(path, {
@@ -211,6 +215,30 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       throw new Error(data.error || `Request failed: ${response.status}`);
     }
     return data;
+  }
+
+  function pageItems(items, kind) {
+    const totalPages = Math.max(1, Math.ceil(items.length / pageSizes[kind]));
+    pages[kind] = Math.min(Math.max(1, pages[kind]), totalPages);
+    const start = (pages[kind] - 1) * pageSizes[kind];
+    return items.slice(start, start + pageSizes[kind]);
+  }
+
+  function renderPager(kind, total) {
+    const totalPages = Math.max(1, Math.ceil(total / pageSizes[kind]));
+    if (totalPages <= 1) return "";
+    const start = (pages[kind] - 1) * pageSizes[kind] + 1;
+    const end = Math.min(total, pages[kind] * pageSizes[kind]);
+    return `
+      <div class="mt-5 flex flex-col gap-3 rounded-md border border-white/10 bg-black/30 p-3 sm:flex-row sm:items-center sm:justify-between">
+        <p class="text-xs uppercase tracking-[0.14em] text-steel">Showing ${start}-${end} of ${total}</p>
+        <div class="flex gap-2">
+          <button class="rounded border border-white/10 px-3 py-2 text-xs font-bold uppercase text-haze disabled:opacity-40" data-page-kind="${kind}" data-page-dir="-1" ${pages[kind] <= 1 ? "disabled" : ""} type="button">Previous</button>
+          <span class="rounded border border-white/10 px-3 py-2 text-xs font-bold uppercase text-white">${pages[kind]} / ${totalPages}</span>
+          <button class="rounded border border-white/10 px-3 py-2 text-xs font-bold uppercase text-haze disabled:opacity-40" data-page-kind="${kind}" data-page-dir="1" ${pages[kind] >= totalPages ? "disabled" : ""} type="button">Next</button>
+        </div>
+      </div>
+    `;
   }
 
   function parseLinks(value) {
@@ -251,40 +279,63 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   function renderArtists() {
     if (!artistsList || !artistSelect) return;
     artistSelect.innerHTML = `<option value="">No linked artist</option>${artists.map((artist) => `<option value="${escapeHtml(artist.id)}">${escapeHtml(artist.name)}</option>`).join("")}`;
+    const items = pageItems(artists, "artists");
     artistsList.innerHTML = artists.length
-      ? artists
+      ? items
           .map(
-            (artist) => `
+            (artist) => {
+              const artistPath = `/artist/${encodeURIComponent(String(artist.slug || artist.name || "").toLowerCase())}`;
+              const defaultRole = managementAdmins.has(String(artist.name || "").toLowerCase()) ? "admin" : "artist";
+              return `
               <article class="rounded-md border border-white/10 bg-black/35 p-4">
                 <div class="flex items-start justify-between gap-3">
                   <div>
-                    <p class="font-bold text-white">${escapeHtml(artist.name)}</p>
+                    <p class="font-bold text-white"><a class="hover:text-neon-cyan" href="${escapeHtml(artistPath)}" target="_blank" rel="noreferrer">${escapeHtml(artist.name)}</a></p>
                     <p class="mt-1 text-sm text-steel">${escapeHtml(artist.country || "No country")} ${artist.is_featured ? " | Featured" : ""}</p>
                   </div>
-                  <button class="text-xs font-bold uppercase text-neon-cyan hover:text-white" data-delete-artist="${escapeHtml(artist.id)}" type="button">Delete</button>
+                  <div class="flex flex-wrap gap-2">
+                    <a class="text-xs font-bold uppercase text-neon-cyan hover:text-white" href="${escapeHtml(artistPath)}" target="_blank" rel="noreferrer">Profile</a>
+                    <button class="text-xs font-bold uppercase text-neon-cyan hover:text-white" data-delete-artist="${escapeHtml(artist.id)}" type="button">Delete</button>
+                  </div>
                 </div>
                 <p class="mt-3 text-sm leading-6 text-haze">${escapeHtml(artist.profile || "No profile yet.")}</p>
+                <form class="mt-4 grid gap-2 border-t border-white/10 pt-4 md:grid-cols-[1fr_auto_auto]" data-invite-form="${escapeHtml(artist.id)}">
+                  <input class="field-control" name="email" type="email" placeholder="artist@email.com" />
+                  <select class="field-control" name="role">
+                    <option value="artist" ${defaultRole === "artist" ? "selected" : ""}>Artist</option>
+                    <option value="admin" ${defaultRole === "admin" ? "selected" : ""}>Admin</option>
+                  </select>
+                  <button class="rounded-md bg-white px-4 py-3 text-xs font-black uppercase text-black hover:bg-neon-cyan" type="submit">Invite</button>
+                  <p class="text-xs text-steel md:col-span-3" data-invite-status="${escapeHtml(artist.id)}">Create claim link for this profile.</p>
+                </form>
               </article>
-            `
+            `;
+            }
           )
-          .join("")
+          .join("") + renderPager("artists", artists.length)
       : `<p class="text-sm text-steel">No artists in D1 yet.</p>`;
   }
 
   function renderReleases() {
     if (!releasesList) return;
+    const items = pageItems(releases, "releases");
     releasesList.innerHTML = releases.length
-      ? releases
+      ? items
           .map(
-            (release) => `
+            (release) => {
+              const releasePath = `/release/${encodeURIComponent(String(release.slug || release.catalog_number || "").toLowerCase())}`;
+              return `
               <article class="rounded-md border border-white/10 bg-black/35 p-4">
                 <div class="flex items-start justify-between gap-3">
                   <div>
                     <p class="font-mono text-xs font-bold uppercase tracking-[0.16em] text-neon-cyan">${escapeHtml(release.catalog_number)} | ${escapeHtml(release.status)}</p>
-                    <h4 class="mt-2 font-display text-2xl font-black uppercase text-white">${escapeHtml(release.title)}</h4>
+                    <h4 class="mt-2 font-display text-2xl font-black uppercase text-white"><a class="hover:text-neon-cyan" href="${escapeHtml(releasePath)}" target="_blank" rel="noreferrer">${escapeHtml(release.title)}</a></h4>
                     <p class="text-sm text-steel">${escapeHtml(release.artist_display)}</p>
                   </div>
-                  <button class="text-xs font-bold uppercase text-neon-cyan hover:text-white" data-delete-release="${escapeHtml(release.id)}" type="button">Delete</button>
+                  <div class="flex flex-wrap gap-2">
+                    <a class="text-xs font-bold uppercase text-neon-cyan hover:text-white" href="${escapeHtml(releasePath)}" target="_blank" rel="noreferrer">Open</a>
+                    <button class="text-xs font-bold uppercase text-neon-cyan hover:text-white" data-delete-release="${escapeHtml(release.id)}" type="button">Delete</button>
+                  </div>
                 </div>
                 <div class="mt-4 flex flex-wrap gap-2">
                   ${(release.platform_links || [])
@@ -293,16 +344,18 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                     .join("")}
                 </div>
               </article>
-            `
+            `;
+            }
           )
-          .join("")
+          .join("") + renderPager("releases", releases.length)
       : `<p class="text-sm text-steel">No releases in D1 yet. Use FFM import or add a catalogue item manually.</p>`;
   }
 
   function renderSubmissions() {
     if (!submissionsList) return;
+    const items = pageItems(submissions, "submissions");
     submissionsList.innerHTML = submissions.length
-      ? submissions
+      ? items
           .map(
             (submission) => `
               <article class="rounded-md border border-white/10 bg-black/35 p-4">
@@ -320,16 +373,16 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                   <form class="min-w-full space-y-2 lg:min-w-80" data-decision-form="${escapeHtml(submission.id)}">
                     <textarea class="field-control min-h-24" name="reason" required placeholder="Reason for approval or rejection">${escapeHtml(submission.decision_reason || "")}</textarea>
                     <div class="flex gap-2">
-                      <button class="rounded-md bg-neon-green px-3 py-2 text-xs font-black uppercase text-black" name="status" value="approved" type="submit">Approve</button>
-                      <button class="rounded-md bg-neon-red px-3 py-2 text-xs font-black uppercase text-white" name="status" value="rejected" type="submit">Reject</button>
+                      <button class="rounded-md bg-neon-green px-3 py-2 text-xs font-black uppercase text-black" data-decision-button data-status="approved" name="status" value="approved" type="submit">Approve</button>
+                      <button class="rounded-md bg-neon-red px-3 py-2 text-xs font-black uppercase text-white" data-decision-button data-status="rejected" name="status" value="rejected" type="submit">Reject</button>
                     </div>
-                    <p class="text-xs text-steel">${escapeHtml(submission.email_status || "email pending")}</p>
+                    <p class="text-xs text-steel" data-decision-status="${escapeHtml(submission.id)}">${escapeHtml(submission.email_status || "email pending")}</p>
                   </form>
                 </div>
               </article>
             `
           )
-          .join("")
+          .join("") + renderPager("submissions", submissions.length)
       : `<p class="text-sm text-steel">No demo submissions yet.</p>`;
   }
 
@@ -451,6 +504,23 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   document.addEventListener("click", async (event) => {
     const target = event.target;
     if (!(target instanceof HTMLElement)) return;
+    const pager = target.closest("[data-page-kind]");
+    if (pager) {
+      const kind = pager.getAttribute("data-page-kind");
+      const direction = Number(pager.getAttribute("data-page-dir"));
+      if (kind && Number.isFinite(direction)) {
+        pages[kind] += direction;
+        render();
+      }
+      return;
+    }
+
+    const decisionButton = target.closest("[data-decision-button]");
+    if (decisionButton) {
+      const form = decisionButton.closest("[data-decision-form]");
+      if (form) form.dataset.status = decisionButton.getAttribute("data-status") || decisionButton.getAttribute("value") || "";
+    }
+
     const artistId = target.getAttribute("data-delete-artist");
     const releaseId = target.getAttribute("data-delete-release");
     if (artistId) {
@@ -466,19 +536,57 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   document.addEventListener("submit", async (event) => {
     const form = event.target;
     if (!(form instanceof HTMLFormElement)) return;
+    const inviteArtistId = form.getAttribute("data-invite-form");
+    if (inviteArtistId) {
+      event.preventDefault();
+      const statusEl = form.querySelector("[data-invite-status]");
+      const formData = new FormData(form);
+      if (statusEl) statusEl.textContent = "Creating invite...";
+      try {
+        const result = await api("/api/admin/artist-invites", {
+          method: "POST",
+          body: JSON.stringify({
+            artist_id: inviteArtistId,
+            email: formData.get("email"),
+            role: formData.get("role")
+          })
+        });
+        if (statusEl) statusEl.innerHTML = `Claim link (${escapeHtml(result.invite.role)}): <a class="text-neon-cyan hover:text-white" href="${escapeHtml(result.invite.claim_url)}" target="_blank" rel="noreferrer">${escapeHtml(result.invite.claim_url)}</a>`;
+      } catch (error) {
+        if (statusEl) statusEl.textContent = error.message;
+      }
+      return;
+    }
+
     const submissionId = form.getAttribute("data-decision-form");
     if (!submissionId) return;
     event.preventDefault();
     const submitter = event.submitter;
     const formData = new FormData(form);
-    await api(`/api/admin/demo-submissions/${submissionId}/decision`, {
-      method: "POST",
-      body: JSON.stringify({
-        status: submitter?.getAttribute("value"),
-        reason: formData.get("reason")
-      })
-    });
-    await loadDashboard();
+    const status = form.dataset.status || submitter?.getAttribute("data-status") || submitter?.getAttribute("value");
+    const statusEl = form.querySelector("[data-decision-status]");
+    const buttons = [...form.querySelectorAll("button")];
+    if (!status) {
+      if (statusEl) statusEl.textContent = "Missing decision status. Click Approve or Reject again.";
+      return;
+    }
+    buttons.forEach((button) => (button.disabled = true));
+    if (statusEl) statusEl.textContent = "Saving decision...";
+    try {
+      const result = await api(`/api/admin/demo-submissions/${submissionId}/decision`, {
+        method: "POST",
+        body: JSON.stringify({
+          status,
+          reason: formData.get("reason")
+        })
+      });
+      if (statusEl) statusEl.textContent = result.email?.status || "Decision saved.";
+      await loadDashboard();
+    } catch (error) {
+      if (statusEl) statusEl.textContent = error.message;
+    } finally {
+      buttons.forEach((button) => (button.disabled = false));
+    }
   });
 
   checkSession();
