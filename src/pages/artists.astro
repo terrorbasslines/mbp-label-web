@@ -3,6 +3,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import ArtistCard from "../components/ArtistCard.astro";
 import SectionHeader from "../components/SectionHeader.astro";
 import ButtonLink from "../components/ButtonLink.astro";
+import LiveArtists from "../components/LiveArtists.astro";
 import { artists } from "../data/site";
 ---
 
@@ -17,7 +18,9 @@ import { artists } from "../data/site";
     </div>
   </section>
 
-  <section class="py-20">
+  <LiveArtists />
+
+  <section class="py-20" data-static-artists>
     <div class="section-shell">
       <div class="grid gap-5 md:grid-cols-2">
         {artists.map((artist) => <ArtistCard artist={artist} />)}

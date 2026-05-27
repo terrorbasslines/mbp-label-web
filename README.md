@@ -2,14 +2,14 @@
 
 Production-ready first version of the public label website for **The MasterBeat Project**.
 
-Built with Astro, TypeScript and Tailwind CSS for Cloudflare Pages. The frontend is static and deployable now; the demo submission API is scaffolded for future Cloudflare Pages Functions, D1 metadata storage and R2 file uploads.
+Built with Astro, TypeScript and Tailwind CSS for Cloudflare Pages. The public frontend is static; admin, catalogue APIs and demo submissions run through Cloudflare Pages Functions with D1.
 
 ## Stack
 
 - Astro + TypeScript
 - Tailwind CSS
 - Cloudflare Pages static output
-- Cloudflare Pages Functions placeholder at `/api/demo-submission`
+- Cloudflare Pages Functions for admin, catalogue and demo submissions
 
 ## Local Setup
 
@@ -58,32 +58,118 @@ Manual drag-and-drop deployment:
 2. Upload only the generated `dist/` folder or a ZIP created from the contents of `dist/`.
 3. Do not upload the project source folder, because Astro requires a build step.
 
-Direct upload is static only. Use Git deployment or Wrangler when the future `functions/api/demo-submission.ts` backend should run on Cloudflare Pages.
+Direct upload is static only. Use Git deployment or Wrangler so the `functions/` API routes run on Cloudflare Pages.
 
 ## Backend Plan
 
 Planned endpoint:
 
 - `POST /api/demo-submission`
+- `/admin`
+- `/api/admin/*`
+- `/api/catalog`
 
 Planned Cloudflare resources:
 
 - D1 binding: `DB`
-- R2 binding: `DEMO_BUCKET`
-- Environment variable: `DEMO_NOTIFICATION_EMAIL`
+- Environment secret: `ADMIN_PASSWORD`
+- Environment secret: `SESSION_SECRET`
+- Optional email secret: `RESEND_API_KEY`
+- Optional email variable: `DEMO_FROM_EMAIL`
+- Optional email variable: `DEMO_REPLY_TO_EMAIL`
+- Future R2 binding: `DEMO_BUCKET`
 
 Current status:
 
-- Frontend validation is implemented.
+- Admin login and CRUD API are implemented through Cloudflare Pages Functions.
+- Frontend demo validation and D1 submission storage are implemented.
 - File upload is intentionally disabled until R2 is connected.
-- The Pages Function returns `501` and contains TODO comments for production implementation.
+- Demo approval/rejection is implemented in admin. Email sending is active only when Resend env variables are configured.
+
+## D1 Setup
+
+Create a D1 database:
+
+```bash
+npx wrangler d1 create mbp_label_web
+```
+
+Copy the returned `database_id` into `wrangler.toml`, then uncomment the `[[d1_databases]]` block:
+
+```toml
+[[d1_databases]]
+binding = "DB"
+database_name = "mbp_label_web"
+database_id = "your-database-id"
+```
+
+Apply migrations:
+
+```bash
+npx wrangler d1 migrations apply mbp_label_web --remote
+```
+
+In Cloudflare Pages dashboard, confirm the binding:
+
+- Settings > Bindings
+- Add D1 database binding
+- Variable name: `DB`
+- D1 database: `mbp_label_web`
+
+Redeploy after adding the binding.
+
+## Admin Setup
+
+Add these Cloudflare Pages production secrets/variables:
+
+```text
+ADMIN_PASSWORD=choose-a-strong-password
+SESSION_SECRET=generate-a-long-random-secret
+```
+
+For demo decision emails:
+
+```text
+RESEND_API_KEY=re_xxxxx
+DEMO_FROM_EMAIL=The MasterBeat Project <demos@themasterbeatproject.com>
+DEMO_REPLY_TO_EMAIL=demos@themasterbeatproject.com
+```
+
+Then open:
+
+```text
+https://themasterbeatproject.com/admin
+```
+
+Use the admin dashboard to:
+
+- import FFM smartlinks in batches, for example `1` to `25`
+- add artists and profiles
+- add releases and playable platform links
+- approve or reject demos with a reason
+
+## FFM Catalogue Import
+
+The admin can import `https://ffm.to/mbp001` style links in batches of 25. As checked on May 27, 2026, the current live FFM range is `MBP001` through `MBP185`; `MBP186` through `MBP200` returned 404.
+
+Local helper:
+
+```bash
+npm run import:ffm
+```
+
+This writes `data/ffm-catalog.json` locally. The generated JSON is ignored by Git because it is an import artifact, not source code.
 
 ## Environment Notes
 
-Create local secrets in `.dev.vars` when the backend is implemented:
+Create local secrets in `.dev.vars` when testing the backend locally:
 
 ```text
-DEMO_NOTIFICATION_EMAIL=demos@themasterbeatproject.com
+ADMIN_PASSWORD=local-password
+SESSION_SECRET=local-long-random-secret
+RESEND_API_KEY=re_xxxxx
+DEMO_FROM_EMAIL=The MasterBeat Project <demos@themasterbeatproject.com>
+DEMO_REPLY_TO_EMAIL=demos@themasterbeatproject.com
 ```
 
 When D1 and R2 resources exist, add the bindings in Cloudflare Pages settings or uncomment and complete the examples in `wrangler.toml`.
@@ -93,7 +179,8 @@ When D1 and R2 resources exist, add the bindings in Cloudflare Pages settings or
 ```text
 public/
   assets/brand/          Brand images used by the site
-functions/api/           Future Cloudflare Pages Functions
+migrations/              Cloudflare D1 schema
+functions/api/           Cloudflare Pages Functions
 src/components/          Reusable Astro UI components
 src/data/                Static site content and typed data
 src/layouts/             Base page layout
@@ -110,11 +197,10 @@ src/styles/              Tailwind and global design tokens
 - About
 - Contact
 - Privacy Policy
+- Admin
 
 ## Remaining TODO
 
 - Confirm final public social URLs and contact mailboxes.
-- Connect `/api/demo-submission` to D1 and R2.
-- Add notification email provider or Cloudflare email workflow.
-- Replace static release and artist data with a CMS, D1-backed admin tool or repository-managed content when the catalogue grows.
-# mbp-label-web
+- Connect future direct file uploads to R2.
+- Configure Resend or another email provider for production demo response emails.

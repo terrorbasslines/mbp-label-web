@@ -61,18 +61,19 @@ const genres = ["Hardstyle", "Rawstyle", "Euphoric hardstyle", "Hardcore", "Upte
 
   <div class="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <button class="inline-flex min-h-12 items-center justify-center rounded-md bg-white px-6 py-3 text-sm font-black uppercase tracking-[0.14em] text-black transition hover:bg-neon-cyan" type="submit">
-      Validate Demo
+      Submit Demo
     </button>
     <p class="text-sm text-steel" data-demo-status aria-live="polite">No files are uploaded from this form yet.</p>
   </div>
 </form>
 
 <script>
+  // @ts-nocheck
   const form = document.querySelector("[data-demo-form]");
   const status = document.querySelector("[data-demo-status]");
 
   if (form instanceof HTMLFormElement && status instanceof HTMLElement) {
-    form.addEventListener("submit", (event) => {
+    form.addEventListener("submit", async (event) => {
       event.preventDefault();
 
       if (!form.checkValidity()) {
@@ -89,10 +90,37 @@ const genres = ["Hardstyle", "Rawstyle", "Euphoric hardstyle", "Hardcore", "Upte
         return;
       }
 
-      // TODO: Replace this local-only validation message with a POST to /api/demo-submission
-      // after the Cloudflare Pages Function is connected to D1, R2 and notification email.
-      status.textContent = "Demo details validated locally. Backend submission is ready to connect at /api/demo-submission.";
-      form.reset();
+      const payload = {
+        artistName: formData.get("artistName"),
+        email: formData.get("email"),
+        country: formData.get("country"),
+        links: formData.get("links"),
+        trackTitle: formData.get("trackTitle"),
+        genre: formData.get("genre"),
+        streamingLink: formData.get("streamingLink"),
+        message: formData.get("message"),
+        agreement: true
+      };
+
+      status.textContent = "Submitting demo...";
+
+      try {
+        const response = await fetch(form.dataset.endpoint || "/api/demo-submission", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (!response.ok || data.ok === false) {
+          throw new Error(data.error || "Demo submission failed.");
+        }
+        status.textContent = "Demo received. Thank you for sending music to The MasterBeat Project.";
+        form.reset();
+      } catch (error) {
+        status.textContent = error instanceof Error ? error.message : "Demo submission failed.";
+      }
     });
   }
 </script>

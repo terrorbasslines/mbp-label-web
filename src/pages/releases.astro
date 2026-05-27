@@ -3,6 +3,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import ReleaseCard from "../components/ReleaseCard.astro";
 import SectionHeader from "../components/SectionHeader.astro";
 import ButtonLink from "../components/ButtonLink.astro";
+import LiveCatalog from "../components/LiveCatalog.astro";
 import { releases } from "../data/site";
 ---
 
@@ -17,7 +18,9 @@ import { releases } from "../data/site";
     </div>
   </section>
 
-  <section class="py-20">
+  <LiveCatalog />
+
+  <section class="py-20" data-static-releases>
     <div class="section-shell">
       <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {releases.map((release) => <ReleaseCard release={release} />)}

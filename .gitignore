@@ -4,6 +4,7 @@ dist/
 .wrangler/
 .tools/
 *.zip
+data/ffm-catalog.json
 
 .env
 .env.*

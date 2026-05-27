@@ -8,7 +8,8 @@
     "build": "astro check && astro build",
     "preview": "astro preview",
     "cf:dev": "wrangler pages dev dist --compatibility-date=2026-05-26",
-    "cf:deploy": "npm run build && wrangler pages deploy dist --project-name mbp-label-web"
+    "cf:deploy": "npm run build && wrangler pages deploy dist --project-name mbp-label-web",
+    "import:ffm": "node scripts/import-ffm-catalog.mjs --from=1 --to=185"
   },
   "dependencies": {
     "astro": "^5.0.0"

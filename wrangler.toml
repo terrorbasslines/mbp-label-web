@@ -2,12 +2,14 @@ name = "mbp-label-web"
 compatibility_date = "2026-05-26"
 pages_build_output_dir = "./dist"
 
-# Future bindings for the demo submission API:
+# Required for admin, catalogue, and demo submissions.
+# Create the D1 database in Cloudflare, then replace database_id.
 # [[d1_databases]]
 # binding = "DB"
 # database_name = "mbp_label_web"
 # database_id = "replace-with-cloudflare-d1-id"
-#
+
+# Optional future direct uploads.
 # [[r2_buckets]]
 # binding = "DEMO_BUCKET"
 # bucket_name = "mbp-demo-submissions"

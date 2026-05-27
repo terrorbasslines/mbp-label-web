@@ -1,0 +1,58 @@
+<section class="hidden py-20" data-live-artists-section>
+  <div class="section-shell">
+    <p class="eyebrow">Live roster</p>
+    <h2 class="mt-3 font-display text-3xl font-black uppercase leading-none text-white sm:text-5xl">Database artists</h2>
+    <div class="mt-10 grid gap-5 md:grid-cols-2" data-live-artists></div>
+  </div>
+</section>
+
+<script>
+  // @ts-nocheck
+  const liveArtistsSection = document.querySelector("[data-live-artists-section]");
+  const liveArtists = document.querySelector("[data-live-artists]");
+  const staticArtists = document.querySelector("[data-static-artists]");
+
+  const escapeArtistHtml = (value) =>
+    String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+
+  async function loadLiveArtists() {
+    if (!liveArtistsSection || !liveArtists) return;
+    try {
+      const response = await fetch("/api/catalog");
+      const data = await response.json();
+      if (!data.ok || !Array.isArray(data.artists) || data.artists.length === 0) return;
+
+      liveArtistsSection.classList.remove("hidden");
+      staticArtists?.classList.add("hidden");
+      liveArtists.innerHTML = data.artists
+        .map(
+          (artist) => `
+            <article class="rounded-lg border border-white/10 bg-carbon/80 p-5">
+              <div class="flex items-center gap-4">
+                ${artist.image_url ? `<img class="h-20 w-20 rounded-md border border-white/10 object-cover" src="${escapeArtistHtml(artist.image_url)}" alt="" loading="lazy" />` : `<div class="grid h-20 w-20 place-items-center rounded-md border border-white/10 bg-black font-display text-3xl font-black text-white">${escapeArtistHtml(String(artist.name || "?").slice(0, 1))}</div>`}
+                <div>
+                  <p class="text-xs font-bold uppercase tracking-[0.18em] text-neon-cyan">${artist.is_featured ? "Featured artist" : "Artist"}</p>
+                  <h3 class="mt-2 font-display text-3xl font-black uppercase leading-none text-white">${escapeArtistHtml(artist.name)}</h3>
+                  <p class="mt-1 text-sm text-steel">${escapeArtistHtml(artist.country || "The MasterBeat Project")}</p>
+                </div>
+              </div>
+              <p class="mt-5 text-sm leading-6 text-haze">${escapeArtistHtml(artist.profile || "Artist profile coming soon.")}</p>
+              <div class="mt-5 flex flex-wrap gap-2">
+                ${(artist.links || []).map((link) => `<a class="rounded-md border border-white/10 px-3 py-2 text-xs font-bold uppercase tracking-[0.1em] text-haze hover:border-neon-cyan hover:text-white" href="${escapeArtistHtml(link.url)}" target="_blank" rel="noreferrer">${escapeArtistHtml(link.label)}</a>`).join("")}
+              </div>
+            </article>
+          `
+        )
+        .join("");
+    } catch {
+      // Static fallback remains visible when the D1 roster is not configured yet.
+    }
+  }
+
+  loadLiveArtists();
+</script>

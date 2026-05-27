@@ -1,0 +1,485 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Admin" description="The MasterBeat Project admin dashboard.">
+  <section class="border-b border-white/10 bg-black/50 py-16">
+    <div class="section-shell">
+      <p class="eyebrow">Backoffice</p>
+      <h1 class="page-title mt-4">Admin</h1>
+      <p class="mt-5 max-w-3xl text-lg leading-8 text-haze">
+        Manage artists, releases, platform links and incoming demo submissions.
+      </p>
+    </div>
+  </section>
+
+  <section class="py-10">
+    <div class="section-shell">
+      <div data-admin-app class="space-y-8">
+        <form data-login-form class="surface mx-auto max-w-lg rounded-lg p-6">
+          <p class="eyebrow">Login</p>
+          <h2 class="mt-3 font-display text-3xl font-black uppercase text-white">Admin access</h2>
+          <label class="mt-6 block">
+            <span class="field-label">Password</span>
+            <input class="field-control" name="password" type="password" required autocomplete="current-password" />
+          </label>
+          <button class="mt-5 inline-flex min-h-12 items-center justify-center rounded-md bg-white px-6 py-3 text-sm font-black uppercase tracking-[0.14em] text-black transition hover:bg-neon-cyan" type="submit">
+            Login
+          </button>
+          <p class="mt-4 text-sm text-steel" data-login-status>Protected by Cloudflare env secrets.</p>
+        </form>
+
+        <div data-dashboard hidden class="space-y-8">
+          <div class="flex flex-col gap-4 rounded-lg border border-white/10 bg-carbon/80 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p class="eyebrow">Dashboard</p>
+              <h2 class="mt-2 font-display text-3xl font-black uppercase text-white">Label database</h2>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button data-refresh class="rounded-md border border-white/10 px-4 py-2 text-sm font-bold text-haze hover:border-neon-cyan hover:text-white" type="button">Refresh</button>
+              <button data-logout class="rounded-md bg-white px-4 py-2 text-sm font-black uppercase text-black hover:bg-neon-cyan" type="button">Logout</button>
+            </div>
+          </div>
+
+          <div class="grid gap-5 lg:grid-cols-3" data-stats></div>
+
+          <section class="surface rounded-lg p-5">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p class="eyebrow">FFM import</p>
+                <h3 class="mt-2 font-display text-2xl font-black uppercase text-white">Import MBP smartlinks</h3>
+              </div>
+              <form data-import-form class="flex flex-wrap items-end gap-3">
+                <label>
+                  <span class="field-label">From</span>
+                  <input class="field-control w-28" name="from" type="number" min="1" value="1" required />
+                </label>
+                <label>
+                  <span class="field-label">To</span>
+                  <input class="field-control w-28" name="to" type="number" min="1" value="25" required />
+                </label>
+                <button class="mb-0.5 rounded-md bg-white px-4 py-3 text-sm font-black uppercase text-black hover:bg-neon-cyan" type="submit">Import</button>
+              </form>
+            </div>
+            <p class="mt-3 text-sm text-steel" data-import-status>Imports https://ffm.to/mbp001 style links in batches of 25 max.</p>
+          </section>
+
+          <div class="grid gap-8 xl:grid-cols-[0.9fr_1.1fr]">
+            <section class="surface rounded-lg p-5">
+              <p class="eyebrow">Artists</p>
+              <h3 class="mt-2 font-display text-2xl font-black uppercase text-white">Add artist profile</h3>
+              <form data-artist-form class="mt-5 grid gap-4">
+                <label>
+                  <span class="field-label">Name</span>
+                  <input class="field-control" name="name" required />
+                </label>
+                <label>
+                  <span class="field-label">Country</span>
+                  <input class="field-control" name="country" />
+                </label>
+                <label>
+                  <span class="field-label">Profile</span>
+                  <textarea class="field-control min-h-28" name="profile"></textarea>
+                </label>
+                <label>
+                  <span class="field-label">Image URL</span>
+                  <input class="field-control" name="image_url" type="url" />
+                </label>
+                <label>
+                  <span class="field-label">Links, one per line: label|url</span>
+                  <textarea class="field-control min-h-24" name="links"></textarea>
+                </label>
+                <label class="flex items-center gap-3 text-sm text-haze">
+                  <input name="is_featured" type="checkbox" />
+                  Featured artist
+                </label>
+                <button class="rounded-md bg-white px-4 py-3 text-sm font-black uppercase text-black hover:bg-neon-cyan" type="submit">Save artist</button>
+              </form>
+              <div class="mt-6 space-y-3" data-artists-list></div>
+            </section>
+
+            <section class="surface rounded-lg p-5">
+              <p class="eyebrow">Releases</p>
+              <h3 class="mt-2 font-display text-2xl font-black uppercase text-white">Add catalogue item</h3>
+              <form data-release-form class="mt-5 grid gap-4 md:grid-cols-2">
+                <label>
+                  <span class="field-label">Catalog number</span>
+                  <input class="field-control" name="catalog_number" placeholder="MBP001" required />
+                </label>
+                <label>
+                  <span class="field-label">Status</span>
+                  <select class="field-control" name="status">
+                    <option value="published">Published</option>
+                    <option value="presave">Pre-save</option>
+                    <option value="draft">Draft</option>
+                  </select>
+                </label>
+                <label>
+                  <span class="field-label">Track title</span>
+                  <input class="field-control" name="title" required />
+                </label>
+                <label>
+                  <span class="field-label">Artist display</span>
+                  <input class="field-control" name="artist_display" required />
+                </label>
+                <label>
+                  <span class="field-label">Primary artist</span>
+                  <select class="field-control" name="primary_artist_id" data-artist-select>
+                    <option value="">No linked artist</option>
+                  </select>
+                </label>
+                <label>
+                  <span class="field-label">Genre</span>
+                  <input class="field-control" name="genre" />
+                </label>
+                <label>
+                  <span class="field-label">Release date</span>
+                  <input class="field-control" name="release_date" type="date" />
+                </label>
+                <label>
+                  <span class="field-label">FFM / pre-save URL</span>
+                  <input class="field-control" name="ffm_url" type="url" placeholder="https://ffm.to/mbp001" />
+                </label>
+                <label class="md:col-span-2">
+                  <span class="field-label">Artwork URL</span>
+                  <input class="field-control" name="artwork_url" type="url" />
+                </label>
+                <label class="md:col-span-2">
+                  <span class="field-label">Description</span>
+                  <textarea class="field-control min-h-24" name="description"></textarea>
+                </label>
+                <label class="md:col-span-2">
+                  <span class="field-label">Platform links, one per line: platform|label|url</span>
+                  <textarea class="field-control min-h-28" name="platform_links" placeholder="spotify|Spotify|https://open.spotify.com/..."></textarea>
+                </label>
+                <button class="rounded-md bg-white px-4 py-3 text-sm font-black uppercase text-black hover:bg-neon-cyan md:col-span-2" type="submit">Save release</button>
+              </form>
+            </section>
+          </div>
+
+          <section class="surface rounded-lg p-5">
+            <p class="eyebrow">Demo inbox</p>
+            <h3 class="mt-2 font-display text-2xl font-black uppercase text-white">Submissions</h3>
+            <div class="mt-5 space-y-4" data-submissions-list></div>
+          </section>
+
+          <section class="surface rounded-lg p-5">
+            <p class="eyebrow">Catalogue</p>
+            <h3 class="mt-2 font-display text-2xl font-black uppercase text-white">Current releases</h3>
+            <div class="mt-5 grid gap-4 lg:grid-cols-2" data-releases-list></div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  // @ts-nocheck
+  const loginForm = document.querySelector("[data-login-form]");
+  const dashboard = document.querySelector("[data-dashboard]");
+  const loginStatus = document.querySelector("[data-login-status]");
+  const statsEl = document.querySelector("[data-stats]");
+  const artistsList = document.querySelector("[data-artists-list]");
+  const releasesList = document.querySelector("[data-releases-list]");
+  const submissionsList = document.querySelector("[data-submissions-list]");
+  const artistSelect = document.querySelector("[data-artist-select]");
+  const importStatus = document.querySelector("[data-import-status]");
+  let artists = [];
+  let releases = [];
+  let submissions = [];
+
+  const escapeHtml = (value) =>
+    String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+
+  async function api(path, options = {}) {
+    const response = await fetch(path, {
+      credentials: "same-origin",
+      ...options,
+      headers: {
+        "content-type": "application/json",
+        ...(options.headers ?? {})
+      }
+    });
+    const data = await response.json().catch(() => ({ ok: false, error: "Invalid API response." }));
+    if (!response.ok || data.ok === false) {
+      throw new Error(data.error || `Request failed: ${response.status}`);
+    }
+    return data;
+  }
+
+  function parseLinks(value) {
+    return String(value ?? "")
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const [label, url] = line.split("|").map((item) => item.trim());
+        return { label, url };
+      })
+      .filter((link) => link.label && link.url);
+  }
+
+  function parsePlatformLinks(value) {
+    return String(value ?? "")
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const [platform, label, url] = line.split("|").map((item) => item.trim());
+        return { platform, label: label || platform, url, is_playable: true };
+      })
+      .filter((link) => link.platform && link.url);
+  }
+
+  function renderStats() {
+    if (!statsEl) return;
+    statsEl.innerHTML = [
+      ["Artists", artists.length],
+      ["Releases", releases.length],
+      ["Pending demos", submissions.filter((item) => item.status === "pending").length]
+    ]
+      .map(([label, value]) => `<div class="rounded-lg border border-white/10 bg-black/40 p-5"><p class="font-display text-4xl font-black uppercase text-white">${value}</p><p class="mt-2 text-sm uppercase tracking-[0.14em] text-steel">${label}</p></div>`)
+      .join("");
+  }
+
+  function renderArtists() {
+    if (!artistsList || !artistSelect) return;
+    artistSelect.innerHTML = `<option value="">No linked artist</option>${artists.map((artist) => `<option value="${escapeHtml(artist.id)}">${escapeHtml(artist.name)}</option>`).join("")}`;
+    artistsList.innerHTML = artists.length
+      ? artists
+          .map(
+            (artist) => `
+              <article class="rounded-md border border-white/10 bg-black/35 p-4">
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <p class="font-bold text-white">${escapeHtml(artist.name)}</p>
+                    <p class="mt-1 text-sm text-steel">${escapeHtml(artist.country || "No country")} ${artist.is_featured ? " | Featured" : ""}</p>
+                  </div>
+                  <button class="text-xs font-bold uppercase text-neon-cyan hover:text-white" data-delete-artist="${escapeHtml(artist.id)}" type="button">Delete</button>
+                </div>
+                <p class="mt-3 text-sm leading-6 text-haze">${escapeHtml(artist.profile || "No profile yet.")}</p>
+              </article>
+            `
+          )
+          .join("")
+      : `<p class="text-sm text-steel">No artists in D1 yet.</p>`;
+  }
+
+  function renderReleases() {
+    if (!releasesList) return;
+    releasesList.innerHTML = releases.length
+      ? releases
+          .map(
+            (release) => `
+              <article class="rounded-md border border-white/10 bg-black/35 p-4">
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <p class="font-mono text-xs font-bold uppercase tracking-[0.16em] text-neon-cyan">${escapeHtml(release.catalog_number)} | ${escapeHtml(release.status)}</p>
+                    <h4 class="mt-2 font-display text-2xl font-black uppercase text-white">${escapeHtml(release.title)}</h4>
+                    <p class="text-sm text-steel">${escapeHtml(release.artist_display)}</p>
+                  </div>
+                  <button class="text-xs font-bold uppercase text-neon-cyan hover:text-white" data-delete-release="${escapeHtml(release.id)}" type="button">Delete</button>
+                </div>
+                <div class="mt-4 flex flex-wrap gap-2">
+                  ${(release.platform_links || [])
+                    .slice(0, 8)
+                    .map((link) => `<a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(link.url)}" target="_blank" rel="noreferrer">${escapeHtml(link.label)}</a>`)
+                    .join("")}
+                </div>
+              </article>
+            `
+          )
+          .join("")
+      : `<p class="text-sm text-steel">No releases in D1 yet. Use FFM import or add a catalogue item manually.</p>`;
+  }
+
+  function renderSubmissions() {
+    if (!submissionsList) return;
+    submissionsList.innerHTML = submissions.length
+      ? submissions
+          .map(
+            (submission) => `
+              <article class="rounded-md border border-white/10 bg-black/35 p-4">
+                <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <p class="font-mono text-xs font-bold uppercase tracking-[0.16em] text-neon-cyan">${escapeHtml(submission.status)} | ${escapeHtml(submission.genre)}</p>
+                    <h4 class="mt-2 font-display text-2xl font-black uppercase text-white">${escapeHtml(submission.track_title)}</h4>
+                    <p class="text-sm text-steel">${escapeHtml(submission.artist_name)} | ${escapeHtml(submission.email)} | ${escapeHtml(submission.country)}</p>
+                    <p class="mt-3 text-sm leading-6 text-haze">${escapeHtml(submission.message)}</p>
+                    <div class="mt-3 flex flex-wrap gap-2">
+                      <a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:text-white" href="${escapeHtml(submission.streaming_link)}" target="_blank" rel="noreferrer">Stream</a>
+                      <a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:text-white" href="${escapeHtml(submission.links)}" target="_blank" rel="noreferrer">Artist links</a>
+                    </div>
+                  </div>
+                  <form class="min-w-full space-y-2 lg:min-w-80" data-decision-form="${escapeHtml(submission.id)}">
+                    <textarea class="field-control min-h-24" name="reason" required placeholder="Reason for approval or rejection">${escapeHtml(submission.decision_reason || "")}</textarea>
+                    <div class="flex gap-2">
+                      <button class="rounded-md bg-neon-green px-3 py-2 text-xs font-black uppercase text-black" name="status" value="approved" type="submit">Approve</button>
+                      <button class="rounded-md bg-neon-red px-3 py-2 text-xs font-black uppercase text-white" name="status" value="rejected" type="submit">Reject</button>
+                    </div>
+                    <p class="text-xs text-steel">${escapeHtml(submission.email_status || "email pending")}</p>
+                  </form>
+                </div>
+              </article>
+            `
+          )
+          .join("")
+      : `<p class="text-sm text-steel">No demo submissions yet.</p>`;
+  }
+
+  function render() {
+    renderStats();
+    renderArtists();
+    renderReleases();
+    renderSubmissions();
+  }
+
+  async function loadDashboard() {
+    const [artistData, releaseData, submissionData] = await Promise.all([
+      api("/api/admin/artists"),
+      api("/api/admin/releases"),
+      api("/api/admin/demo-submissions")
+    ]);
+    artists = artistData.artists || [];
+    releases = releaseData.releases || [];
+    submissions = submissionData.submissions || [];
+    render();
+  }
+
+  async function checkSession() {
+    try {
+      const session = await api("/api/admin/session", { method: "GET", headers: {} });
+      if (session.authenticated) {
+        loginForm?.setAttribute("hidden", "");
+        dashboard?.removeAttribute("hidden");
+        await loadDashboard();
+      }
+    } catch {
+      loginForm?.removeAttribute("hidden");
+      dashboard?.setAttribute("hidden", "");
+    }
+  }
+
+  loginForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const formData = new FormData(loginForm);
+    try {
+      await api("/api/auth/login", { method: "POST", body: JSON.stringify({ password: formData.get("password") }) });
+      loginStatus.textContent = "Logged in.";
+      loginForm.setAttribute("hidden", "");
+      dashboard?.removeAttribute("hidden");
+      await loadDashboard();
+    } catch (error) {
+      loginStatus.textContent = error.message;
+    }
+  });
+
+  document.querySelector("[data-logout]")?.addEventListener("click", async () => {
+    await api("/api/auth/logout", { method: "POST", body: "{}" });
+    location.reload();
+  });
+
+  document.querySelector("[data-refresh]")?.addEventListener("click", loadDashboard);
+
+  document.querySelector("[data-artist-form]")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    await api("/api/admin/artists", {
+      method: "POST",
+      body: JSON.stringify({
+        name: formData.get("name"),
+        country: formData.get("country"),
+        profile: formData.get("profile"),
+        image_url: formData.get("image_url"),
+        links: parseLinks(formData.get("links")),
+        is_featured: formData.get("is_featured") === "on"
+      })
+    });
+    form.reset();
+    await loadDashboard();
+  });
+
+  document.querySelector("[data-release-form]")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    await api("/api/admin/releases", {
+      method: "POST",
+      body: JSON.stringify({
+        catalog_number: formData.get("catalog_number"),
+        title: formData.get("title"),
+        artist_display: formData.get("artist_display"),
+        primary_artist_id: formData.get("primary_artist_id"),
+        release_date: formData.get("release_date"),
+        genre: formData.get("genre"),
+        artwork_url: formData.get("artwork_url"),
+        ffm_url: formData.get("ffm_url"),
+        presave_url: formData.get("ffm_url"),
+        status: formData.get("status"),
+        description: formData.get("description"),
+        platform_links: parsePlatformLinks(formData.get("platform_links"))
+      })
+    });
+    form.reset();
+    await loadDashboard();
+  });
+
+  document.querySelector("[data-import-form]")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    importStatus.textContent = "Importing...";
+    try {
+      const result = await api("/api/admin/import-ffm", {
+        method: "POST",
+        body: JSON.stringify({ from: Number(formData.get("from")), to: Number(formData.get("to")) })
+      });
+      importStatus.textContent = `Imported ${result.imported.length}, skipped ${result.skipped.length}.`;
+      await loadDashboard();
+    } catch (error) {
+      importStatus.textContent = error.message;
+    }
+  });
+
+  document.addEventListener("click", async (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    const artistId = target.getAttribute("data-delete-artist");
+    const releaseId = target.getAttribute("data-delete-release");
+    if (artistId) {
+      await api(`/api/admin/artists/${artistId}`, { method: "DELETE", body: "{}" });
+      await loadDashboard();
+    }
+    if (releaseId) {
+      await api(`/api/admin/releases/${releaseId}`, { method: "DELETE", body: "{}" });
+      await loadDashboard();
+    }
+  });
+
+  document.addEventListener("submit", async (event) => {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement)) return;
+    const submissionId = form.getAttribute("data-decision-form");
+    if (!submissionId) return;
+    event.preventDefault();
+    const submitter = event.submitter;
+    const formData = new FormData(form);
+    await api(`/api/admin/demo-submissions/${submissionId}/decision`, {
+      method: "POST",
+      body: JSON.stringify({
+        status: submitter?.getAttribute("value"),
+        reason: formData.get("reason")
+      })
+    });
+    await loadDashboard();
+  });
+
+  checkSession();
+</script>
