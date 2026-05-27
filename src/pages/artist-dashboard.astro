@@ -61,6 +61,11 @@ import BaseLayout from "../layouts/BaseLayout.astro";
               <input class="field-control" name="image_url" type="url" />
             </label>
             <label>
+              <span class="field-label">Upload profile image</span>
+              <input class="field-control" name="image_upload" type="file" accept="image/*" />
+              <span class="mt-2 block text-xs leading-5 text-steel">Choose an image from your computer. It will be uploaded privately to Cloudflare R2 and used as your public profile image.</span>
+            </label>
+            <label>
               <span class="field-label">Official links, one per line: label|url</span>
               <textarea class="field-control min-h-28" name="links"></textarea>
             </label>
@@ -129,6 +134,20 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     return data;
   }
 
+  async function uploadProfileImage(artistId, file) {
+    const formData = new FormData();
+    formData.set("artist_id", artistId);
+    formData.set("image", file);
+    const response = await fetch("/api/artist/image-upload", {
+      method: "POST",
+      credentials: "same-origin",
+      body: formData
+    });
+    const data = await response.json().catch(() => ({ ok: false, error: "Invalid upload response." }));
+    if (!response.ok || data.ok === false) throw new Error(data.error || `Upload failed: ${response.status}`);
+    return data;
+  }
+
   async function loadProfile() {
     const data = await api("/api/artist/profile", { method: "GET", headers: {} });
     if (!data.artist) throw new Error("No artist profile is linked to this account yet.");
@@ -141,6 +160,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     profileForm.country.value = artist.country || "";
     profileForm.profile.value = artist.profile || "";
     profileForm.image_url.value = artist.image_url || "";
+    profileForm.image_upload.value = "";
     profileForm.links.value = linksToText(artist.links);
     publicProfile.href = `/artist/${artist.slug}`;
   }
@@ -166,6 +186,14 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     const formData = new FormData(profileForm);
     profileStatus.textContent = "Saving...";
     try {
+      let imageUrl = formData.get("image_url");
+      const imageFile = formData.get("image_upload");
+      if (imageFile instanceof File && imageFile.size > 0) {
+        profileStatus.textContent = "Uploading image...";
+        const upload = await uploadProfileImage(formData.get("artist_id"), imageFile);
+        imageUrl = upload.url;
+        profileForm.image_url.value = upload.url;
+      }
       await api("/api/artist/profile", {
         method: "PUT",
         body: JSON.stringify({
@@ -173,7 +201,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           name: formData.get("name"),
           country: formData.get("country"),
           profile: formData.get("profile"),
-          image_url: formData.get("image_url"),
+          image_url: imageUrl,
           links: textToLinks(formData.get("links"))
         })
       });

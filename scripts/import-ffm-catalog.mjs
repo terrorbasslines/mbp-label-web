@@ -36,6 +36,24 @@ function titleFromHtml(html) {
   return decodeHtml(html.match(/<title>([^<]+)<\/title>/i)?.[1] ?? null);
 }
 
+function attr(tag, name) {
+  const match = tag.match(new RegExp(`${name}=["']([^"']+)["']`, "i"));
+  return decodeHtml(match?.[1] ?? null);
+}
+
+function coverImageFromHtml(html) {
+  const normalized = html.replace(/\\u002F/g, "/").replace(/&amp;/g, "&");
+  for (const match of normalized.matchAll(/<img\b[^>]*>/gi)) {
+    const tag = match[0];
+    const className = attr(tag, "class") ?? "";
+    const src = attr(tag, "src");
+    if (src && /\bcover\b/i.test(className) && /^https?:\/\//i.test(src)) return src;
+  }
+
+  const imageStoreMatch = normalized.match(/https:\/\/imagestore\.ffm\.to\/link\/[^"'<>\\\s]+?\.(?:png|jpe?g|webp)/i);
+  return decodeHtml(imageStoreMatch?.[0] ?? null);
+}
+
 function decodeBase64Json(value) {
   const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
   return JSON.parse(Buffer.from(normalized, "base64").toString("utf8"));
@@ -47,7 +65,7 @@ function parseFfmRelease(number, ffmUrl, html) {
   if (!title) return null;
 
   const description = meta(html, "og:description") ?? meta(html, "description");
-  const artworkUrl = meta(html, "og:image");
+  const artworkUrl = coverImageFromHtml(html) ?? meta(html, "og:image");
   const [artistPart, ...trackParts] = title.split(" - ");
   const artist = artistPart?.trim() || "Unknown Artist";
   const trackTitle = trackParts.join(" - ").trim() || title;

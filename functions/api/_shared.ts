@@ -305,14 +305,16 @@ function emailConfig(env: Env) {
   const apiKey = env.RESEND_API_KEY?.trim();
   const from = env.DEMO_FROM_EMAIL?.trim();
   const replyTo = env.DEMO_REPLY_TO_EMAIL?.trim() || from;
-  if (!apiKey || !from || apiKey === "re_xxxxx") return null;
-  return { apiKey, from, replyTo };
+  if (!apiKey) return { ok: false as const, status: "email_missing_resend_api_key" };
+  if (apiKey === "re_xxxxx") return { ok: false as const, status: "email_placeholder_resend_api_key" };
+  if (!from) return { ok: false as const, status: "email_missing_from_email" };
+  return { ok: true as const, apiKey, from, replyTo };
 }
 
 export async function sendDemoDecisionEmail(env: Env, input: { to: string; artistName: string; trackTitle: string; status: string; reason: string }) {
   const config = emailConfig(env);
-  if (!config) {
-    return { sent: false, status: "email_not_configured" };
+  if (!config.ok) {
+    return { sent: false, status: config.status };
   }
 
   const accepted = input.status === "approved";
@@ -355,8 +357,8 @@ export async function sendDemoDecisionEmail(env: Env, input: { to: string; artis
 
 export async function sendArtistInviteEmail(env: Env, input: { to: string; artistName: string; claimUrl: string; role: string }) {
   const config = emailConfig(env);
-  if (!config) {
-    return { sent: false, status: "email_not_configured" };
+  if (!config.ok) {
+    return { sent: false, status: config.status };
   }
 
   const text = [

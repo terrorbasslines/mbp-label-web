@@ -20,10 +20,16 @@
     if (!homeLatestLive || !homeLatestGrid) return;
 
     try {
-      const response = await fetch("/api/catalog");
+      const response = await fetch(`/api/catalog?home=${Date.now()}`, {
+        cache: "no-store",
+        headers: { "cache-control": "no-cache" }
+      });
       const data = await response.json();
       const releases = Array.isArray(data.releases) ? data.releases.slice(0, 4) : [];
-      if (!data.ok || releases.length === 0) return;
+      if (!data.ok || releases.length === 0) {
+        homeStaticReleases?.classList.remove("hidden");
+        return;
+      }
 
       homeLatestLive.classList.remove("hidden");
       homeStaticReleases?.classList.add("hidden");
@@ -59,7 +65,7 @@
         })
         .join("");
     } catch {
-      // Static fallback remains visible when the live catalogue is unavailable.
+      homeStaticReleases?.classList.remove("hidden");
     }
   }
 

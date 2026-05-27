@@ -142,7 +142,7 @@ DEMO_FROM_EMAIL=The MasterBeat Project <demos@themasterbeatproject.com>
 DEMO_REPLY_TO_EMAIL=demos@themasterbeatproject.com
 ```
 
-The same Resend configuration is used for artist claim invite emails. If these values are missing, admin actions still save decisions and generate claim links, but the dashboard will show `email_not_configured` and no outbound email will be sent.
+The same Resend configuration is used for artist claim invite emails. If these values are missing, admin actions still save decisions and generate claim links, but the dashboard will show a specific email status such as `email_missing_resend_api_key`, `email_placeholder_resend_api_key` or `email_missing_from_email` and no outbound email will be sent.
 
 If the dashboard shows `email_failed_401_check_resend_api_key`, replace `RESEND_API_KEY` in Cloudflare Pages with a real active Resend API key. A placeholder such as `re_xxxxx` is treated as not configured. If it shows `email_failed_403_check_sender_domain`, verify the sender domain/address in Resend before sending from `demos@themasterbeatproject.com`.
 
@@ -178,6 +178,18 @@ npm run import:ffm
 ```
 
 This writes `data/ffm-catalog.json` locally. The generated JSON is ignored by Git because it is an import artifact, not source code.
+
+Refresh existing remote D1 artwork URLs from FFM original cover images:
+
+```bash
+npm run refresh:ffm-artwork -- --from=1 --to=241
+```
+
+The refresh helper prefers the real FFM cover image (`imagestore.ffm.to`) instead of the horizontal social share image (`og:image`), so release artwork stays square in the public catalogue.
+
+## Cache Notes
+
+The public catalogue is loaded from `/api/catalog` with `cache: "no-store"` and `/api/*` responses are sent with `Cache-Control: no-store`. Static HTML uses `Cache-Control: public, max-age=0, must-revalidate`, while hashed Astro assets stay immutable. This avoids showing old static release fallback cards while still letting Cloudflare cache versioned JS/CSS safely.
 
 ## Environment Notes
 
@@ -221,5 +233,5 @@ src/styles/              Tailwind and global design tokens
 ## Remaining TODO
 
 - Confirm final public social URLs and contact mailboxes.
-- Connect future direct file uploads to R2.
-- Configure Resend or another email provider for production demo response emails.
+- Keep release artwork refreshed from FFM when new catalogue numbers are imported.
+- Configure a verified outbound email provider domain so demo responses and claim invites avoid spam.

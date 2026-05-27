@@ -19,11 +19,11 @@ const homeJsonLd = {
 ---
 
 <BaseLayout title={siteConfig.name} description={siteConfig.seoDescription} jsonLd={homeJsonLd}>
-  <section class="stage-rail relative min-h-[78svh] overflow-hidden border-b border-white/10">
+  <section class="stage-rail relative min-h-[92svh] overflow-hidden border-b border-white/10">
     <img src="/assets/brand/stage-hero.png" alt="" class="absolute inset-0 h-full w-full object-cover" fetchpriority="high" />
     <div class="absolute inset-0 bg-gradient-to-r from-black via-black/65 to-black/20"></div>
     <div class="absolute inset-0 bg-gradient-to-t from-obsidian via-transparent to-black/30"></div>
-    <div class="section-shell relative flex min-h-[78svh] items-center py-20">
+    <div class="section-shell relative flex min-h-[92svh] items-center py-20">
       <div class="max-w-4xl">
         <p class="eyebrow">Electronic music label</p>
         <h1 class="display-title mt-5">{siteConfig.name}</h1>
@@ -58,7 +58,7 @@ const homeJsonLd = {
         <ButtonLink href="/releases" variant="ghost">View All</ButtonLink>
       </div>
       <HomeLatestReleases />
-      <div class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4" data-home-static-releases>
+      <div class="mt-10 hidden grid gap-5 sm:grid-cols-2 lg:grid-cols-4" data-home-static-releases>
         {releases.map((release) => <ReleaseCard release={release} />)}
       </div>
     </div>

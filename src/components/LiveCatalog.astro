@@ -28,9 +28,15 @@
   async function loadLiveCatalog() {
     if (!liveCatalog || !liveReleases) return;
     try {
-      const response = await fetch("/api/catalog");
+      const response = await fetch(`/api/catalog?catalog=${Date.now()}`, {
+        cache: "no-store",
+        headers: { "cache-control": "no-cache" }
+      });
       const data = await response.json();
-      if (!data.ok || !Array.isArray(data.releases) || data.releases.length === 0) return;
+      if (!data.ok || !Array.isArray(data.releases) || data.releases.length === 0) {
+        staticReleases?.classList.remove("hidden");
+        return;
+      }
 
       liveCatalog.classList.remove("hidden");
       staticReleases?.classList.add("hidden");
@@ -62,7 +68,7 @@
         })
         .join("");
     } catch {
-      // Static fallback remains visible when the D1 catalogue is not configured yet.
+      staticReleases?.classList.remove("hidden");
     }
   }
 
