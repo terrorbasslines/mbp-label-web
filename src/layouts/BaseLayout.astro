@@ -28,6 +28,7 @@ const siteUrl = Astro.site ?? "https://themasterbeatproject.com";
 const ogImageUrl = new URL(image, siteUrl).toString();
 const logoUrl = new URL(siteConfig.logo, siteUrl).toString();
 const robots = noindex ? "noindex, nofollow" : "index, follow, max-image-preview:large";
+const catalogPreloadHref = Astro.url.pathname === "/" ? "/api/catalog?view=home" : ["/releases", "/artists"].includes(Astro.url.pathname.replace(/\/$/, "")) ? "/api/catalog" : null;
 const sameAs = siteConfig.socials.filter((social) => social.href.startsWith("http")).map((social) => social.href);
 const pageJsonLd = Array.isArray(jsonLd) ? jsonLd : [jsonLd];
 const structuredData = [
@@ -65,6 +66,9 @@ const structuredData = [
     <meta name="theme-color" content="#050508" />
     <link rel="canonical" href={canonicalUrl} />
     <link rel="icon" type="image/png" href="/assets/brand/logo-clear.png" />
+    <link rel="preconnect" href="https://cloudinary-cdn.ffm.to" crossorigin />
+    <link rel="preconnect" href="https://imagestore.ffm.to" crossorigin />
+    {catalogPreloadHref && <link rel="preload" as="fetch" href={catalogPreloadHref} crossorigin="anonymous" />}
     <meta property="og:site_name" content={siteConfig.name} />
     <meta property="og:type" content={type} />
     <meta property="og:title" content={pageTitle} />

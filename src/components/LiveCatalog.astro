@@ -1,4 +1,4 @@
-<section class="hidden py-20" data-live-catalog>
+<section class="py-20" data-live-catalog>
   <div class="section-shell">
     <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
       <div>
@@ -7,7 +7,29 @@
         <p class="mt-4 max-w-3xl text-base leading-7 text-steel">Browse official The MasterBeat Project releases with artwork, catalogue numbers and streaming platform links.</p>
       </div>
     </div>
+
+    <div class="mt-8 grid gap-4 rounded-lg border border-white/10 bg-carbon/75 p-4 lg:grid-cols-[1fr_auto] lg:items-end">
+      <label>
+        <span class="field-label">Search artist, track or catalogue number</span>
+        <input class="field-control" type="search" placeholder="Search ZHA_Sty, Broken Heart or MBP185" data-release-search />
+      </label>
+      <div class="flex flex-wrap gap-2" aria-label="Release status filter">
+        <button class="rounded-md bg-white px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-black" data-release-filter="published" type="button">Published</button>
+        <button class="rounded-md border border-white/10 px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-haze hover:border-neon-cyan hover:text-white" data-release-filter="presave" type="button">Pre-save</button>
+        <button class="rounded-md border border-white/10 px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-haze hover:border-neon-cyan hover:text-white" data-release-filter="all" type="button">All</button>
+      </div>
+    </div>
+
+    <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <p class="eyebrow" data-release-state-label>Published releases</p>
+        <p class="mt-2 text-sm text-steel" data-release-count>Loading catalogue...</p>
+      </div>
+      <button class="hidden rounded-md border border-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-haze hover:border-neon-cyan hover:text-white" data-release-clear type="button">Clear search</button>
+    </div>
+
     <div class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3" data-live-releases></div>
+    <div class="mt-8" data-release-pager></div>
   </div>
 </section>
 
@@ -16,6 +38,17 @@
   const liveCatalog = document.querySelector("[data-live-catalog]");
   const liveReleases = document.querySelector("[data-live-releases]");
   const staticReleases = document.querySelector("[data-static-releases]");
+  const releaseSearch = document.querySelector("[data-release-search]");
+  const releaseClear = document.querySelector("[data-release-clear]");
+  const releaseCount = document.querySelector("[data-release-count]");
+  const releasePager = document.querySelector("[data-release-pager]");
+  const releaseStateLabel = document.querySelector("[data-release-state-label]");
+  const releaseFilterButtons = [...document.querySelectorAll("[data-release-filter]")];
+  let allReleases = [];
+  let visibleReleases = [];
+  let releasePage = 1;
+  let releaseFilter = "published";
+  const releasePageSize = 12;
 
   const escapeHtml = (value) =>
     String(value ?? "")
@@ -25,52 +58,153 @@
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#39;");
 
+  function isPresave(release) {
+    const links = Array.isArray(release.platform_links) ? release.platform_links : [];
+    return release.status === "presave" || links.length === 0;
+  }
+
+  function searchableReleaseText(release) {
+    return [release.catalog_number, release.title, release.artist_display, release.genre, release.description]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+  }
+
+  function updateFilterButtons() {
+    releaseFilterButtons.forEach((button) => {
+      const active = button.getAttribute("data-release-filter") === releaseFilter;
+      button.className = active
+        ? "rounded-md bg-white px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-black"
+        : "rounded-md border border-white/10 px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-haze hover:border-neon-cyan hover:text-white";
+    });
+  }
+
+  function filterReleases() {
+    const query = String(releaseSearch?.value || "").trim().toLowerCase();
+    visibleReleases = allReleases.filter((release) => {
+      const presave = isPresave(release);
+      const statusMatch = releaseFilter === "all" || (releaseFilter === "presave" ? presave : !presave);
+      const searchMatch = !query || searchableReleaseText(release).includes(query);
+      return statusMatch && searchMatch;
+    });
+    releaseClear?.classList.toggle("hidden", !query);
+  }
+
+  function renderRelease(release, index) {
+    const releasePath = `/release/${encodeURIComponent(String(release.slug || release.catalog_number || "").toLowerCase())}`;
+    const links = Array.isArray(release.platform_links) ? release.platform_links : [];
+    const presave = isPresave(release);
+    const smartLink = release.presave_url || release.ffm_url;
+    const loading = index < 3 ? "eager" : "lazy";
+    return `
+      <article class="clip-diagonal border border-white/10 bg-carbon/80 p-5">
+        ${
+          release.artwork_url
+            ? `<a class="mb-5 block aspect-square w-full overflow-hidden rounded-md border border-white/10 bg-black/70" href="${escapeHtml(releasePath)}"><img class="h-full w-full object-cover transition duration-200 hover:opacity-85" src="${escapeHtml(release.artwork_url)}" alt="${escapeHtml(release.title)} artwork" loading="${loading}" decoding="async" sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw" /></a>`
+            : ""
+        }
+        <p class="font-mono text-xs font-bold uppercase tracking-[0.16em] text-neon-cyan">${escapeHtml(release.catalog_number)} | ${presave ? "Pre-save" : "Published"}</p>
+        <h3 class="mt-3 font-display text-3xl font-black uppercase leading-none text-white"><a class="hover:text-neon-cyan" href="${escapeHtml(releasePath)}">${escapeHtml(release.title)}</a></h3>
+        <p class="mt-2 text-sm font-semibold text-haze">${escapeHtml(release.artist_display)}</p>
+        <p class="mt-4 text-sm leading-6 text-steel">${escapeHtml(presave ? "Pre-save is open. Platform links update from FFM when the release goes live." : release.description || release.genre || "The MasterBeat Project release.")}</p>
+        <div class="mt-5 flex flex-wrap gap-2">
+          ${links
+            .slice(0, 8)
+            .map((link) => `<a class="rounded-md border border-white/10 px-3 py-2 text-xs font-bold uppercase tracking-[0.1em] text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(link.url)}" target="_blank" rel="noreferrer">${escapeHtml(link.label)}</a>`)
+            .join("")}
+          ${presave && smartLink ? `<a class="rounded-md border border-neon-violet/40 px-3 py-2 text-xs font-bold uppercase tracking-[0.1em] text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(smartLink)}" target="_blank" rel="noreferrer">Pre-save</a>` : ""}
+          <a class="rounded-md border border-white/10 px-3 py-2 text-xs font-bold uppercase tracking-[0.1em] text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(releasePath)}">Details</a>
+        </div>
+      </article>
+    `;
+  }
+
+  function renderReleasePager() {
+    if (!releasePager) return;
+    const totalPages = Math.max(1, Math.ceil(visibleReleases.length / releasePageSize));
+    if (totalPages <= 1) {
+      releasePager.innerHTML = "";
+      return;
+    }
+    const start = (releasePage - 1) * releasePageSize + 1;
+    const end = Math.min(visibleReleases.length, releasePage * releasePageSize);
+    releasePager.innerHTML = `
+      <div class="flex flex-col gap-3 rounded-md border border-white/10 bg-black/30 p-3 sm:flex-row sm:items-center sm:justify-between">
+        <p class="text-xs uppercase tracking-[0.14em] text-steel">Showing ${start}-${end} of ${visibleReleases.length}</p>
+        <div class="flex gap-2">
+          <button class="rounded border border-white/10 px-3 py-2 text-xs font-bold uppercase text-haze disabled:opacity-40" data-release-page="-1" ${releasePage <= 1 ? "disabled" : ""} type="button">Previous</button>
+          <span class="rounded border border-white/10 px-3 py-2 text-xs font-bold uppercase text-white">${releasePage} / ${totalPages}</span>
+          <button class="rounded border border-white/10 px-3 py-2 text-xs font-bold uppercase text-haze disabled:opacity-40" data-release-page="1" ${releasePage >= totalPages ? "disabled" : ""} type="button">Next</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderReleases() {
+    if (!liveReleases) return;
+    filterReleases();
+    const totalPages = Math.max(1, Math.ceil(visibleReleases.length / releasePageSize));
+    releasePage = Math.min(Math.max(1, releasePage), totalPages);
+    const pageItems = visibleReleases.slice((releasePage - 1) * releasePageSize, releasePage * releasePageSize);
+    const label = releaseFilter === "presave" ? "Pre-save releases" : releaseFilter === "all" ? "All catalogue releases" : "Published releases";
+
+    if (releaseStateLabel) releaseStateLabel.textContent = label;
+    if (releaseCount) releaseCount.textContent = `${visibleReleases.length} result${visibleReleases.length === 1 ? "" : "s"} found`;
+    liveReleases.innerHTML = pageItems.length
+      ? pageItems.map(renderRelease).join("")
+      : `<div class="rounded-lg border border-white/10 bg-carbon/80 p-6 text-sm text-steel sm:col-span-2 lg:col-span-3">No releases match this search.</div>`;
+    renderReleasePager();
+  }
+
   async function loadLiveCatalog() {
     if (!liveCatalog || !liveReleases) return;
     try {
-      const response = await fetch(`/api/catalog?catalog=${Date.now()}`, {
-        cache: "no-store",
-        headers: { "cache-control": "no-cache" }
-      });
+      const response = await fetch("/api/catalog", { cache: "force-cache" });
       const data = await response.json();
       if (!data.ok || !Array.isArray(data.releases) || data.releases.length === 0) {
         staticReleases?.classList.remove("hidden");
         return;
       }
 
-      liveCatalog.classList.remove("hidden");
       staticReleases?.classList.add("hidden");
-      liveReleases.innerHTML = data.releases
-        .map((release) => {
-          const releasePath = `/release/${encodeURIComponent(String(release.slug || release.catalog_number || "").toLowerCase())}`;
-          const links = Array.isArray(release.platform_links) ? release.platform_links : [];
-          const isPresave = release.status === "presave" || links.length === 0;
-          const smartLink = release.presave_url || release.ffm_url;
-          return `
-            <article class="clip-diagonal border border-white/10 bg-carbon/80 p-5">
-              ${
-                release.artwork_url
-                  ? `<a class="mb-5 block aspect-square w-full overflow-hidden rounded-md border border-white/10 bg-black/70" href="${escapeHtml(releasePath)}"><img class="h-full w-full object-cover transition duration-200 hover:opacity-85" src="${escapeHtml(release.artwork_url)}" alt="${escapeHtml(release.title)} artwork" loading="lazy" /></a>`
-                  : ""
-              }
-              <p class="font-mono text-xs font-bold uppercase tracking-[0.16em] text-neon-cyan">${escapeHtml(release.catalog_number)} | ${isPresave ? "Pre-save" : "Published"}</p>
-              <h3 class="mt-3 font-display text-3xl font-black uppercase leading-none text-white"><a class="hover:text-neon-cyan" href="${escapeHtml(releasePath)}">${escapeHtml(release.title)}</a></h3>
-              <p class="mt-2 text-sm font-semibold text-haze">${escapeHtml(release.artist_display)}</p>
-              <p class="mt-4 text-sm leading-6 text-steel">${escapeHtml(isPresave ? "Pre-save is open. Platform links update from FFM when the release goes live." : release.description || release.genre || "The MasterBeat Project release.")}</p>
-              <div class="mt-5 flex flex-wrap gap-2">
-                ${links
-                  .map((link) => `<a class="rounded-md border border-white/10 px-3 py-2 text-xs font-bold uppercase tracking-[0.1em] text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(link.url)}" target="_blank" rel="noreferrer">${escapeHtml(link.label)}</a>`)
-                  .join("")}
-                ${links.length === 0 && smartLink ? `<a class="rounded-md border border-neon-violet/40 px-3 py-2 text-xs font-bold uppercase tracking-[0.1em] text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(smartLink)}" target="_blank" rel="noreferrer">Pre-save</a>` : ""}
-              </div>
-            </article>
-          `;
-        })
-        .join("");
+      allReleases = data.releases;
+      renderReleases();
     } catch {
       staticReleases?.classList.remove("hidden");
+      liveReleases.innerHTML = `<div class="rounded-lg border border-white/10 bg-carbon/80 p-6 text-sm text-steel sm:col-span-2 lg:col-span-3">Live catalogue is temporarily unavailable.</div>`;
     }
   }
 
+  releaseSearch?.addEventListener("input", () => {
+    releasePage = 1;
+    renderReleases();
+  });
+
+  releaseClear?.addEventListener("click", () => {
+    if (releaseSearch) releaseSearch.value = "";
+    releasePage = 1;
+    renderReleases();
+  });
+
+  releaseFilterButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      releaseFilter = button.getAttribute("data-release-filter") || "published";
+      releasePage = 1;
+      updateFilterButtons();
+      renderReleases();
+    });
+  });
+
+  document.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    const button = target.closest("[data-release-page]");
+    if (!button) return;
+    releasePage += Number(button.getAttribute("data-release-page"));
+    renderReleases();
+    liveCatalog?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  updateFilterButtons();
   loadLiveCatalog();
 </script>

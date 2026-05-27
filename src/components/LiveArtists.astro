@@ -1,8 +1,19 @@
-<section class="hidden py-20" data-live-artists-section>
+<section class="py-20" data-live-artists-section>
   <div class="section-shell">
     <p class="eyebrow">Label roster</p>
     <h2 class="mt-3 font-display text-3xl font-black uppercase leading-none text-white sm:text-5xl">MBP artists</h2>
+    <div class="mt-8 rounded-lg border border-white/10 bg-carbon/75 p-4">
+      <label>
+        <span class="field-label">Search artist roster</span>
+        <input class="field-control" type="search" placeholder="Search Terror Basslines, Romee Storm or hardstyle" data-artist-search />
+      </label>
+    </div>
+    <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <p class="text-sm text-steel" data-artist-count>Loading artists...</p>
+      <button class="hidden rounded-md border border-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-haze hover:border-neon-cyan hover:text-white" data-artist-clear type="button">Clear search</button>
+    </div>
     <div class="mt-10 grid gap-5 md:grid-cols-2" data-live-artists></div>
+    <div class="mt-8" data-artist-pager></div>
   </div>
 </section>
 
@@ -11,6 +22,14 @@
   const liveArtistsSection = document.querySelector("[data-live-artists-section]");
   const liveArtists = document.querySelector("[data-live-artists]");
   const staticArtists = document.querySelector("[data-static-artists]");
+  const artistSearch = document.querySelector("[data-artist-search]");
+  const artistClear = document.querySelector("[data-artist-clear]");
+  const artistCount = document.querySelector("[data-artist-count]");
+  const artistPager = document.querySelector("[data-artist-pager]");
+  let allArtists = [];
+  let visibleArtists = [];
+  let artistPage = 1;
+  const artistPageSize = 12;
 
   const escapeArtistHtml = (value) =>
     String(value ?? "")
@@ -20,42 +39,116 @@
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#39;");
 
+  function searchableArtistText(artist) {
+    return [artist.name, artist.country, artist.profile]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+  }
+
+  function filterArtists() {
+    const query = String(artistSearch?.value || "").trim().toLowerCase();
+    visibleArtists = allArtists.filter((artist) => !query || searchableArtistText(artist).includes(query));
+    artistClear?.classList.toggle("hidden", !query);
+  }
+
+  function renderArtist(artist) {
+    const artistPath = `/artist/${encodeURIComponent(String(artist.slug || artist.name || "").toLowerCase())}`;
+    return `
+      <article class="rounded-lg border border-white/10 bg-carbon/80 p-5">
+        <div class="flex items-center gap-4">
+          <a href="${escapeArtistHtml(artistPath)}" aria-label="${escapeArtistHtml(artist.name)} artist profile">
+            ${artist.image_url ? `<img class="h-20 w-20 rounded-md border border-white/10 object-cover" src="${escapeArtistHtml(artist.image_url)}" alt="" loading="lazy" decoding="async" />` : `<div class="grid h-20 w-20 place-items-center rounded-md border border-white/10 bg-black font-display text-3xl font-black text-white">${escapeArtistHtml(String(artist.name || "?").slice(0, 1))}</div>`}
+          </a>
+          <div>
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-neon-cyan">${artist.is_featured ? "Featured artist" : "Artist"}</p>
+            <h3 class="mt-2 font-display text-3xl font-black uppercase leading-none text-white"><a class="hover:text-neon-cyan" href="${escapeArtistHtml(artistPath)}">${escapeArtistHtml(artist.name)}</a></h3>
+            <p class="mt-1 text-sm text-steel">${escapeArtistHtml(artist.country || "The MasterBeat Project")}</p>
+          </div>
+        </div>
+        <p class="mt-5 text-sm leading-6 text-haze">${escapeArtistHtml(artist.profile || "Artist profile coming soon.")}</p>
+        <div class="mt-5 flex flex-wrap gap-2">
+          <a class="rounded-md border border-white/10 px-3 py-2 text-xs font-bold uppercase tracking-[0.1em] text-haze hover:border-neon-cyan hover:text-white" href="${escapeArtistHtml(artistPath)}">Profile</a>
+          ${(artist.links || []).map((link) => `<a class="rounded-md border border-white/10 px-3 py-2 text-xs font-bold uppercase tracking-[0.1em] text-haze hover:border-neon-cyan hover:text-white" href="${escapeArtistHtml(link.url)}" target="_blank" rel="noreferrer">${escapeArtistHtml(link.label)}</a>`).join("")}
+        </div>
+      </article>
+    `;
+  }
+
+  function renderArtistPager() {
+    if (!artistPager) return;
+    const totalPages = Math.max(1, Math.ceil(visibleArtists.length / artistPageSize));
+    if (totalPages <= 1) {
+      artistPager.innerHTML = "";
+      return;
+    }
+    const start = (artistPage - 1) * artistPageSize + 1;
+    const end = Math.min(visibleArtists.length, artistPage * artistPageSize);
+    artistPager.innerHTML = `
+      <div class="flex flex-col gap-3 rounded-md border border-white/10 bg-black/30 p-3 sm:flex-row sm:items-center sm:justify-between">
+        <p class="text-xs uppercase tracking-[0.14em] text-steel">Showing ${start}-${end} of ${visibleArtists.length}</p>
+        <div class="flex gap-2">
+          <button class="rounded border border-white/10 px-3 py-2 text-xs font-bold uppercase text-haze disabled:opacity-40" data-artist-page="-1" ${artistPage <= 1 ? "disabled" : ""} type="button">Previous</button>
+          <span class="rounded border border-white/10 px-3 py-2 text-xs font-bold uppercase text-white">${artistPage} / ${totalPages}</span>
+          <button class="rounded border border-white/10 px-3 py-2 text-xs font-bold uppercase text-haze disabled:opacity-40" data-artist-page="1" ${artistPage >= totalPages ? "disabled" : ""} type="button">Next</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderArtists() {
+    if (!liveArtists) return;
+    filterArtists();
+    const totalPages = Math.max(1, Math.ceil(visibleArtists.length / artistPageSize));
+    artistPage = Math.min(Math.max(1, artistPage), totalPages);
+    const pageItems = visibleArtists.slice((artistPage - 1) * artistPageSize, artistPage * artistPageSize);
+    if (artistCount) artistCount.textContent = `${visibleArtists.length} artist${visibleArtists.length === 1 ? "" : "s"} found`;
+    liveArtists.innerHTML = pageItems.length
+      ? pageItems.map(renderArtist).join("")
+      : `<div class="rounded-lg border border-white/10 bg-carbon/80 p-6 text-sm text-steel md:col-span-2">No artists match this search.</div>`;
+    renderArtistPager();
+  }
+
   async function loadLiveArtists() {
     if (!liveArtistsSection || !liveArtists) return;
     try {
-      const response = await fetch("/api/catalog");
+      const response = await fetch("/api/catalog", { cache: "force-cache" });
       const data = await response.json();
-      if (!data.ok || !Array.isArray(data.artists) || data.artists.length === 0) return;
+      if (!data.ok || !Array.isArray(data.artists) || data.artists.length === 0) {
+        staticArtists?.classList.remove("hidden");
+        if (artistCount) artistCount.textContent = "Static roster loaded.";
+        return;
+      }
 
-      liveArtistsSection.classList.remove("hidden");
       staticArtists?.classList.add("hidden");
-      liveArtists.innerHTML = data.artists
-        .map((artist) => {
-          const artistPath = `/artist/${encodeURIComponent(String(artist.slug || artist.name || "").toLowerCase())}`;
-          return `
-            <article class="rounded-lg border border-white/10 bg-carbon/80 p-5">
-              <div class="flex items-center gap-4">
-                <a href="${escapeArtistHtml(artistPath)}" aria-label="${escapeArtistHtml(artist.name)} artist profile">
-                  ${artist.image_url ? `<img class="h-20 w-20 rounded-md border border-white/10 object-cover" src="${escapeArtistHtml(artist.image_url)}" alt="" loading="lazy" />` : `<div class="grid h-20 w-20 place-items-center rounded-md border border-white/10 bg-black font-display text-3xl font-black text-white">${escapeArtistHtml(String(artist.name || "?").slice(0, 1))}</div>`}
-                </a>
-                <div>
-                  <p class="text-xs font-bold uppercase tracking-[0.18em] text-neon-cyan">${artist.is_featured ? "Featured artist" : "Artist"}</p>
-                  <h3 class="mt-2 font-display text-3xl font-black uppercase leading-none text-white"><a class="hover:text-neon-cyan" href="${escapeArtistHtml(artistPath)}">${escapeArtistHtml(artist.name)}</a></h3>
-                  <p class="mt-1 text-sm text-steel">${escapeArtistHtml(artist.country || "The MasterBeat Project")}</p>
-                </div>
-              </div>
-              <p class="mt-5 text-sm leading-6 text-haze">${escapeArtistHtml(artist.profile || "Artist profile coming soon.")}</p>
-              <div class="mt-5 flex flex-wrap gap-2">
-                ${(artist.links || []).map((link) => `<a class="rounded-md border border-white/10 px-3 py-2 text-xs font-bold uppercase tracking-[0.1em] text-haze hover:border-neon-cyan hover:text-white" href="${escapeArtistHtml(link.url)}" target="_blank" rel="noreferrer">${escapeArtistHtml(link.label)}</a>`).join("")}
-              </div>
-            </article>
-          `;
-        })
-        .join("");
+      allArtists = data.artists;
+      renderArtists();
     } catch {
-      // Static fallback remains visible when the D1 roster is not configured yet.
+      staticArtists?.classList.remove("hidden");
+      liveArtists.innerHTML = `<div class="rounded-lg border border-white/10 bg-carbon/80 p-6 text-sm text-steel md:col-span-2">Live roster is temporarily unavailable.</div>`;
     }
   }
+
+  artistSearch?.addEventListener("input", () => {
+    artistPage = 1;
+    renderArtists();
+  });
+
+  artistClear?.addEventListener("click", () => {
+    if (artistSearch) artistSearch.value = "";
+    artistPage = 1;
+    renderArtists();
+  });
+
+  document.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    const button = target.closest("[data-artist-page]");
+    if (!button) return;
+    artistPage += Number(button.getAttribute("data-artist-page"));
+    renderArtists();
+    liveArtistsSection?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
 
   loadLiveArtists();
 </script>

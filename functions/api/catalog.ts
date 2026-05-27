@@ -77,37 +77,50 @@ async function refreshPresaveCandidates(db: D1Database) {
   }
 }
 
-export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
+export const onRequestGet: PagesFunction<Env> = async ({ request, env, waitUntil }) => {
   const db = requireDb(env);
   if (isResponse(db)) {
     return json({ ok: false, artists: [], releases: [], error: "D1 is not configured yet." });
   }
 
-  await refreshPresaveCandidates(db);
+  waitUntil(refreshPresaveCandidates(db));
 
   const [artists, releases, links] = await Promise.all([
     db.prepare("SELECT * FROM artists ORDER BY is_featured DESC, name ASC").all<ArtistRow>(),
     db.prepare("SELECT * FROM releases WHERE status IN ('published', 'presave') ORDER BY catalog_number DESC").all<ReleaseRow>(),
     db.prepare("SELECT * FROM release_platform_links ORDER BY sort_order ASC").all<LinkRow>()
   ]);
+  const url = new URL(request.url);
+  const view = url.searchParams.get("view");
+  const cacheHeaders = {
+    "cache-control": "public, max-age=60, s-maxage=120, stale-while-revalidate=600"
+  };
+  const publicArtists = (artists.results ?? [])
+    .filter((artist) => !isCollabArtistName(String(artist.name ?? "")))
+    .map((artist) => ({
+      ...artist,
+      profile: publicArtistProfile(artist),
+      links: JSON.parse(String(artist.links_json ?? "[]")),
+      is_featured: Boolean(artist.is_featured)
+    }));
+  const publicReleases = (releases.results ?? []).map((release) => {
+    const platform_links = (links.results ?? []).filter((link) => link.release_id === release.id);
+    return {
+      ...release,
+      status: release.status === "presave" || platform_links.length === 0 ? "presave" : release.status,
+      platform_links
+    };
+  });
+
+  if (view === "home") {
+    const published = publicReleases.filter((release) => release.status !== "presave").slice(0, 4);
+    const presaves = publicReleases.filter((release) => release.status === "presave").slice(0, 4);
+    return json({ ok: true, artists: [], releases: published, presaves }, { headers: cacheHeaders });
+  }
 
   return json({
     ok: true,
-    artists: (artists.results ?? [])
-      .filter((artist) => !isCollabArtistName(String(artist.name ?? "")))
-      .map((artist) => ({
-        ...artist,
-        profile: publicArtistProfile(artist),
-        links: JSON.parse(String(artist.links_json ?? "[]")),
-        is_featured: Boolean(artist.is_featured)
-      })),
-    releases: (releases.results ?? []).map((release) => {
-      const platform_links = (links.results ?? []).filter((link) => link.release_id === release.id);
-      return {
-        ...release,
-        status: release.status === "presave" || platform_links.length === 0 ? "presave" : release.status,
-        platform_links
-      };
-    })
-  });
+    artists: publicArtists,
+    releases: publicReleases
+  }, { headers: cacheHeaders });
 };

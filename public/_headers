@@ -4,6 +4,9 @@
   Permissions-Policy: camera=(), microphone=(), geolocation=()
   Cache-Control: public, max-age=0, must-revalidate
 
+/api/catalog
+  Cache-Control: public, max-age=60, s-maxage=120, stale-while-revalidate=600
+
 /api/*
   Cache-Control: no-store
 
