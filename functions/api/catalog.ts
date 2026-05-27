@@ -1,4 +1,4 @@
-import { isResponse, json, requireDb, type Env } from "./_shared";
+import { isCollabArtistName, isResponse, json, requireDb, type Env } from "./_shared";
 import { parseFfmRelease } from "./_ffm";
 
 type ReleaseRow = Record<string, unknown> & { id: string };
@@ -93,12 +93,14 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
 
   return json({
     ok: true,
-    artists: (artists.results ?? []).map((artist) => ({
-      ...artist,
-      profile: publicArtistProfile(artist),
-      links: JSON.parse(String(artist.links_json ?? "[]")),
-      is_featured: Boolean(artist.is_featured)
-    })),
+    artists: (artists.results ?? [])
+      .filter((artist) => !isCollabArtistName(String(artist.name ?? "")))
+      .map((artist) => ({
+        ...artist,
+        profile: publicArtistProfile(artist),
+        links: JSON.parse(String(artist.links_json ?? "[]")),
+        is_featured: Boolean(artist.is_featured)
+      })),
     releases: (releases.results ?? []).map((release) => {
       const platform_links = (links.results ?? []).filter((link) => link.release_id === release.id);
       return {

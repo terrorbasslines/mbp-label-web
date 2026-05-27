@@ -61,14 +61,31 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
 
   const artistReleases = artist
     ? await env.DB.prepare(
-        `SELECT r.slug, r.catalog_number, r.title
+        `SELECT DISTINCT r.slug, r.catalog_number, r.title
          FROM releases r
-         INNER JOIN release_artists ra ON ra.release_id = r.id
-         WHERE ra.artist_id = ? AND r.status IN ('published', 'presave')
+         LEFT JOIN release_artists ra ON ra.release_id = r.id
+         WHERE (ra.artist_id = ?
+           OR lower(r.artist_display) = lower(?)
+           OR lower(r.artist_display) LIKE lower(?)
+           OR lower(r.artist_display) LIKE lower(?)
+           OR lower(r.artist_display) LIKE lower(?)
+           OR lower(r.artist_display) LIKE lower(?)
+           OR lower(r.artist_display) LIKE lower(?)
+           OR lower(r.artist_display) LIKE lower(?))
+           AND r.status IN ('published', 'presave')
          ORDER BY r.catalog_number DESC
          LIMIT 12`
       )
-        .bind(artist.id)
+        .bind(
+          artist.id,
+          artist.name,
+          `${artist.name} & %`,
+          `% & ${artist.name} & %`,
+          `% & ${artist.name}`,
+          `${artist.name}, %`,
+          `%, ${artist.name}, %`,
+          `%, ${artist.name}`
+        )
         .all<ArtistReleaseRow>()
     : { results: [] as ArtistReleaseRow[] };
 

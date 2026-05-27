@@ -49,13 +49,30 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
   if (!artist) return notFoundPage("Artist not found");
 
   const releases = await env.DB.prepare(
-    `SELECT r.slug, r.catalog_number, r.title, r.artist_display, r.status
+    `SELECT DISTINCT r.slug, r.catalog_number, r.title, r.artist_display, r.status
      FROM releases r
-     INNER JOIN release_artists ra ON ra.release_id = r.id
-     WHERE ra.artist_id = ? AND r.status IN ('published', 'presave')
+     LEFT JOIN release_artists ra ON ra.release_id = r.id
+     WHERE (ra.artist_id = ?
+       OR lower(r.artist_display) = lower(?)
+       OR lower(r.artist_display) LIKE lower(?)
+       OR lower(r.artist_display) LIKE lower(?)
+       OR lower(r.artist_display) LIKE lower(?)
+       OR lower(r.artist_display) LIKE lower(?)
+       OR lower(r.artist_display) LIKE lower(?)
+       OR lower(r.artist_display) LIKE lower(?))
+       AND r.status IN ('published', 'presave')
      ORDER BY r.catalog_number DESC`
   )
-    .bind(artist.id)
+    .bind(
+      artist.id,
+      artist.name,
+      `${artist.name} & %`,
+      `% & ${artist.name} & %`,
+      `% & ${artist.name}`,
+      `${artist.name}, %`,
+      `%, ${artist.name}, %`,
+      `%, ${artist.name}`
+    )
     .all<ReleaseRow>();
 
   const artistLinks = parseLinks(artist.links_json);

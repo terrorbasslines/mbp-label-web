@@ -142,6 +142,8 @@ DEMO_FROM_EMAIL=The MasterBeat Project <demos@themasterbeatproject.com>
 DEMO_REPLY_TO_EMAIL=demos@themasterbeatproject.com
 ```
 
+The same Resend configuration is used for artist claim invite emails. If these values are missing, admin actions still save decisions and generate claim links, but the dashboard will show `email_not_configured` and no outbound email will be sent.
+
 Then open:
 
 ```text

@@ -551,7 +551,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
             role: formData.get("role")
           })
         });
-        if (statusEl) statusEl.innerHTML = `Claim link (${escapeHtml(result.invite.role)}): <a class="text-neon-cyan hover:text-white" href="${escapeHtml(result.invite.claim_url)}" target="_blank" rel="noreferrer">${escapeHtml(result.invite.claim_url)}</a>`;
+        if (statusEl) statusEl.innerHTML = `Claim link (${escapeHtml(result.invite.role)}, ${escapeHtml(result.email?.status || "email not sent")}): <a class="text-neon-cyan hover:text-white" href="${escapeHtml(result.invite.claim_url)}" target="_blank" rel="noreferrer">${escapeHtml(result.invite.claim_url)}</a>`;
       } catch (error) {
         if (statusEl) statusEl.textContent = error.message;
       }

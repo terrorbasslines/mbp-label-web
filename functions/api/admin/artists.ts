@@ -1,4 +1,4 @@
-import { id, isResponse, json, methodNotAllowed, optionalString, readJson, requireAdmin, requireDb, requiredString, slugify, type Env } from "../_shared";
+import { id, isCollabArtistName, isResponse, json, methodNotAllowed, optionalString, readJson, requireAdmin, requireDb, requiredString, slugify, type Env } from "../_shared";
 
 type ArtistRow = {
   id: string;
@@ -23,11 +23,13 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const result = await db.prepare("SELECT * FROM artists ORDER BY name ASC").all<ArtistRow>();
   return json({
     ok: true,
-    artists: (result.results ?? []).map((artist) => ({
-      ...artist,
-      links: JSON.parse(artist.links_json || "[]"),
-      is_featured: Boolean(artist.is_featured)
-    }))
+    artists: (result.results ?? [])
+      .filter((artist) => !isCollabArtistName(artist.name))
+      .map((artist) => ({
+        ...artist,
+        links: JSON.parse(artist.links_json || "[]"),
+        is_featured: Boolean(artist.is_featured)
+      }))
   });
 };
 

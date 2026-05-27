@@ -8,6 +8,7 @@ import {
   requireAdmin,
   requireDb,
   requiredString,
+  sendArtistInviteEmail,
   sha256Hex,
   type Env
 } from "../_shared";
@@ -69,14 +70,20 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const tokenHash = await sha256Hex(rawToken);
   const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString();
   const inviteId = crypto.randomUUID();
+  const email = optionalString(body.email, 240);
 
   await db
     .prepare(
       `INSERT INTO artist_claim_tokens (id, artist_id, email, token_hash, role, expires_at, created_by)
        VALUES (?, ?, ?, ?, ?, ?, ?)`
     )
-    .bind(inviteId, artist.id, optionalString(body.email, 240), tokenHash, role, expiresAt, admin.sub)
+    .bind(inviteId, artist.id, email, tokenHash, role, expiresAt, admin.sub)
     .run();
+
+  const claimUrl = `${siteOrigin(request)}/claim-artist?token=${encodeURIComponent(rawToken)}`;
+  const emailResult = email
+    ? await sendArtistInviteEmail(env, { to: email, artistName: artist.name, claimUrl, role })
+    : { sent: false, status: "email_not_requested" };
 
   return json(
     {
@@ -88,8 +95,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
         artist_slug: artist.slug,
         role,
         expires_at: expiresAt,
-        claim_url: `${siteOrigin(request)}/claim-artist?token=${encodeURIComponent(rawToken)}`
-      }
+        claim_url: claimUrl
+      },
+      email: emailResult
     },
     { status: 201 }
   );

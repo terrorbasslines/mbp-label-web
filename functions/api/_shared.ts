@@ -22,6 +22,24 @@ export type AdminSession = AppSession & { role: "admin" };
 
 const encoder = new TextEncoder();
 
+export function splitArtistNames(value: string) {
+  const seen = new Set<string>();
+  return value
+    .split(/\s*(?:&|,|\sx\s|\sX\s)\s*/)
+    .map((name) => name.trim())
+    .filter(Boolean)
+    .filter((name) => {
+      const key = name.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+export function isCollabArtistName(value: string | null | undefined) {
+  return splitArtistNames(String(value ?? "")).length > 1;
+}
+
 export function json(data: unknown, init: ResponseInit = {}) {
   return new Response(JSON.stringify(data), {
     ...init,
@@ -148,32 +166,51 @@ export async function sha256Hex(value: string) {
 }
 
 export async function hashPassword(password: string) {
-  const iterations = 120000;
+  const iterations = 10000;
   const salt = crypto.getRandomValues(new Uint8Array(16));
-  const keyMaterial = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveBits"]);
-  const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", hash: "SHA-256", salt, iterations },
-    keyMaterial,
-    256
-  );
-  return `pbkdf2_sha256$${iterations}$${base64UrlEncode(salt.buffer as ArrayBuffer)}$${base64UrlEncode(bits)}`;
+  const passwordBytes = encoder.encode(password);
+  let hash: Uint8Array | ArrayBuffer = passwordBytes;
+  for (let index = 0; index < iterations; index += 1) {
+    const input = new Uint8Array(salt.byteLength + hash.byteLength + passwordBytes.byteLength);
+    input.set(salt, 0);
+    input.set(new Uint8Array(hash), salt.byteLength);
+    input.set(passwordBytes, salt.byteLength + hash.byteLength);
+    hash = await crypto.subtle.digest("SHA-256", input);
+  }
+  return `sha256_iter$${iterations}$${base64UrlEncode(salt.buffer as ArrayBuffer)}$${base64UrlEncode(hash as ArrayBuffer)}`;
 }
 
 export async function verifyPassword(password: string, stored: string) {
   const [algorithm, iterationsText, saltText, hashText] = stored.split("$");
-  if (algorithm !== "pbkdf2_sha256" || !iterationsText || !saltText || !hashText) return false;
+  if (!iterationsText || !saltText || !hashText) return false;
 
   const iterations = Number(iterationsText);
-  if (!Number.isInteger(iterations) || iterations < 100000) return false;
+  if (!Number.isInteger(iterations) || iterations < 1000) return false;
 
   const salt = base64UrlToBytes(saltText);
-  const keyMaterial = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveBits"]);
-  const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", hash: "SHA-256", salt, iterations },
-    keyMaterial,
-    256
-  );
-  return constantTimeEqual(base64UrlEncode(bits), hashText);
+
+  if (algorithm === "pbkdf2_sha256") {
+    const keyMaterial = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveBits"]);
+    const bits = await crypto.subtle.deriveBits(
+      { name: "PBKDF2", hash: "SHA-256", salt, iterations },
+      keyMaterial,
+      256
+    );
+    return constantTimeEqual(base64UrlEncode(bits), hashText);
+  }
+
+  if (algorithm !== "sha256_iter") return false;
+
+  const passwordBytes = encoder.encode(password);
+  let hash: Uint8Array | ArrayBuffer = passwordBytes;
+  for (let index = 0; index < iterations; index += 1) {
+    const input = new Uint8Array(salt.byteLength + hash.byteLength + passwordBytes.byteLength);
+    input.set(salt, 0);
+    input.set(new Uint8Array(hash), salt.byteLength);
+    input.set(passwordBytes, salt.byteLength + hash.byteLength);
+    hash = await crypto.subtle.digest("SHA-256", input);
+  }
+  return constantTimeEqual(base64UrlEncode(hash as ArrayBuffer), hashText);
 }
 
 export async function createSessionToken(env: Env, input: Omit<AppSession, "exp"> = { sub: "admin", role: "admin" }) {
@@ -290,6 +327,45 @@ export async function sendDemoDecisionEmail(env: Env, input: { to: string; artis
       to: input.to,
       reply_to: env.DEMO_REPLY_TO_EMAIL ?? env.DEMO_FROM_EMAIL,
       subject,
+      text
+    })
+  });
+
+  if (!response.ok) {
+    return { sent: false, status: `email_failed_${response.status}` };
+  }
+
+  return { sent: true, status: "email_sent" };
+}
+
+export async function sendArtistInviteEmail(env: Env, input: { to: string; artistName: string; claimUrl: string; role: string }) {
+  if (!env.RESEND_API_KEY || !env.DEMO_FROM_EMAIL) {
+    return { sent: false, status: "email_not_configured" };
+  }
+
+  const text = [
+    `Hi ${input.artistName},`,
+    "",
+    `You have been invited to claim your The MasterBeat Project artist profile as ${input.role}.`,
+    "",
+    `Claim your profile here: ${input.claimUrl}`,
+    "",
+    "This private invite link expires in 30 days.",
+    "",
+    "The MasterBeat Project"
+  ].join("\n");
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${env.RESEND_API_KEY}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      from: env.DEMO_FROM_EMAIL,
+      to: input.to,
+      reply_to: env.DEMO_REPLY_TO_EMAIL ?? env.DEMO_FROM_EMAIL,
+      subject: `Claim your ${input.artistName} profile on The MasterBeat Project`,
       text
     })
   });
