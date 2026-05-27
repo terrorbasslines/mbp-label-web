@@ -3,11 +3,10 @@ compatibility_date = "2026-05-26"
 pages_build_output_dir = "./dist"
 
 # Required for admin, catalogue, and demo submissions.
-# Create the D1 database in Cloudflare, then replace database_id.
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "mbp_label_web"
-# database_id = "replace-with-cloudflare-d1-id"
+[[d1_databases]]
+binding = "DB"
+database_name = "mbp_label_web"
+database_id = "02d488b8-edac-40c0-9376-efff10152f85"
 
 # Optional future direct uploads.
 # [[r2_buckets]]
