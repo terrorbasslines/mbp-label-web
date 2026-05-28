@@ -1,4 +1,4 @@
-import { isCollabArtistName, isResponse, json, requireDb, type Env } from "./_shared";
+import { isCollabArtistName, isResponse, json, requireDb, syncReleaseArtistCredits, type Env } from "./_shared";
 import { parseFfmRelease } from "./_ffm";
 
 type ReleaseRow = Record<string, unknown> & { id: string };
@@ -6,6 +6,14 @@ type ArtistRow = Record<string, unknown> & { id: string; links_json?: string };
 type LinkRow = Record<string, unknown> & { release_id: string };
 type RefreshCandidate = ReleaseRow & {
   catalog_number: string;
+  artist_display: string;
+  ffm_url?: string | null;
+};
+
+type CreditRepairCandidate = {
+  id: string;
+  artist_display: string;
+  primary_artist_id?: string | null;
   ffm_url?: string | null;
 };
 
@@ -60,6 +68,8 @@ async function refreshPresaveCandidates(db: D1Database) {
         .bind(parsed.trackTitle, parsed.artist, parsed.artworkUrl, parsed.status, parsed.description, release.id)
         .run();
 
+      const credits = await syncReleaseArtistCredits(db, release.id, parsed.artist, null, parsed.ffmUrl);
+      await db.prepare("UPDATE releases SET primary_artist_id = ? WHERE id = ?").bind(credits.primaryArtistId, release.id).run();
       await db.prepare("DELETE FROM release_platform_links WHERE release_id = ?").bind(release.id).run();
       for (let index = 0; index < parsed.platformLinks.length; index += 1) {
         const link = parsed.platformLinks[index];
@@ -77,13 +87,44 @@ async function refreshPresaveCandidates(db: D1Database) {
   }
 }
 
+async function repairArtistCredits(db: D1Database) {
+  const rows = await db
+    .prepare(
+      `SELECT id, artist_display, primary_artist_id, ffm_url
+       FROM releases
+       WHERE artist_display LIKE '%&%'
+          OR artist_display LIKE '%,%'
+          OR lower(artist_display) LIKE '% feat.%'
+          OR lower(artist_display) LIKE '%(feat.%'
+          OR lower(artist_display) LIKE '% ft.%'
+          OR lower(artist_display) LIKE '%(ft.%'
+          OR lower(artist_display) LIKE '% featuring %'
+       ORDER BY catalog_number DESC
+       LIMIT 80`
+    )
+    .all<CreditRepairCandidate>();
+
+  for (const release of rows.results ?? []) {
+    const credits = await syncReleaseArtistCredits(db, release.id, release.artist_display, null, release.ffm_url ?? null);
+    await db.prepare("UPDATE releases SET primary_artist_id = ? WHERE id = ?").bind(credits.primaryArtistId, release.id).run();
+  }
+
+  await db
+    .prepare(
+      `DELETE FROM artists
+       WHERE (lower(name) LIKE '% feat.%' OR lower(name) LIKE '%(feat.%' OR lower(name) LIKE '% ft.%' OR lower(name) LIKE '%(ft.%' OR lower(name) LIKE '% featuring %' OR name LIKE '%&%' OR name LIKE '%,%')
+         AND lower(COALESCE(profile, '')) LIKE 'imported from %'`
+    )
+    .run();
+}
+
 export const onRequestGet: PagesFunction<Env> = async ({ request, env, waitUntil }) => {
   const db = requireDb(env);
   if (isResponse(db)) {
     return json({ ok: false, artists: [], releases: [], error: "D1 is not configured yet." });
   }
 
-  waitUntil(refreshPresaveCandidates(db));
+  waitUntil(Promise.all([refreshPresaveCandidates(db), repairArtistCredits(db)]));
 
   const [artists, releases, links] = await Promise.all([
     db.prepare("SELECT * FROM artists ORDER BY is_featured DESC, name ASC").all<ArtistRow>(),
@@ -105,9 +146,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, waitUntil
     }));
   const publicReleases = (releases.results ?? []).map((release) => {
     const platform_links = (links.results ?? []).filter((link) => link.release_id === release.id);
+    const playableLinks = platform_links.filter((link) => !/email|subscribe/i.test(`${link.platform ?? ""} ${link.label ?? ""}`));
     return {
       ...release,
-      status: release.status === "presave" || platform_links.length === 0 ? "presave" : release.status,
+      status: playableLinks.length > 0 ? "published" : "presave",
       platform_links
     };
   });

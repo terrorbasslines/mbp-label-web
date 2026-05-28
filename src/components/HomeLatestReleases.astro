@@ -33,7 +33,8 @@
   function renderHomeRelease(release, index = 0) {
     const releasePath = `/release/${encodeURIComponent(String(release.slug || release.catalog_number || "").toLowerCase())}`;
     const links = Array.isArray(release.platform_links) ? release.platform_links : [];
-    const isPresave = release.status === "presave" || links.length === 0;
+    const playableLinks = links.filter((link) => !/email|subscribe/i.test(`${link.platform || ""} ${link.label || ""}`));
+    const isPresave = release.status === "presave" && playableLinks.length === 0;
     const smartLink = release.presave_url || release.ffm_url;
     const loading = index === 0 ? "eager" : "lazy";
 

@@ -1,4 +1,4 @@
-import { id, isResponse, json, methodNotAllowed, optionalString, readJson, requireAdmin, requireDb, requiredString, slugify, type Env } from "../_shared";
+import { id, isResponse, json, methodNotAllowed, optionalString, readJson, requireAdmin, requireDb, requiredString, slugify, syncReleaseArtistCredits, type Env } from "../_shared";
 
 type ReleaseRow = {
   id: string;
@@ -44,16 +44,6 @@ async function replaceLinks(db: D1Database, releaseId: string, links: unknown) {
   }
 }
 
-async function replaceReleaseArtists(db: D1Database, releaseId: string, primaryArtistId: string | null) {
-  await db.prepare("DELETE FROM release_artists WHERE release_id = ?").bind(releaseId).run();
-  if (primaryArtistId) {
-    await db
-      .prepare("INSERT OR IGNORE INTO release_artists (release_id, artist_id, role) VALUES (?, ?, 'primary')")
-      .bind(releaseId, primaryArtistId)
-      .run();
-  }
-}
-
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const admin = await requireAdmin(request, env);
   if (isResponse(admin)) return admin;
@@ -70,10 +60,15 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 
   return json({
     ok: true,
-    releases: (releases.results ?? []).map((release) => ({
-      ...release,
-      platform_links: (links.results ?? []).filter((link) => link.release_id === release.id)
-    }))
+    releases: (releases.results ?? []).map((release) => {
+      const platformLinks = (links.results ?? []).filter((link) => link.release_id === release.id);
+      const playableLinks = platformLinks.filter((link) => !/email|subscribe/i.test(`${link.platform ?? ""} ${link.label ?? ""}`));
+      return {
+        ...release,
+        status: playableLinks.length > 0 ? "published" : "presave",
+        platform_links: platformLinks
+      };
+    })
   });
 };
 
@@ -122,7 +117,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     )
     .run();
 
-  await replaceReleaseArtists(db, releaseId, primaryArtistId);
+  const credits = await syncReleaseArtistCredits(db, releaseId, artistDisplay, primaryArtistId, optionalString(body.ffm_url, 2000));
+  await db.prepare("UPDATE releases SET primary_artist_id = ? WHERE id = ?").bind(credits.primaryArtistId, releaseId).run();
   await replaceLinks(db, releaseId, body.platform_links);
 
   return json({ ok: true, release: { id: releaseId, catalog_number: catalogNumber.toUpperCase(), slug, title } }, { status: 201 });

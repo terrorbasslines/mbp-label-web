@@ -1,4 +1,4 @@
-import { isResponse, json, methodNotAllowed, optionalString, readJson, requireAdmin, requireDb, requiredString, slugify, type Env } from "../../_shared";
+import { isResponse, json, methodNotAllowed, optionalString, readJson, requireAdmin, requireDb, requiredString, slugify, syncReleaseArtistCredits, type Env } from "../../_shared";
 
 async function replaceLinks(db: D1Database, releaseId: string, links: unknown) {
   await db.prepare("DELETE FROM release_platform_links WHERE release_id = ?").bind(releaseId).run();
@@ -71,10 +71,8 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
     )
     .run();
 
-  await db.prepare("DELETE FROM release_artists WHERE release_id = ?").bind(params.id).run();
-  if (primaryArtistId) {
-    await db.prepare("INSERT OR IGNORE INTO release_artists (release_id, artist_id, role) VALUES (?, ?, 'primary')").bind(params.id, primaryArtistId).run();
-  }
+  const credits = await syncReleaseArtistCredits(db, String(params.id), artistDisplay, primaryArtistId, optionalString(body.ffm_url, 2000));
+  await db.prepare("UPDATE releases SET primary_artist_id = ? WHERE id = ?").bind(credits.primaryArtistId, params.id).run();
   await replaceLinks(db, String(params.id), body.platform_links);
 
   return json({ ok: true });

@@ -60,7 +60,8 @@
 
   function isPresave(release) {
     const links = Array.isArray(release.platform_links) ? release.platform_links : [];
-    return release.status === "presave" || links.length === 0;
+    const playableLinks = links.filter((link) => !/email|subscribe/i.test(`${link.platform || ""} ${link.label || ""}`));
+    return release.status === "presave" && playableLinks.length === 0;
   }
 
   function searchableReleaseText(release) {

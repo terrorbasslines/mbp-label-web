@@ -100,10 +100,8 @@ export function parseFfmRelease(catalogNumber: string, ffmUrl: string, html: str
   }
 
   const platformLinks = [...links.values()];
-  const status =
-    platformLinks.length === 0 || /pre[- ]?save|pre[- ]?order|coming soon/i.test(description ?? normalized)
-      ? "presave"
-      : "published";
+  const publishedPlatformLinks = platformLinks.filter((link) => !/email|subscribe/i.test(`${link.platform} ${link.label}`));
+  const status = publishedPlatformLinks.length > 0 ? "published" : "presave";
 
   return {
     catalogNumber,

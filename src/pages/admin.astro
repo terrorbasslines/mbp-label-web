@@ -67,8 +67,9 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           <div class="grid gap-8 xl:grid-cols-[0.9fr_1.1fr]">
             <section class="surface rounded-lg p-5">
               <p class="eyebrow">Artists</p>
-              <h3 class="mt-2 font-display text-2xl font-black uppercase text-white">Add artist profile</h3>
+              <h3 class="mt-2 font-display text-2xl font-black uppercase text-white" data-artist-form-title>Add artist profile</h3>
               <form data-artist-form class="mt-5 grid gap-4">
+                <input name="id" type="hidden" data-artist-edit-id />
                 <label>
                   <span class="field-label">Name</span>
                   <input class="field-control" name="name" required />
@@ -93,8 +94,15 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                   <input name="is_featured" type="checkbox" />
                   Featured artist
                 </label>
-                <button class="rounded-md bg-white px-4 py-3 text-sm font-black uppercase text-black hover:bg-neon-cyan" type="submit">Save artist</button>
+                <div class="flex flex-wrap gap-2">
+                  <button class="rounded-md bg-white px-4 py-3 text-sm font-black uppercase text-black hover:bg-neon-cyan" data-artist-submit type="submit">Save artist</button>
+                  <button class="rounded-md border border-white/10 px-4 py-3 text-sm font-bold uppercase text-haze hover:border-neon-cyan hover:text-white" data-artist-cancel hidden type="button">Cancel edit</button>
+                </div>
               </form>
+              <label class="mt-6 block">
+                <span class="field-label">Search artists</span>
+                <input class="field-control" data-admin-artist-search type="search" placeholder="Search artist, country, role or profile" />
+              </label>
               <div class="mt-6 space-y-3" data-artists-list></div>
             </section>
 
@@ -171,8 +179,16 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           </section>
 
           <section class="surface rounded-lg p-5">
-            <p class="eyebrow">Catalogue</p>
-            <h3 class="mt-2 font-display text-2xl font-black uppercase text-white">Current releases</h3>
+            <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p class="eyebrow">Catalogue</p>
+                <h3 class="mt-2 font-display text-2xl font-black uppercase text-white">Current releases</h3>
+              </div>
+              <label class="w-full md:max-w-md">
+                <span class="field-label">Search releases</span>
+                <input class="field-control" data-admin-release-search type="search" placeholder="Search MBP185, artist or track title" />
+              </label>
+            </div>
             <div class="mt-5 grid gap-4 lg:grid-cols-2" data-releases-list></div>
           </section>
         </div>
@@ -192,9 +208,17 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   const submissionsList = document.querySelector("[data-submissions-list]");
   const artistSelect = document.querySelector("[data-artist-select]");
   const importStatus = document.querySelector("[data-import-status]");
+  const artistForm = document.querySelector("[data-artist-form]");
+  const artistFormTitle = document.querySelector("[data-artist-form-title]");
+  const artistSubmit = document.querySelector("[data-artist-submit]");
+  const artistCancel = document.querySelector("[data-artist-cancel]");
+  const adminArtistSearch = document.querySelector("[data-admin-artist-search]");
+  const adminReleaseSearch = document.querySelector("[data-admin-release-search]");
   let artists = [];
   let releases = [];
   let submissions = [];
+  let artistSearchTerm = "";
+  let releaseSearchTerm = "";
   let submissionCounts = { pending: 0, archived: 0, total: 0 };
   const pages = { artists: 1, releases: 1, submissions: 1 };
   const pageSizes = { artists: 10, releases: 8, submissions: 5 };
@@ -313,6 +337,54 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       .filter((link) => link.platform && link.url);
   }
 
+  function linksToText(links) {
+    return Array.isArray(links) ? links.map((link) => `${link.label || ""}|${link.url || ""}`).join("\n") : "";
+  }
+
+  function searchableText(values) {
+    return values.filter(Boolean).join(" ").toLowerCase();
+  }
+
+  function filteredArtists() {
+    const query = artistSearchTerm.trim().toLowerCase();
+    if (!query) return artists;
+    return artists.filter((artist) =>
+      searchableText([artist.name, artist.country, artist.profile, artist.claimed_email, artist.claimed_role]).includes(query)
+    );
+  }
+
+  function filteredReleases() {
+    const query = releaseSearchTerm.trim().toLowerCase();
+    if (!query) return releases;
+    return releases.filter((release) =>
+      searchableText([release.catalog_number, release.title, release.artist_display, release.status, release.genre, release.description]).includes(query)
+    );
+  }
+
+  function resetArtistEditor() {
+    if (!(artistForm instanceof HTMLFormElement)) return;
+    artistForm.reset();
+    artistForm.removeAttribute("data-editing-artist");
+    if (artistFormTitle) artistFormTitle.textContent = "Add artist profile";
+    if (artistSubmit) artistSubmit.textContent = "Save artist";
+    artistCancel?.setAttribute("hidden", "");
+  }
+
+  function startArtistEditor(artist) {
+    if (!(artistForm instanceof HTMLFormElement)) return;
+    artistForm.setAttribute("data-editing-artist", artist.id);
+    artistForm.elements.name.value = artist.name || "";
+    artistForm.elements.country.value = artist.country || "";
+    artistForm.elements.profile.value = artist.profile || "";
+    artistForm.elements.image_url.value = artist.image_url || "";
+    artistForm.elements.links.value = linksToText(artist.links || []);
+    artistForm.elements.is_featured.checked = Boolean(artist.is_featured);
+    if (artistFormTitle) artistFormTitle.textContent = `Edit ${artist.name}`;
+    if (artistSubmit) artistSubmit.textContent = "Update artist";
+    artistCancel?.removeAttribute("hidden");
+    artistForm.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   function renderStats() {
     if (!statsEl) return;
     const items = [
@@ -334,8 +406,9 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   function renderArtists() {
     if (!artistsList || !artistSelect) return;
     artistSelect.innerHTML = `<option value="">No linked artist</option>${artists.map((artist) => `<option value="${escapeHtml(artist.id)}">${escapeHtml(artist.name)}</option>`).join("")}`;
-    const items = pageItems(artists, "artists");
-    artistsList.innerHTML = artists.length
+    const filtered = filteredArtists();
+    const items = pageItems(filtered, "artists");
+    artistsList.innerHTML = filtered.length
       ? items
           .map(
             (artist) => {
@@ -350,6 +423,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                   </div>
                   <div class="flex flex-wrap gap-2">
                     <a class="text-xs font-bold uppercase text-neon-cyan hover:text-white" href="${escapeHtml(artistPath)}" target="_blank" rel="noreferrer">Profile</a>
+                    <button class="text-xs font-bold uppercase text-neon-cyan hover:text-white" data-edit-artist="${escapeHtml(artist.id)}" type="button">Edit</button>
                     <button class="text-xs font-bold uppercase text-neon-cyan hover:text-white" data-delete-artist="${escapeHtml(artist.id)}" type="button">Delete</button>
                   </div>
                 </div>
@@ -374,14 +448,15 @@ import BaseLayout from "../layouts/BaseLayout.astro";
             `;
             }
           )
-          .join("") + renderPager("artists", artists.length)
-      : `<p class="text-sm text-steel">No artists in D1 yet.</p>`;
+          .join("") + renderPager("artists", filtered.length)
+      : `<p class="text-sm text-steel">${artists.length ? "No artists match this search." : "No artists in D1 yet."}</p>`;
   }
 
   function renderReleases() {
     if (!releasesList) return;
-    const items = pageItems(releases, "releases");
-    releasesList.innerHTML = releases.length
+    const filtered = filteredReleases();
+    const items = pageItems(filtered, "releases");
+    releasesList.innerHTML = filtered.length
       ? items
           .map(
             (release) => {
@@ -409,8 +484,8 @@ import BaseLayout from "../layouts/BaseLayout.astro";
             `;
             }
           )
-          .join("") + renderPager("releases", releases.length)
-      : `<p class="text-sm text-steel">No releases in D1 yet. Use FFM import or add a catalogue item manually.</p>`;
+          .join("") + renderPager("releases", filtered.length)
+      : `<p class="text-sm text-steel">${releases.length ? "No releases match this search." : "No releases in D1 yet. Use FFM import or add a catalogue item manually."}</p>`;
   }
 
   function renderSubmissions() {
@@ -508,12 +583,13 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
   document.querySelector("[data-refresh]")?.addEventListener("click", loadDashboard);
 
-  document.querySelector("[data-artist-form]")?.addEventListener("submit", async (event) => {
+  artistForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
-    await api("/api/admin/artists", {
-      method: "POST",
+    const editingArtistId = form.getAttribute("data-editing-artist");
+    await api(editingArtistId ? `/api/admin/artists/${editingArtistId}` : "/api/admin/artists", {
+      method: editingArtistId ? "PUT" : "POST",
       body: JSON.stringify({
         name: formData.get("name"),
         country: formData.get("country"),
@@ -523,8 +599,22 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         is_featured: formData.get("is_featured") === "on"
       })
     });
-    form.reset();
+    resetArtistEditor();
     await loadDashboard();
+  });
+
+  artistCancel?.addEventListener("click", resetArtistEditor);
+
+  adminArtistSearch?.addEventListener("input", () => {
+    artistSearchTerm = adminArtistSearch.value || "";
+    pages.artists = 1;
+    renderArtists();
+  });
+
+  adminReleaseSearch?.addEventListener("input", () => {
+    releaseSearchTerm = adminReleaseSearch.value || "";
+    pages.releases = 1;
+    renderReleases();
   });
 
   document.querySelector("[data-release-form]")?.addEventListener("submit", async (event) => {
@@ -589,10 +679,17 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       if (form) form.dataset.status = decisionButton.getAttribute("data-status") || decisionButton.getAttribute("value") || "";
     }
 
+    const editArtistId = target.getAttribute("data-edit-artist");
     const artistId = target.getAttribute("data-delete-artist");
     const releaseId = target.getAttribute("data-delete-release");
+    if (editArtistId) {
+      const artist = artists.find((item) => item.id === editArtistId);
+      if (artist) startArtistEditor(artist);
+      return;
+    }
     if (artistId) {
       await api(`/api/admin/artists/${artistId}`, { method: "DELETE", body: "{}" });
+      resetArtistEditor();
       await loadDashboard();
     }
     if (releaseId) {

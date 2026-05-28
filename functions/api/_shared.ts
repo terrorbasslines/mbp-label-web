@@ -22,12 +22,65 @@ export type AdminSession = AppSession & { role: "admin" };
 
 const encoder = new TextEncoder();
 
-export function splitArtistNames(value: string) {
-  const seen = new Set<string>();
+export type ArtistCreditRole = "primary" | "collaborator" | "featured";
+
+export type ArtistCredit = {
+  name: string;
+  role: ArtistCreditRole;
+};
+
+const FEATURE_MARKER_PATTERN = /\s*(?:[\(\[]\s*)?(?:feat\.?|ft\.?|featuring)\s+/i;
+
+function cleanArtistCreditName(value: string) {
+  return value
+    .replace(/^[\s\(\[\{]+/g, "")
+    .replace(/[\s\)\]\}]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function splitArtistCreditPart(value: string) {
   return value
     .split(/\s*(?:&|,|\sx\s|\sX\s)\s*/)
-    .map((name) => name.trim())
-    .filter(Boolean)
+    .map(cleanArtistCreditName)
+    .filter(Boolean);
+}
+
+export function parseArtistCredits(value: string | null | undefined): ArtistCredit[] {
+  const normalized = String(value ?? "").replace(/\s+/g, " ").trim();
+  if (!normalized) return [];
+
+  const marker = normalized.match(FEATURE_MARKER_PATTERN);
+  const mainPart = marker?.index !== undefined ? normalized.slice(0, marker.index) : normalized;
+  const featuredPart = marker?.index !== undefined ? normalized.slice(marker.index + marker[0].length) : "";
+  const seen = new Set<string>();
+  const credits: ArtistCredit[] = [];
+
+  for (const name of splitArtistCreditPart(mainPart)) {
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    credits.push({ name, role: credits.length === 0 ? "primary" : "collaborator" });
+  }
+
+  for (const name of splitArtistCreditPart(featuredPart)) {
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    credits.push({ name, role: "featured" });
+  }
+
+  if (credits.length === 0 && normalized) {
+    credits.push({ name: cleanArtistCreditName(normalized), role: "primary" });
+  }
+
+  return credits;
+}
+
+export function splitArtistNames(value: string) {
+  const names = parseArtistCredits(value).map((credit) => credit.name);
+  const seen = new Set<string>();
+  return names
     .filter((name) => {
       const key = name.toLowerCase();
       if (seen.has(key)) return false;
@@ -37,7 +90,8 @@ export function splitArtistNames(value: string) {
 }
 
 export function isCollabArtistName(value: string | null | undefined) {
-  return splitArtistNames(String(value ?? "")).length > 1;
+  const text = String(value ?? "");
+  return FEATURE_MARKER_PATTERN.test(text) || parseArtistCredits(text).length > 1;
 }
 
 export function json(data: unknown, init: ResponseInit = {}) {
@@ -113,6 +167,65 @@ export function slugify(value: string) {
 
 export function id(prefix: string) {
   return `${prefix}_${crypto.randomUUID().replace(/-/g, "")}`;
+}
+
+async function upsertCreditArtist(db: D1Database, artistName: string, sourceUrl?: string | null) {
+  const slug = slugify(artistName);
+  let artist = await db
+    .prepare("SELECT id FROM artists WHERE lower(name) = lower(?) OR slug = ? LIMIT 1")
+    .bind(artistName, slug)
+    .first<{ id: string }>();
+
+  if (!artist) {
+    const artistId = id("art");
+    await db
+      .prepare(
+        `INSERT INTO artists (id, slug, name, profile, image_url, is_featured, updated_at)
+         VALUES (?, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP)`
+      )
+      .bind(artistId, slug, artistName, sourceUrl ? `Imported from ${sourceUrl}` : null, null)
+      .run();
+    artist = { id: artistId };
+  }
+
+  return artist;
+}
+
+export async function syncReleaseArtistCredits(
+  db: D1Database,
+  releaseId: string,
+  artistDisplay: string,
+  preferredPrimaryArtistId?: string | null,
+  sourceUrl?: string | null
+) {
+  const credits = parseArtistCredits(artistDisplay);
+  const linked: Array<{ id: string; role: ArtistCreditRole }> = [];
+
+  for (const credit of credits) {
+    const artist = await upsertCreditArtist(db, credit.name, sourceUrl);
+    linked.push({ id: artist.id, role: credit.role });
+  }
+
+  const primaryArtistId = preferredPrimaryArtistId || linked.find((artist) => artist.role === "primary")?.id || linked[0]?.id || null;
+
+  await db.prepare("DELETE FROM release_artists WHERE release_id = ?").bind(releaseId).run();
+
+  if (preferredPrimaryArtistId) {
+    await db
+      .prepare("INSERT OR IGNORE INTO release_artists (release_id, artist_id, role) VALUES (?, ?, 'primary')")
+      .bind(releaseId, preferredPrimaryArtistId)
+      .run();
+  }
+
+  for (const artist of linked) {
+    if (preferredPrimaryArtistId && artist.id === preferredPrimaryArtistId) continue;
+    await db
+      .prepare("INSERT OR IGNORE INTO release_artists (release_id, artist_id, role) VALUES (?, ?, ?)")
+      .bind(releaseId, artist.id, artist.role)
+      .run();
+  }
+
+  return { primaryArtistId, linkedArtists: new Set(linked.map((artist) => artist.id)).size };
 }
 
 function base64UrlEncode(input: string | ArrayBuffer) {

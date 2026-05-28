@@ -59,6 +59,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
        OR lower(r.artist_display) LIKE lower(?)
        OR lower(r.artist_display) LIKE lower(?)
        OR lower(r.artist_display) LIKE lower(?)
+       OR lower(r.artist_display) LIKE lower(?)
+       OR lower(r.artist_display) LIKE lower(?)
+       OR lower(r.artist_display) LIKE lower(?)
        OR lower(r.artist_display) LIKE lower(?))
        AND r.status IN ('published', 'presave')
      ORDER BY r.catalog_number DESC`
@@ -71,7 +74,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
       `% & ${artist.name}`,
       `${artist.name}, %`,
       `%, ${artist.name}, %`,
-      `%, ${artist.name}`
+      `%, ${artist.name}`,
+      `% feat. ${artist.name}%`,
+      `% ft. ${artist.name}%`,
+      `% featuring ${artist.name}%`
     )
     .all<ReleaseRow>();
 

@@ -1,34 +1,7 @@
 import { catalogNumberFromIndex, parseFfmRelease } from "../_ffm";
-import { id, isResponse, json, methodNotAllowed, readJson, requireAdmin, requireDb, slugify, splitArtistNames, type Env } from "../_shared";
-
-async function upsertArtist(db: D1Database, artistName: string, ffmUrl: string) {
-  const artistSlug = slugify(artistName);
-  let artist = await db.prepare("SELECT id FROM artists WHERE slug = ?").bind(artistSlug).first<{ id: string }>();
-  if (!artist) {
-    const artistId = id("art");
-    await db
-      .prepare(
-        `INSERT INTO artists (id, slug, name, profile, image_url, is_featured, updated_at)
-         VALUES (?, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP)`
-      )
-      .bind(artistId, artistSlug, artistName, `Imported from ${ffmUrl}`, null)
-      .run();
-    artist = { id: artistId };
-  }
-  return artist;
-}
+import { id, isResponse, json, methodNotAllowed, readJson, requireAdmin, requireDb, slugify, syncReleaseArtistCredits, type Env } from "../_shared";
 
 async function upsertParsedRelease(db: D1Database, parsed: NonNullable<ReturnType<typeof parseFfmRelease>>) {
-  const artistNames = splitArtistNames(parsed.artist);
-  const artistRows = [];
-  for (const artistName of artistNames) {
-    artistRows.push(await upsertArtist(db, artistName, parsed.ffmUrl));
-  }
-  if (artistRows.length === 0) {
-    artistRows.push(await upsertArtist(db, parsed.artist, parsed.ffmUrl));
-  }
-  const primaryArtist = artistRows[0];
-
   let release = await db.prepare("SELECT id FROM releases WHERE catalog_number = ?").bind(parsed.catalogNumber).first<{ id: string }>();
   const releaseId = release?.id ?? id("rel");
   const slug = slugify(`${parsed.catalogNumber}-${parsed.artist}-${parsed.trackTitle}`);
@@ -41,7 +14,7 @@ async function upsertParsedRelease(db: D1Database, parsed: NonNullable<ReturnTyp
              ffm_url = ?, presave_url = ?, status = ?, description = ?, updated_at = CURRENT_TIMESTAMP
          WHERE id = ?`
       )
-      .bind(slug, parsed.trackTitle, parsed.artist, primaryArtist.id, parsed.artworkUrl, parsed.ffmUrl, parsed.ffmUrl, parsed.status, parsed.description, releaseId)
+      .bind(slug, parsed.trackTitle, parsed.artist, null, parsed.artworkUrl, parsed.ffmUrl, parsed.ffmUrl, parsed.status, parsed.description, releaseId)
       .run();
   } else {
     await db
@@ -50,17 +23,12 @@ async function upsertParsedRelease(db: D1Database, parsed: NonNullable<ReturnTyp
          (id, catalog_number, slug, title, artist_display, primary_artist_id, release_type, artwork_url, ffm_url, presave_url, status, description, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, 'single', ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
       )
-      .bind(releaseId, parsed.catalogNumber, slug, parsed.trackTitle, parsed.artist, primaryArtist.id, parsed.artworkUrl, parsed.ffmUrl, parsed.ffmUrl, parsed.status, parsed.description)
+      .bind(releaseId, parsed.catalogNumber, slug, parsed.trackTitle, parsed.artist, null, parsed.artworkUrl, parsed.ffmUrl, parsed.ffmUrl, parsed.status, parsed.description)
       .run();
   }
 
-  await db.prepare("DELETE FROM release_artists WHERE release_id = ?").bind(releaseId).run();
-  for (let index = 0; index < artistRows.length; index += 1) {
-    await db
-      .prepare("INSERT OR IGNORE INTO release_artists (release_id, artist_id, role) VALUES (?, ?, ?)")
-      .bind(releaseId, artistRows[index].id, index === 0 ? "primary" : "collaborator")
-      .run();
-  }
+  const credits = await syncReleaseArtistCredits(db, releaseId, parsed.artist, null, parsed.ffmUrl);
+  await db.prepare("UPDATE releases SET primary_artist_id = ? WHERE id = ?").bind(credits.primaryArtistId, releaseId).run();
   await db.prepare("DELETE FROM release_platform_links WHERE release_id = ?").bind(releaseId).run();
 
   for (let index = 0; index < parsed.platformLinks.length; index += 1) {
@@ -74,7 +42,7 @@ async function upsertParsedRelease(db: D1Database, parsed: NonNullable<ReturnTyp
       .run();
   }
 
-  return { releaseId, artistId: primaryArtist.id, linkedArtists: artistRows.length, platformLinks: parsed.platformLinks.length };
+  return { releaseId, artistId: credits.primaryArtistId, linkedArtists: credits.linkedArtists, platformLinks: parsed.platformLinks.length };
 }
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
