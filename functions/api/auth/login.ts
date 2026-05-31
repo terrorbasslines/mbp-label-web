@@ -70,7 +70,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
   const token = await createSessionToken(env);
   return json(
-    { ok: true },
+    { ok: true, role: "admin", name: "Admin" },
     {
       headers: {
         "set-cookie": setSessionCookie(token)

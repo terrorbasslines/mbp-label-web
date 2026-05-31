@@ -29,7 +29,41 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           <button class="rounded-md bg-white px-5 py-3 text-sm font-black uppercase tracking-[0.14em] text-black hover:bg-neon-cyan" type="submit">
             Login
           </button>
+          <button class="justify-self-start text-sm font-bold text-neon-cyan hover:text-white" type="button" data-forgot-toggle>
+            Forgot password?
+          </button>
           <p class="text-sm text-steel" data-login-status>Use the login created from your artist claim invitation.</p>
+        </form>
+
+        <form data-forgot-form hidden class="surface mx-auto grid max-w-xl gap-4 rounded-lg p-6">
+          <p class="eyebrow">Password reset</p>
+          <p class="text-sm leading-6 text-steel">Enter the email used when you claimed your MBP artist profile. Reset links are sent only for claimed artist accounts.</p>
+          <label>
+            <span class="field-label">Email</span>
+            <input class="field-control" name="email" type="email" required autocomplete="email" />
+          </label>
+          <div class="flex flex-wrap gap-3">
+            <button class="rounded-md bg-white px-5 py-3 text-sm font-black uppercase tracking-[0.14em] text-black hover:bg-neon-cyan" type="submit">
+              Send reset link
+            </button>
+            <button class="rounded-md border border-white/10 px-5 py-3 text-sm font-bold uppercase tracking-[0.12em] text-haze hover:border-neon-cyan hover:text-white" type="button" data-forgot-cancel>
+              Back to login
+            </button>
+          </div>
+          <p class="text-sm text-steel" data-forgot-status></p>
+        </form>
+
+        <form data-reset-form hidden class="surface mx-auto grid max-w-xl gap-4 rounded-lg p-6">
+          <p class="eyebrow">Set new password</p>
+          <input name="token" type="hidden" />
+          <label>
+            <span class="field-label">New password</span>
+            <input class="field-control" name="password" type="password" minlength="8" required autocomplete="new-password" />
+          </label>
+          <button class="rounded-md bg-white px-5 py-3 text-sm font-black uppercase tracking-[0.14em] text-black hover:bg-neon-cyan" type="submit">
+            Reset password
+          </button>
+          <p class="text-sm text-steel" data-reset-status></p>
         </form>
 
         <div data-profile-panel hidden class="surface mx-auto max-w-3xl rounded-lg p-6">
@@ -58,22 +92,44 @@ import BaseLayout from "../layouts/BaseLayout.astro";
             </label>
             <label>
               <span class="field-label">Image URL</span>
-              <input class="field-control" name="image_url" type="url" />
+              <input class="field-control" name="image_url" type="text" inputmode="url" />
             </label>
             <label>
               <span class="field-label">Upload profile image</span>
               <input class="field-control" name="image_upload" type="file" accept="image/*" />
               <span class="mt-2 block text-xs leading-5 text-steel">Choose an image from your computer. It will be uploaded privately to Cloudflare R2 and used as your public profile image.</span>
             </label>
-            <label>
-              <span class="field-label">Official links, one per line: label|url</span>
-              <textarea class="field-control min-h-28" name="links"></textarea>
-            </label>
+            <fieldset class="rounded-lg border border-white/10 p-4">
+              <legend class="px-2 text-sm font-semibold text-haze">Official social links</legend>
+              <div class="grid gap-3 sm:grid-cols-2" data-social-fields>
+                {[
+                  ["spotify", "Spotify"],
+                  ["instagram", "Instagram"],
+                  ["youtube", "YouTube"],
+                  ["facebook", "Facebook"],
+                  ["soundcloud", "SoundCloud"],
+                  ["tiktok", "TikTok"],
+                  ["x", "X / Twitter"],
+                  ["threads", "Threads"],
+                  ["apple_music", "Apple Music"],
+                  ["beatport", "Beatport"],
+                  ["bandcamp", "Bandcamp"],
+                  ["audiomack", "Audiomack"],
+                  ["linktree", "Linktree"],
+                  ["website", "Website"]
+                ].map(([key, label]) => (
+                  <label>
+                    <span class="field-label">{label}</span>
+                    <input class="field-control" name={`link_${key}`} type="url" inputmode="url" placeholder={`https://`} />
+                  </label>
+                ))}
+              </div>
+            </fieldset>
             <div class="flex flex-wrap items-center gap-3">
               <button class="rounded-md bg-white px-5 py-3 text-sm font-black uppercase tracking-[0.14em] text-black hover:bg-neon-cyan" type="submit">
                 Save profile
               </button>
-              <a data-public-profile class="rounded-md border border-white/10 px-5 py-3 text-sm font-bold uppercase tracking-[0.12em] text-haze hover:border-neon-cyan hover:text-white" href="/artists">
+              <a data-public-profile class="rounded-md border border-white/10 px-5 py-3 text-sm font-bold uppercase tracking-[0.12em] text-haze hover:border-neon-cyan hover:text-white" href="/artists/">
                 View public profile
               </a>
             </div>
@@ -88,27 +144,56 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 <script>
   // @ts-nocheck
   const loginForm = document.querySelector("[data-artist-login]");
+  const forgotForm = document.querySelector("[data-forgot-form]");
+  const resetForm = document.querySelector("[data-reset-form]");
   const loginStatus = document.querySelector("[data-login-status]");
+  const forgotStatus = document.querySelector("[data-forgot-status]");
+  const resetStatus = document.querySelector("[data-reset-status]");
   const panel = document.querySelector("[data-profile-panel]");
   const profileForm = document.querySelector("[data-profile-form]");
   const profileStatus = document.querySelector("[data-profile-status]");
   const profileTitle = document.querySelector("[data-profile-title]");
   const publicProfile = document.querySelector("[data-public-profile]");
+  const resetToken = new URL(location.href).searchParams.get("reset");
 
-  function linksToText(links) {
-    return Array.isArray(links) ? links.map((link) => `${link.label}|${link.url}`).join("\n") : "";
+  const socialFields = [
+    { key: "spotify", label: "Spotify", aliases: ["spotify"] },
+    { key: "instagram", label: "Instagram", aliases: ["instagram", "ig"] },
+    { key: "youtube", label: "YouTube", aliases: ["youtube", "you tube"] },
+    { key: "facebook", label: "Facebook", aliases: ["facebook", "fb"] },
+    { key: "soundcloud", label: "SoundCloud", aliases: ["soundcloud", "sound cloud"] },
+    { key: "tiktok", label: "TikTok", aliases: ["tiktok", "tik tok"] },
+    { key: "x", label: "X / Twitter", aliases: ["x", "twitter", "x / twitter"] },
+    { key: "threads", label: "Threads", aliases: ["threads"] },
+    { key: "apple_music", label: "Apple Music", aliases: ["apple music", "apple", "itunes"] },
+    { key: "beatport", label: "Beatport", aliases: ["beatport"] },
+    { key: "bandcamp", label: "Bandcamp", aliases: ["bandcamp"] },
+    { key: "audiomack", label: "Audiomack", aliases: ["audiomack"] },
+    { key: "linktree", label: "Linktree", aliases: ["linktree"] },
+    { key: "website", label: "Website", aliases: ["website", "web", "official", "site"] }
+  ];
+
+  function normalizedLabel(value) {
+    return String(value || "").trim().toLowerCase().replace(/[_-]+/g, " ");
   }
 
-  function textToLinks(value) {
-    return String(value || "")
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => {
-        const [label, url] = line.split("|").map((item) => item.trim());
-        return { label, url };
-      })
-      .filter((link) => link.label && link.url);
+  function setSocialLinks(links) {
+    const list = Array.isArray(links) ? links : [];
+    for (const field of socialFields) {
+      const input = profileForm?.querySelector(`[name="link_${field.key}"]`);
+      if (!(input instanceof HTMLInputElement)) continue;
+      const found = list.find((link) => field.aliases.includes(normalizedLabel(link.label)));
+      input.value = found?.url || "";
+    }
+  }
+
+  function collectSocialLinks(formData) {
+    return socialFields
+      .map((field) => ({
+        label: field.label,
+        url: String(formData.get(`link_${field.key}`) || "").trim()
+      }))
+      .filter((link) => link.url);
   }
 
   function hideElement(element) {
@@ -121,6 +206,10 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     if (!element) return;
     element.hidden = false;
     element.style.display = display;
+  }
+
+  function dispatchAuth(role) {
+    window.dispatchEvent(new CustomEvent("mbp-auth-changed", { detail: { authenticated: true, role } }));
   }
 
   async function api(path, options = {}) {
@@ -153,6 +242,8 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     if (!data.artist) throw new Error("No artist profile is linked to this account yet.");
     const artist = data.artist;
     hideElement(loginForm);
+    hideElement(forgotForm);
+    hideElement(resetForm);
     showElement(panel);
     profileTitle.textContent = artist.name;
     profileForm.artist_id.value = artist.id;
@@ -161,7 +252,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     profileForm.profile.value = artist.profile || "";
     profileForm.image_url.value = artist.image_url || "";
     profileForm.image_upload.value = "";
-    profileForm.links.value = linksToText(artist.links);
+    setSocialLinks(artist.links);
     publicProfile.href = `/artist/${artist.slug}`;
   }
 
@@ -170,10 +261,11 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     const formData = new FormData(loginForm);
     loginStatus.textContent = "Logging in...";
     try {
-      await api("/api/auth/login", {
+      const result = await api("/api/auth/login", {
         method: "POST",
         body: JSON.stringify({ email: formData.get("email"), password: formData.get("password") })
       });
+      dispatchAuth(result.role || "artist");
       await loadProfile();
       loginStatus.textContent = "Logged in.";
     } catch (error) {
@@ -202,13 +294,64 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           country: formData.get("country"),
           profile: formData.get("profile"),
           image_url: imageUrl,
-          links: textToLinks(formData.get("links"))
+          links: collectSocialLinks(formData)
         })
       });
       profileStatus.textContent = "Profile saved.";
       await loadProfile();
     } catch (error) {
       profileStatus.textContent = error.message;
+    }
+  });
+
+  document.querySelector("[data-forgot-toggle]")?.addEventListener("click", () => {
+    const emailInput = loginForm?.querySelector('input[name="email"]');
+    const forgotEmail = forgotForm?.querySelector('input[name="email"]');
+    if (emailInput instanceof HTMLInputElement && forgotEmail instanceof HTMLInputElement) {
+      forgotEmail.value = emailInput.value;
+    }
+    hideElement(loginForm);
+    hideElement(panel);
+    showElement(forgotForm, "grid");
+  });
+
+  document.querySelector("[data-forgot-cancel]")?.addEventListener("click", () => {
+    hideElement(forgotForm);
+    showElement(loginForm, "grid");
+  });
+
+  forgotForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const formData = new FormData(forgotForm);
+    forgotStatus.textContent = "Sending reset link...";
+    try {
+      const result = await api("/api/auth/forgot-password", {
+        method: "POST",
+        body: JSON.stringify({ email: formData.get("email") })
+      });
+      forgotStatus.textContent =
+        result.email?.status === "account_not_claimed"
+          ? "No claimed artist account exists for this email."
+          : "If the email belongs to a claimed artist account, a reset link has been sent.";
+    } catch (error) {
+      forgotStatus.textContent = error.message;
+    }
+  });
+
+  resetForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const formData = new FormData(resetForm);
+    resetStatus.textContent = "Resetting password...";
+    try {
+      const result = await api("/api/auth/reset-password", {
+        method: "POST",
+        body: JSON.stringify({ token: formData.get("token"), password: formData.get("password") })
+      });
+      dispatchAuth(result.role || "artist");
+      resetStatus.textContent = "Password reset. Opening your dashboard...";
+      await loadProfile();
+    } catch (error) {
+      resetStatus.textContent = error.message;
     }
   });
 
@@ -219,11 +362,32 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
   api("/api/auth/me", { method: "GET", headers: {} })
     .then((session) => {
-      if (session.authenticated) return loadProfile();
+      if (session.authenticated) {
+        dispatchAuth(session.session?.role || "artist");
+        return loadProfile();
+      }
+      if (resetToken && resetForm instanceof HTMLFormElement) {
+        const tokenField = resetForm.querySelector('input[name="token"]');
+        if (tokenField instanceof HTMLInputElement) tokenField.value = resetToken;
+        hideElement(loginForm);
+        hideElement(forgotForm);
+        showElement(resetForm, "grid");
+        hideElement(panel);
+        return;
+      }
       showElement(loginForm, "grid");
       hideElement(panel);
     })
     .catch(() => {
+      if (resetToken && resetForm instanceof HTMLFormElement) {
+        const tokenField = resetForm.querySelector('input[name="token"]');
+        if (tokenField instanceof HTMLInputElement) tokenField.value = resetToken;
+        hideElement(loginForm);
+        hideElement(forgotForm);
+        showElement(resetForm, "grid");
+        hideElement(panel);
+        return;
+      }
       showElement(loginForm, "grid");
       hideElement(panel);
     });

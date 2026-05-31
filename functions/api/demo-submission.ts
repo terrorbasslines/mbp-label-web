@@ -1,4 +1,4 @@
-import { id, isResponse, json, methodNotAllowed, readJson, requireDb, requiredString, type Env } from "./_shared";
+import { id, isResponse, json, methodNotAllowed, readJson, requireDb, requiredString, sendDemoReceivedEmail, type Env } from "./_shared";
 
 function safeFileName(value: string) {
   return value
@@ -119,11 +119,25 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     .bind(submissionId, artistName, email, country, links, trackTitle, genre, streamingLink, message, uploadKey, uploadName, uploadType, uploadSize)
     .run();
 
+  const emailResult = await sendDemoReceivedEmail(env, { to: email, artistName, trackTitle });
+  await db
+    .prepare(
+      `UPDATE demo_submissions
+       SET demo_received_email_status = ?, demo_received_sent_at = CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP ELSE demo_received_sent_at END
+       WHERE id = ?`
+    )
+    .bind(emailResult.status, emailResult.sent ? 1 : 0, submissionId)
+    .run()
+    .catch(() => {
+      // Older deployments without the optional receipt columns should still accept demos.
+    });
+
   return json(
     {
       ok: true,
       id: submissionId,
       fileUploaded: Boolean(file),
+      email: emailResult,
       message: "Demo received. The MasterBeat Project will review it from the admin dashboard."
     },
     { status: 201 }

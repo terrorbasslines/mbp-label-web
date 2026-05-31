@@ -78,7 +78,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       }
       if (!response.ok || data.ok === false) throw new Error(data.error || "Claim failed.");
       status.textContent = "Account created. Opening artist dashboard...";
-      location.href = "/artist-dashboard";
+      location.href = "/artist-dashboard/";
     } catch (error) {
       status.textContent = error.message;
     }

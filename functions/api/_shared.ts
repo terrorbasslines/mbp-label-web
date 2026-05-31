@@ -468,6 +468,44 @@ export async function sendDemoDecisionEmail(env: Env, input: { to: string; artis
   return { sent: true, status: "email_sent" };
 }
 
+export async function sendDemoReceivedEmail(env: Env, input: { to: string; artistName: string; trackTitle: string }) {
+  const config = emailConfig(env);
+  if (!config.ok) {
+    return { sent: false, status: config.status };
+  }
+
+  const text = [
+    `Hi ${input.artistName},`,
+    "",
+    `Your demo "${input.trackTitle}" was successfully received by The MasterBeat Project.`,
+    "",
+    "Our A&R team will listen as soon as possible. When the review is complete, you will receive an approval or rejection update by email.",
+    "",
+    "The MasterBeat Project"
+  ].join("\n");
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${config.apiKey}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      from: config.from,
+      to: input.to,
+      reply_to: config.replyTo,
+      subject: `Demo received: ${input.trackTitle}`,
+      text
+    })
+  });
+
+  if (!response.ok) {
+    return { sent: false, status: emailFailureStatus(response.status) };
+  }
+
+  return { sent: true, status: "demo_received_email_sent" };
+}
+
 export async function sendArtistInviteEmail(env: Env, input: { to: string; artistName: string; claimUrl: string; role: string }) {
   const config = emailConfig(env);
   if (!config.ok) {
@@ -506,4 +544,44 @@ export async function sendArtistInviteEmail(env: Env, input: { to: string; artis
   }
 
   return { sent: true, status: "email_sent" };
+}
+
+export async function sendPasswordResetEmail(env: Env, input: { to: string; name: string; resetUrl: string }) {
+  const config = emailConfig(env);
+  if (!config.ok) {
+    return { sent: false, status: config.status };
+  }
+
+  const text = [
+    `Hi ${input.name},`,
+    "",
+    "A password reset was requested for your The MasterBeat Project artist account.",
+    "",
+    `Reset your password here: ${input.resetUrl}`,
+    "",
+    "This private reset link expires in 60 minutes. If you did not request it, you can ignore this email.",
+    "",
+    "The MasterBeat Project"
+  ].join("\n");
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${config.apiKey}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      from: config.from,
+      to: input.to,
+      reply_to: config.replyTo,
+      subject: "Reset your The MasterBeat Project password",
+      text
+    })
+  });
+
+  if (!response.ok) {
+    return { sent: false, status: emailFailureStatus(response.status) };
+  }
+
+  return { sent: true, status: "password_reset_email_sent" };
 }

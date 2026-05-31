@@ -19,12 +19,12 @@ function urlEntry(path: string, priority: string, changefreq: string, lastmod?: 
 export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   const staticUrls = [
     urlEntry("/", "1.0", "weekly"),
-    urlEntry("/releases", "0.9", "daily"),
-    urlEntry("/artists", "0.9", "daily"),
-    urlEntry("/demo-submission", "0.8", "monthly"),
-    urlEntry("/about", "0.7", "monthly"),
-    urlEntry("/contact", "0.6", "monthly"),
-    urlEntry("/privacy-policy", "0.2", "yearly")
+    urlEntry("/releases/", "0.9", "daily"),
+    urlEntry("/artists/", "0.9", "daily"),
+    urlEntry("/demo-submission/", "0.8", "monthly"),
+    urlEntry("/about/", "0.7", "monthly"),
+    urlEntry("/contact/", "0.6", "monthly"),
+    urlEntry("/privacy-policy/", "0.2", "yearly")
   ];
 
   let dynamicUrls: string[] = [];

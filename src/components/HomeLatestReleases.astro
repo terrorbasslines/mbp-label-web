@@ -6,7 +6,7 @@
         <p class="eyebrow">Upcoming pre-saves</p>
         <h3 class="mt-2 font-display text-3xl font-black uppercase leading-none text-white sm:text-4xl">Open MBP pre-saves</h3>
       </div>
-      <a class="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-haze transition hover:border-neon-cyan hover:text-white" href="/releases">
+      <a class="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-haze transition hover:border-neon-cyan hover:text-white" href="/releases/">
         View catalogue
       </a>
     </div>
@@ -21,6 +21,9 @@
   const homePresaveSection = document.querySelector("[data-home-presave-section]");
   const homePresaveGrid = document.querySelector("[data-home-presave-grid]");
   const homeStaticReleases = document.querySelector("[data-home-static-releases]");
+  const homeCountCards = [...document.querySelectorAll("[data-home-count-card]")];
+  const homeArtistCount = document.querySelector("[data-home-artist-count]");
+  const homeReleaseCount = document.querySelector("[data-home-release-count]");
 
   const escapeLatestHtml = (value) =>
     String(value ?? "")
@@ -63,6 +66,13 @@
     `;
   }
 
+  function updateHomeCounts(counts) {
+    if (!counts) return;
+    if (homeArtistCount) homeArtistCount.textContent = String(counts.artists ?? 0);
+    if (homeReleaseCount) homeReleaseCount.textContent = String(counts.releases ?? 0);
+    homeCountCards.forEach((card) => card.classList.remove("hidden"));
+  }
+
   async function loadHomeLatestReleases() {
     if (!homeLatestLive || !homePublishedGrid) return;
 
@@ -73,11 +83,13 @@
       const presaves = Array.isArray(data.presaves) ? data.presaves.slice(0, 4) : [];
       if (!data.ok || (published.length === 0 && presaves.length === 0)) {
         homeStaticReleases?.classList.remove("hidden");
+        updateHomeCounts(data.counts);
         return;
       }
 
       homeLatestLive.classList.remove("hidden");
       homeStaticReleases?.classList.add("hidden");
+      updateHomeCounts(data.counts);
       homePublishedGrid.innerHTML = published.map(renderHomeRelease).join("");
 
       if (presaves.length > 0 && homePresaveSection && homePresaveGrid) {

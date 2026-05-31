@@ -4,6 +4,10 @@ import { navItems, siteConfig } from "../data/site";
 const pathname = Astro.url.pathname.replace(/\/$/, "") || "/";
 const loginActive = pathname === "/artist-dashboard";
 const adminActive = pathname === "/admin";
+
+function normalizeHref(href: string) {
+  return href.replace(/\/$/, "") || "/";
+}
 ---
 
 <header class="sticky top-0 z-40 border-b border-white/10 bg-obsidian/82 backdrop-blur-xl">
@@ -21,7 +25,8 @@ const adminActive = pathname === "/admin";
     <nav aria-label="Primary navigation" class="flex flex-wrap items-center gap-1.5">
       {
         navItems.map((item) => {
-          const active = item.href === "/" ? pathname === "/" : pathname === item.href;
+          const itemPath = normalizeHref(item.href);
+          const active = itemPath === "/" ? pathname === "/" : pathname === itemPath;
           return (
             <a
               href={item.href}
@@ -37,7 +42,7 @@ const adminActive = pathname === "/admin";
       }
       <span class="contents" data-auth-nav>
         <a
-          href="/artist-dashboard"
+          href="/artist-dashboard/"
           data-nav-login
           class:list={[
             "rounded-md px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] transition duration-200",
@@ -47,7 +52,7 @@ const adminActive = pathname === "/admin";
           Login
         </a>
         <a
-          href="/artist-dashboard"
+          href="/artist-dashboard/"
           data-nav-dashboard
           hidden
           class:list={[
@@ -58,7 +63,7 @@ const adminActive = pathname === "/admin";
           Artist Dashboard
         </a>
         <a
-          href="/admin"
+          href="/admin/"
           data-nav-admin
           hidden
           class:list={[
@@ -79,14 +84,19 @@ const adminActive = pathname === "/admin";
   const dashboardLink = authNav?.querySelector("[data-nav-dashboard]");
   const adminLink = authNav?.querySelector("[data-nav-admin]");
 
+  function applyAuthNav(data: unknown) {
+    const sessionData = data as { authenticated?: boolean; session?: { role?: string }; role?: string };
+    const authenticated = Boolean(sessionData?.authenticated || sessionData?.role);
+    const role = sessionData?.session?.role || sessionData?.role;
+    if (loginLink instanceof HTMLElement) loginLink.hidden = authenticated;
+    if (dashboardLink instanceof HTMLElement) dashboardLink.hidden = !authenticated;
+    if (adminLink instanceof HTMLElement) adminLink.hidden = !(authenticated && role === "admin");
+  }
+
+  window.addEventListener("mbp-auth-changed", (event) => applyAuthNav((event as CustomEvent).detail || {}));
+
   fetch("/api/auth/me", { cache: "no-store", headers: { "cache-control": "no-cache" } })
     .then((response) => response.json())
-    .then((data) => {
-      const sessionData = data as { authenticated?: boolean; session?: { role?: string } };
-      if (!sessionData?.authenticated) return;
-      if (loginLink instanceof HTMLElement) loginLink.hidden = true;
-      if (dashboardLink instanceof HTMLElement) dashboardLink.hidden = false;
-      if (adminLink instanceof HTMLElement && sessionData.session?.role === "admin") adminLink.hidden = false;
-    })
+    .then(applyAuthNav)
     .catch(() => {});
 </script>

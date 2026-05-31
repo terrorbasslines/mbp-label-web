@@ -22,11 +22,11 @@ export const siteConfig = {
 
 export const navItems = [
   { label: "Home", href: "/" },
-  { label: "Releases", href: "/releases" },
-  { label: "Artists", href: "/artists" },
-  { label: "Demo Submission", href: "/demo-submission" },
-  { label: "About", href: "/about" },
-  { label: "Contact", href: "/contact" }
+  { label: "Releases", href: "/releases/" },
+  { label: "Artists", href: "/artists/" },
+  { label: "Demo Submission", href: "/demo-submission/" },
+  { label: "About", href: "/about/" },
+  { label: "Contact", href: "/contact/" }
 ];
 
 export const releases = [
@@ -110,7 +110,7 @@ export const artists = [
 export const labelStats = [
   { value: "Global", label: "digital release mindset" },
   { value: "Hard", label: "dance-first catalogue focus" },
-  { value: "Clean", label: "metadata and artwork pipeline" }
+  { value: "Clean", label: "metadata and artist-first release pipeline" }
 ];
 
 export type Release = (typeof releases)[number];

@@ -56,12 +56,12 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                 </label>
                 <label>
                   <span class="field-label">To</span>
-                  <input class="field-control w-28" name="to" type="number" min="1" value="25" required />
+                  <input class="field-control w-28" name="to" type="number" min="1" max="1000" value="25" required />
                 </label>
                 <button class="mb-0.5 rounded-md bg-white px-4 py-3 text-sm font-black uppercase text-black hover:bg-neon-cyan" type="submit">Import</button>
               </form>
             </div>
-            <p class="mt-3 text-sm text-steel" data-import-status>Imports https://ffm.to/mbp001 style links in batches of 25 max.</p>
+            <p class="mt-3 text-sm text-steel" data-import-status>Imports https://ffm.to/mbp001 to https://ffm.to/mbp1000 style links in batches of 25 max.</p>
           </section>
 
           <div class="grid gap-8 xl:grid-cols-[0.9fr_1.1fr]">
@@ -84,7 +84,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                 </label>
                 <label>
                   <span class="field-label">Image URL</span>
-                  <input class="field-control" name="image_url" type="url" />
+                  <input class="field-control" name="image_url" type="text" inputmode="url" />
                 </label>
                 <label>
                   <span class="field-label">Links, one per line: label|url</span>
@@ -171,7 +171,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                 <p class="eyebrow">Demo inbox</p>
                 <h3 class="mt-2 font-display text-2xl font-black uppercase text-white">Pending submissions</h3>
               </div>
-              <a class="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-haze transition hover:border-neon-cyan hover:text-white" href="/admin/demo-archive">
+              <a class="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-haze transition hover:border-neon-cyan hover:text-white" href="/admin/demo-archive/">
                 Archive demos
               </a>
             </div>
@@ -289,6 +289,10 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     return data;
   }
 
+  function dispatchAuth(role = "admin") {
+    window.dispatchEvent(new CustomEvent("mbp-auth-changed", { detail: { authenticated: true, role } }));
+  }
+
   function pageItems(items, kind) {
     const totalPages = Math.max(1, Math.ceil(items.length / pageSizes[kind]));
     pages[kind] = Math.min(Math.max(1, pages[kind]), totalPages);
@@ -391,7 +395,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       { label: "Artists", value: artists.length },
       { label: "Releases", value: releases.length },
       { label: "Pending demos", value: submissionCounts.pending },
-      { label: "Archive demos", value: submissionCounts.archived, href: "/admin/demo-archive" }
+      { label: "Archive demos", value: submissionCounts.archived, href: "/admin/demo-archive/" }
     ];
     statsEl.innerHTML = items
       .map((item) => {
@@ -552,6 +556,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     try {
       const session = await api("/api/admin/session", { method: "GET", headers: {} });
       if (session.authenticated) {
+        dispatchAuth("admin");
         loginForm?.setAttribute("hidden", "");
         dashboard?.removeAttribute("hidden");
         await loadDashboard();
@@ -567,6 +572,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     const formData = new FormData(loginForm);
     try {
       await api("/api/auth/login", { method: "POST", body: JSON.stringify({ password: formData.get("password") }) });
+      dispatchAuth("admin");
       loginStatus.textContent = "Logged in.";
       loginForm.setAttribute("hidden", "");
       dashboard?.removeAttribute("hidden");

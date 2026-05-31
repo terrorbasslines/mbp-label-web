@@ -53,8 +53,8 @@ export function notFoundPage(title = "Page not found") {
           <h1>Page not found</h1>
           <p>The page is not available. Return to the official MBP catalogue or artist roster.</p>
           <div class="actions">
-            <a href="/releases">Releases</a>
-            <a href="/artists">Artists</a>
+            <a href="/releases/">Releases</a>
+            <a href="/artists/">Artists</a>
           </div>
         </section>
       `
@@ -122,7 +122,7 @@ export function pageShell(input: {
     </style>
   </head>
   <body>
-    <header class="top"><div class="wrap"><a class="brand" href="/"><img src="/assets/brand/logo-clear.png" alt="" /><span><strong>The MasterBeat</strong><span class="sub">Project</span></span></a><nav class="nav"><a href="/">Home</a><a href="/releases">Releases</a><a href="/artists">Artists</a><a href="/demo-submission">Demo Submission</a><a href="/about">About</a><a href="/contact">Contact</a><a href="/artist-dashboard">Login</a></nav></div></header>
+    <header class="top"><div class="wrap"><a class="brand" href="/"><img src="/assets/brand/logo-clear.png" alt="" /><span><strong>The MasterBeat</strong><span class="sub">Project</span></span></a><nav class="nav"><a href="/">Home</a><a href="/releases/">Releases</a><a href="/artists/">Artists</a><a href="/demo-submission/">Demo Submission</a><a href="/about/">About</a><a href="/contact/">Contact</a><a href="/artist-dashboard/">Login</a></nav></div></header>
     <main class="wrap">${input.content}</main>
     <footer class="footer"><div class="wrap">${SITE_NAME} - Hardstyle, hard dance and electronic music label.</div></footer>
   </body>

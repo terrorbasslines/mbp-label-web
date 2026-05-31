@@ -160,7 +160,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
       "@type": "BreadcrumbList",
       itemListElement: [
         { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
-        { "@type": "ListItem", position: 2, name: "Releases", item: `${SITE_URL}/releases` },
+        { "@type": "ListItem", position: 2, name: "Releases", item: `${SITE_URL}/releases/` },
         { "@type": "ListItem", position: 3, name: release.title, item: `${SITE_URL}${canonicalPath}` }
       ]
     }
@@ -218,11 +218,11 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
               )
               .join("")}
             <div class="actions">
-              <a href="/releases">All releases</a>
+              <a href="/releases/">All releases</a>
               ${
                 artists.length
                   ? artists.map((artist) => `<a href="/artist/${escapeHtml(artist.slug)}">All releases by ${escapeHtml(artist.name)}</a>`).join("")
-                  : `<a href="/artists">Artists</a>`
+                  : `<a href="/artists/">Artists</a>`
               }
             </div>
           </article>

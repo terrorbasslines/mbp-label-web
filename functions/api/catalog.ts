@@ -157,7 +157,21 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, waitUntil
   if (view === "home") {
     const published = publicReleases.filter((release) => release.status !== "presave").slice(0, 4);
     const presaves = publicReleases.filter((release) => release.status === "presave").slice(0, 4);
-    return json({ ok: true, artists: [], releases: published, presaves }, { headers: cacheHeaders });
+    return json(
+      {
+        ok: true,
+        artists: [],
+        releases: published,
+        presaves,
+        counts: {
+          artists: publicArtists.length,
+          releases: publicReleases.length,
+          published: publicReleases.filter((release) => release.status !== "presave").length,
+          presaves: publicReleases.filter((release) => release.status === "presave").length
+        }
+      },
+      { headers: cacheHeaders }
+    );
   }
 
   return json({

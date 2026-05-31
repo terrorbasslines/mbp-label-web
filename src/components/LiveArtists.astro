@@ -61,7 +61,7 @@
             ${artist.image_url ? `<img class="h-20 w-20 rounded-md border border-white/10 object-cover" src="${escapeArtistHtml(artist.image_url)}" alt="" loading="lazy" decoding="async" />` : `<div class="grid h-20 w-20 place-items-center rounded-md border border-white/10 bg-black font-display text-3xl font-black text-white">${escapeArtistHtml(String(artist.name || "?").slice(0, 1))}</div>`}
           </a>
           <div>
-            <p class="text-xs font-bold uppercase tracking-[0.18em] text-neon-cyan">${artist.is_featured ? "Featured artist" : "Artist"}</p>
+            <p class="text-xs font-bold uppercase tracking-[0.18em] text-neon-cyan">Artist</p>
             <h3 class="mt-2 font-display text-3xl font-black uppercase leading-none text-white"><a class="hover:text-neon-cyan" href="${escapeArtistHtml(artistPath)}">${escapeArtistHtml(artist.name)}</a></h3>
             <p class="mt-1 text-sm text-steel">${escapeArtistHtml(artist.country || "The MasterBeat Project")}</p>
           </div>

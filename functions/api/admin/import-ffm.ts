@@ -60,6 +60,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   if (!Number.isInteger(from) || !Number.isInteger(to) || from < 1 || to < from) {
     return json({ ok: false, error: "from and to must be valid MBP numeric ranges." }, { status: 400 });
   }
+  if (to > 1000) {
+    return json({ ok: false, error: "FFM import is limited to MBP1000 for this dashboard." }, { status: 400 });
+  }
   if (to - from > 24) {
     return json({ ok: false, error: "Import max 25 releases at a time to avoid Cloudflare timeout. Run multiple batches." }, { status: 400 });
   }

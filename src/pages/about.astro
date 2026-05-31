@@ -8,7 +8,7 @@ const aboutJsonLd = {
   "@context": "https://schema.org",
   "@type": "AboutPage",
   name: "About The MasterBeat Project",
-  url: `${siteConfig.url}/about`,
+  url: `${siteConfig.url}/about/`,
   description:
     "Information about The MasterBeat Project, a hardstyle, hard dance and electronic music label with a premium dark visual identity."
 };
@@ -24,9 +24,9 @@ const aboutJsonLd = {
     <div class="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-black/35"></div>
     <div class="section-shell relative">
       <p class="eyebrow">About</p>
-      <h1 class="page-title mt-4">The label identity</h1>
+      <h1 class="page-title mt-4">The MasterBeat Project identity</h1>
       <p class="mt-6 max-w-3xl text-lg leading-8 text-haze">
-        The MasterBeat Project is shaped around harder electronic music, strong visual direction and release presentation that feels serious enough for artists, promoters and listeners.
+        The MasterBeat Project is a hardstyle, hard dance and electronic music label focused on high-energy releases, clear artist presentation and a premium digital catalogue.
       </p>
     </div>
   </section>
@@ -36,10 +36,10 @@ const aboutJsonLd = {
       <SectionHeader eyebrow="Mission" title="A sharper home for hard electronic music" />
       <div class="space-y-5 text-pretty text-lg leading-8 text-haze">
         <p>
-          The label website is designed as a public foundation for releases, artist pages, demo review and future administrative tooling.
+          MBP exists to give harder electronic music a label home that feels direct, serious and ready for global discovery. Every release needs a clear identity: catalogue number, artwork, artist credit, smart link, platform links and a public page search engines can understand.
         </p>
         <p>
-          The visual language keeps the MBP mark at the center: dark stage environments, high-contrast typography and controlled electric accents that support the music instead of distracting from it.
+          The label combines a dark stage-inspired visual language with a practical release pipeline for A&R, demo review, artist profiles and long-term catalogue growth. The goal is simple: make strong music easier to find, present and build around.
         </p>
       </div>
     </div>
@@ -48,9 +48,9 @@ const aboutJsonLd = {
   <section class="border-y border-white/10 bg-black/40 py-20">
     <div class="section-shell grid gap-5 md:grid-cols-3">
       {[
-        ["Artist-first", "Clear paths for demo review, artist profiles and release presentation."],
-        ["Catalogue-ready", "Reusable data structures for releases, metadata, artwork and streaming links."],
-        ["Cloudflare-ready", "Prepared for Pages, Functions, D1 metadata storage and R2 file handling."]
+        ["Artist-first", "Artists can claim profiles, manage social links and build a public release history connected to the MBP catalogue."],
+        ["Catalogue-ready", "Releases are structured around MBP numbers, artwork, credits, platform links, pre-saves and published status."],
+        ["Industry-ready", "The site is designed for listeners, search engines, promoters, artists and internal A&R work, not as a generic EDM template."]
       ].map(([title, copy]) => (
         <div class="rounded-lg border border-white/10 bg-carbon/70 p-6">
           <h2 class="font-display text-3xl font-black uppercase text-white">{title}</h2>
@@ -64,8 +64,8 @@ const aboutJsonLd = {
     <div class="section-shell flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
       <SectionHeader eyebrow="Next step" title="Send music or contact the label" />
       <div class="flex flex-col gap-3 sm:flex-row">
-        <ButtonLink href="/demo-submission">Submit Demo</ButtonLink>
-        <ButtonLink href="/contact" variant="secondary">Contact</ButtonLink>
+        <ButtonLink href="/demo-submission/">Submit Demo</ButtonLink>
+        <ButtonLink href="/contact/" variant="secondary">Contact</ButtonLink>
       </div>
     </div>
   </section>

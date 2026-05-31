@@ -109,7 +109,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
       "@type": "BreadcrumbList",
       itemListElement: [
         { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
-        { "@type": "ListItem", position: 2, name: "Artists", item: `${SITE_URL}/artists` },
+        { "@type": "ListItem", position: 2, name: "Artists", item: `${SITE_URL}/artists/` },
         { "@type": "ListItem", position: 3, name: artist.name, item: `${SITE_URL}${canonicalPath}` }
       ]
     }
@@ -154,8 +154,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
               }
             </div>
             <div class="actions">
-              <a href="/artists">All artists</a>
-              <a href="/releases">All releases</a>
+              <a href="/artists/">All artists</a>
+              <a href="/releases/">All releases</a>
             </div>
           </article>
         </section>
