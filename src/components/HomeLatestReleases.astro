@@ -40,9 +40,11 @@
     const isPresave = release.status === "presave" && playableLinks.length === 0;
     const smartLink = release.presave_url || release.ffm_url;
     const loading = index === 0 ? "eager" : "lazy";
+    const regionColor = release.mbp_region_color || "#bd00ff";
+    const regionLabel = release.mbp_region_label || "MBP World";
 
     return `
-      <article class="group clip-diagonal relative overflow-hidden border border-white/10 bg-graphite/90">
+      <article class="group clip-diagonal relative overflow-hidden border bg-graphite/90" style="border-color:${escapeLatestHtml(regionColor)}55; box-shadow:0 0 24px ${escapeLatestHtml(regionColor)}1a;">
         <div class="relative grid min-h-full grid-rows-[auto_1fr]">
           <a class="aspect-square overflow-hidden border-b border-white/10 bg-black/70" href="${escapeLatestHtml(releasePath)}">
             ${
@@ -53,6 +55,7 @@
           </a>
           <div class="p-5">
             <p class="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-neon-cyan">${escapeLatestHtml(release.catalog_number)} | ${isPresave ? "Pre-save" : "Published"}</p>
+            <p class="mt-2 inline-flex rounded border px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.14em]" style="border-color:${escapeLatestHtml(regionColor)}66; color:${escapeLatestHtml(regionColor)}">${escapeLatestHtml(regionLabel)}</p>
             <h3 class="mt-3 font-display text-2xl font-black uppercase leading-none text-white"><a class="hover:text-neon-cyan" href="${escapeLatestHtml(releasePath)}">${escapeLatestHtml(release.title)}</a></h3>
             <p class="mt-2 text-sm font-semibold text-haze">${escapeLatestHtml(release.artist_display)}</p>
             <p class="mt-4 text-sm leading-6 text-steel">${isPresave ? "Pre-save is open. Streaming platform links update automatically when FFM publishes destinations." : "Choose your preferred streaming service or open the full MBP release page."}</p>
@@ -77,7 +80,7 @@
     if (!homeLatestLive || !homePublishedGrid) return;
 
     try {
-      const response = await fetch("/api/catalog?view=home", { cache: "force-cache" });
+      const response = await fetch("/api/catalog?view=home", { cache: "no-store" });
       const data = await response.json();
       const published = Array.isArray(data.releases) ? data.releases.slice(0, 4) : [];
       const presaves = Array.isArray(data.presaves) ? data.presaves.slice(0, 4) : [];

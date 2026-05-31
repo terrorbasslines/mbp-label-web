@@ -1,5 +1,18 @@
 import { catalogNumberFromIndex, parseFfmRelease } from "../_ffm";
-import { id, isResponse, json, methodNotAllowed, readJson, requireAdmin, requireDb, slugify, syncReleaseArtistCredits, type Env } from "../_shared";
+import { id, inferReleaseRegion, isResponse, json, methodNotAllowed, readJson, requireAdmin, requireDb, slugify, syncReleaseArtistCredits, type Env } from "../_shared";
+
+async function releaseRegionFromCredits(db: D1Database, releaseId: string) {
+  const regions = await db
+    .prepare(
+      `SELECT a.mbp_region
+       FROM release_artists ra
+       INNER JOIN artists a ON a.id = ra.artist_id
+       WHERE ra.release_id = ?`
+    )
+    .bind(releaseId)
+    .all<{ mbp_region: string }>();
+  return inferReleaseRegion((regions.results ?? []).map((row) => row.mbp_region));
+}
 
 async function upsertParsedRelease(db: D1Database, parsed: NonNullable<ReturnType<typeof parseFfmRelease>>) {
   let release = await db.prepare("SELECT id FROM releases WHERE catalog_number = ?").bind(parsed.catalogNumber).first<{ id: string }>();
@@ -11,7 +24,7 @@ async function upsertParsedRelease(db: D1Database, parsed: NonNullable<ReturnTyp
       .prepare(
         `UPDATE releases
          SET slug = ?, title = ?, artist_display = ?, primary_artist_id = ?, release_type = 'single', artwork_url = ?,
-             ffm_url = ?, presave_url = ?, status = ?, description = ?, updated_at = CURRENT_TIMESTAMP
+             ffm_url = ?, presave_url = ?, status = ?, mbp_region = 'world', description = ?, updated_at = CURRENT_TIMESTAMP
          WHERE id = ?`
       )
       .bind(slug, parsed.trackTitle, parsed.artist, null, parsed.artworkUrl, parsed.ffmUrl, parsed.ffmUrl, parsed.status, parsed.description, releaseId)
@@ -20,15 +33,16 @@ async function upsertParsedRelease(db: D1Database, parsed: NonNullable<ReturnTyp
     await db
       .prepare(
         `INSERT INTO releases
-         (id, catalog_number, slug, title, artist_display, primary_artist_id, release_type, artwork_url, ffm_url, presave_url, status, description, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, 'single', ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
+         (id, catalog_number, slug, title, artist_display, primary_artist_id, release_type, artwork_url, ffm_url, presave_url, status, mbp_region, description, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'single', ?, ?, ?, ?, 'world', ?, CURRENT_TIMESTAMP)`
       )
       .bind(releaseId, parsed.catalogNumber, slug, parsed.trackTitle, parsed.artist, null, parsed.artworkUrl, parsed.ffmUrl, parsed.ffmUrl, parsed.status, parsed.description)
       .run();
   }
 
   const credits = await syncReleaseArtistCredits(db, releaseId, parsed.artist, null, parsed.ffmUrl);
-  await db.prepare("UPDATE releases SET primary_artist_id = ? WHERE id = ?").bind(credits.primaryArtistId, releaseId).run();
+  const mbpRegion = await releaseRegionFromCredits(db, releaseId);
+  await db.prepare("UPDATE releases SET primary_artist_id = ?, mbp_region = ? WHERE id = ?").bind(credits.primaryArtistId, mbpRegion, releaseId).run();
   await db.prepare("DELETE FROM release_platform_links WHERE release_id = ?").bind(releaseId).run();
 
   for (let index = 0; index < parsed.platformLinks.length; index += 1) {

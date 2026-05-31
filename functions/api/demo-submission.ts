@@ -1,4 +1,4 @@
-import { id, isResponse, json, methodNotAllowed, readJson, requireDb, requiredString, sendDemoReceivedEmail, type Env } from "./_shared";
+import { id, isResponse, json, methodNotAllowed, readJson, requireDb, requiredString, sendDemoNotificationEmail, sendDemoReceivedEmail, type Env } from "./_shared";
 
 function safeFileName(value: string) {
   return value
@@ -119,17 +119,31 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     .bind(submissionId, artistName, email, country, links, trackTitle, genre, streamingLink, message, uploadKey, uploadName, uploadType, uploadSize)
     .run();
 
-  const emailResult = await sendDemoReceivedEmail(env, { to: email, artistName, trackTitle });
+  const [emailResult, notifyResult] = await Promise.all([
+    sendDemoReceivedEmail(env, { to: email, artistName, trackTitle }),
+    sendDemoNotificationEmail(env, {
+      artistName,
+      artistEmail: email,
+      country,
+      trackTitle,
+      genre,
+      streamingLink,
+      hasUpload: Boolean(uploadKey)
+    })
+  ]);
   await db
     .prepare(
       `UPDATE demo_submissions
-       SET demo_received_email_status = ?, demo_received_sent_at = CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP ELSE demo_received_sent_at END
+       SET demo_received_email_status = ?,
+           demo_received_sent_at = CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP ELSE demo_received_sent_at END,
+           demo_notify_email_status = ?,
+           demo_notify_sent_at = CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP ELSE demo_notify_sent_at END
        WHERE id = ?`
     )
-    .bind(emailResult.status, emailResult.sent ? 1 : 0, submissionId)
+    .bind(emailResult.status, emailResult.sent ? 1 : 0, notifyResult.status, notifyResult.sent ? 1 : 0, submissionId)
     .run()
     .catch(() => {
-      // Older deployments without the optional receipt columns should still accept demos.
+      // Older deployments without the optional email status columns should still accept demos.
     });
 
   return json(
@@ -138,6 +152,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       id: submissionId,
       fileUploaded: Boolean(file),
       email: emailResult,
+      notification: notifyResult,
       message: "Demo received. The MasterBeat Project will review it from the admin dashboard."
     },
     { status: 201 }

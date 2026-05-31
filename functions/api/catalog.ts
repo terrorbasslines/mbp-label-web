@@ -1,9 +1,10 @@
-import { isCollabArtistName, isResponse, json, requireDb, syncReleaseArtistCredits, type Env } from "./_shared";
+import { inferReleaseRegion, isCollabArtistName, isResponse, json, mbpRegionDetails, normalizeMbpRegion, requireDb, syncReleaseArtistCredits, type Env } from "./_shared";
 import { parseFfmRelease } from "./_ffm";
 
 type ReleaseRow = Record<string, unknown> & { id: string };
 type ArtistRow = Record<string, unknown> & { id: string; links_json?: string };
 type LinkRow = Record<string, unknown> & { release_id: string };
+type ReleaseArtistRow = { release_id: string; artist_id: string; role: string };
 type RefreshCandidate = ReleaseRow & {
   catalog_number: string;
   artist_display: string;
@@ -24,11 +25,37 @@ const MANAGEMENT_PROFILES = new Map([
   ["rodrigo stadt", "MBP Ambassador representing The MasterBeat Project community, label presence and artist support."]
 ]);
 
+const ARTIST_PRIORITY = new Map(
+  ["rodrigo stadt", "terror basslines", "alexair", "romee storm"].map((name, index) => [name, index])
+);
+
 function publicArtistProfile(artist: ArtistRow) {
   const name = String(artist.name ?? "").toLowerCase();
   const profile = String(artist.profile ?? "");
   if (profile && !profile.toLowerCase().startsWith("imported from ")) return profile;
   return MANAGEMENT_PROFILES.get(name) ?? null;
+}
+
+function artistSortRank(artist: { name?: unknown }) {
+  return ARTIST_PRIORITY.get(String(artist.name ?? "").toLowerCase()) ?? 1000;
+}
+
+async function updateReleaseRegionFromCredits(db: D1Database, releaseId: string) {
+  try {
+    const regions = await db
+      .prepare(
+        `SELECT a.mbp_region
+         FROM release_artists ra
+         INNER JOIN artists a ON a.id = ra.artist_id
+         WHERE ra.release_id = ?`
+      )
+      .bind(releaseId)
+      .all<{ mbp_region: string }>();
+    const region = inferReleaseRegion((regions.results ?? []).map((row) => row.mbp_region));
+    await db.prepare("UPDATE releases SET mbp_region = ? WHERE id = ?").bind(region, releaseId).run();
+  } catch {
+    // Region columns are migration-backed. Keep catalogue refresh working if a deployment races the migration.
+  }
 }
 
 async function refreshPresaveCandidates(db: D1Database) {
@@ -70,6 +97,7 @@ async function refreshPresaveCandidates(db: D1Database) {
 
       const credits = await syncReleaseArtistCredits(db, release.id, parsed.artist, null, parsed.ffmUrl);
       await db.prepare("UPDATE releases SET primary_artist_id = ? WHERE id = ?").bind(credits.primaryArtistId, release.id).run();
+      await updateReleaseRegionFromCredits(db, release.id);
       await db.prepare("DELETE FROM release_platform_links WHERE release_id = ?").bind(release.id).run();
       for (let index = 0; index < parsed.platformLinks.length; index += 1) {
         const link = parsed.platformLinks[index];
@@ -107,6 +135,7 @@ async function repairArtistCredits(db: D1Database) {
   for (const release of rows.results ?? []) {
     const credits = await syncReleaseArtistCredits(db, release.id, release.artist_display, null, release.ffm_url ?? null);
     await db.prepare("UPDATE releases SET primary_artist_id = ? WHERE id = ?").bind(credits.primaryArtistId, release.id).run();
+    await updateReleaseRegionFromCredits(db, release.id);
   }
 
   await db
@@ -126,29 +155,51 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, waitUntil
 
   waitUntil(Promise.all([refreshPresaveCandidates(db), repairArtistCredits(db)]));
 
-  const [artists, releases, links] = await Promise.all([
+  const [artists, releases, links, releaseArtists] = await Promise.all([
     db.prepare("SELECT * FROM artists ORDER BY is_featured DESC, name ASC").all<ArtistRow>(),
     db.prepare("SELECT * FROM releases WHERE status IN ('published', 'presave') ORDER BY catalog_number DESC").all<ReleaseRow>(),
-    db.prepare("SELECT * FROM release_platform_links ORDER BY sort_order ASC").all<LinkRow>()
+    db.prepare("SELECT * FROM release_platform_links ORDER BY sort_order ASC").all<LinkRow>(),
+    db.prepare("SELECT release_id, artist_id, role FROM release_artists").all<ReleaseArtistRow>()
   ]);
   const url = new URL(request.url);
   const view = url.searchParams.get("view");
   const cacheHeaders = {
-    "cache-control": "public, max-age=60, s-maxage=120, stale-while-revalidate=600"
+    "cache-control": "no-store"
   };
-  const publicArtists = (artists.results ?? [])
+  const artistRows = artists.results ?? [];
+  const artistsById = new Map(artistRows.map((artist) => [artist.id, artist]));
+  const artistRegionsByRelease = new Map<string, string[]>();
+  for (const credit of releaseArtists.results ?? []) {
+    const artist = artistsById.get(credit.artist_id);
+    if (!artist) continue;
+    const list = artistRegionsByRelease.get(credit.release_id) ?? [];
+    list.push(normalizeMbpRegion(artist.mbp_region));
+    artistRegionsByRelease.set(credit.release_id, list);
+  }
+
+  const publicArtists = artistRows
     .filter((artist) => !isCollabArtistName(String(artist.name ?? "")))
     .map((artist) => ({
       ...artist,
+      name: String(artist.name ?? ""),
+      mbp_region: normalizeMbpRegion(artist.mbp_region),
+      mbp_region_label: mbpRegionDetails(artist.mbp_region).label,
+      mbp_region_color: mbpRegionDetails(artist.mbp_region).color,
       profile: publicArtistProfile(artist),
       links: JSON.parse(String(artist.links_json ?? "[]")),
       is_featured: Boolean(artist.is_featured)
-    }));
+    }))
+    .sort((left, right) => artistSortRank(left) - artistSortRank(right) || String(left.name ?? "").localeCompare(String(right.name ?? "")));
   const publicReleases = (releases.results ?? []).map((release) => {
     const platform_links = (links.results ?? []).filter((link) => link.release_id === release.id);
     const playableLinks = platform_links.filter((link) => !/email|subscribe/i.test(`${link.platform ?? ""} ${link.label ?? ""}`));
+    const storedRegion = normalizeMbpRegion(release.mbp_region);
+    const linkedRegion = inferReleaseRegion(artistRegionsByRelease.get(release.id) ?? [], storedRegion);
     return {
       ...release,
+      mbp_region: linkedRegion,
+      mbp_region_label: mbpRegionDetails(linkedRegion).label,
+      mbp_region_color: mbpRegionDetails(linkedRegion).color,
       status: playableLinks.length > 0 ? "published" : "presave",
       platform_links
     };

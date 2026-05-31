@@ -8,7 +8,7 @@ const year = new Date().getFullYear();
     <div class="grid gap-8 lg:grid-cols-[1.15fr_0.85fr_0.85fr]">
       <div>
         <div class="flex items-center gap-3">
-          <img src="/assets/brand/logo-clear.png" alt="" class="h-12 w-12 rounded-md bg-black object-contain" />
+          <img src={siteConfig.logo} alt="" class="h-12 w-12 rounded-md bg-black object-cover" />
           <div>
             <p class="font-display text-2xl font-black uppercase leading-none text-white">{siteConfig.name}</p>
             <p class="mt-1 text-sm text-steel">{siteConfig.domain}</p>

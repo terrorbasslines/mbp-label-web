@@ -5,6 +5,7 @@ export interface Env {
   RESEND_API_KEY?: string;
   DEMO_FROM_EMAIL?: string;
   DEMO_REPLY_TO_EMAIL?: string;
+  DEMO_NOTIFY_EMAIL?: string;
   DEMO_BUCKET?: R2Bucket;
 }
 
@@ -28,6 +29,139 @@ export type ArtistCredit = {
   name: string;
   role: ArtistCreditRole;
 };
+
+export type MbpRegion = "europe" | "america" | "asia" | "world" | "australia";
+
+export const MBP_REGION_KEYS: MbpRegion[] = ["europe", "america", "asia", "world", "australia"];
+
+export const MBP_REGION_META: Record<MbpRegion, { label: string; color: string }> = {
+  europe: { label: "MBP Europe", color: "#ffd000" },
+  america: { label: "MBP America", color: "#23df1e" },
+  asia: { label: "MBP Asia", color: "#ff1808" },
+  world: { label: "MBP World", color: "#bd00ff" },
+  australia: { label: "MBP Australia", color: "#1d27ff" }
+};
+
+export function normalizeMbpRegion(value: unknown, fallback: MbpRegion = "world"): MbpRegion {
+  const normalized = String(value ?? "").trim().toLowerCase().replace(/^mbp\s+/, "");
+  return MBP_REGION_KEYS.includes(normalized as MbpRegion) ? (normalized as MbpRegion) : fallback;
+}
+
+export function mbpRegionDetails(value: unknown) {
+  return MBP_REGION_META[normalizeMbpRegion(value)];
+}
+
+export function inferMbpRegionFromCountry(value: unknown, fallback: MbpRegion = "world"): MbpRegion {
+  const country = String(value ?? "").trim().toLowerCase();
+  if (!country) return fallback;
+
+  if (["australia", "new zealand"].includes(country)) return "australia";
+  if (
+    [
+      "usa",
+      "united states",
+      "united states of america",
+      "canada",
+      "mexico",
+      "brazil",
+      "argentina",
+      "chile",
+      "peru",
+      "colombia",
+      "venezuela",
+      "ecuador",
+      "uruguay",
+      "paraguay",
+      "bolivia",
+      "panama",
+      "costa rica"
+    ].includes(country)
+  ) {
+    return "america";
+  }
+  if (
+    [
+      "china",
+      "japan",
+      "south korea",
+      "korea",
+      "india",
+      "indonesia",
+      "malaysia",
+      "philippines",
+      "thailand",
+      "vietnam",
+      "taiwan",
+      "singapore",
+      "hong kong",
+      "israel",
+      "turkey",
+      "uae",
+      "united arab emirates"
+    ].includes(country)
+  ) {
+    return "asia";
+  }
+  if (
+    [
+      "slovakia",
+      "slovensko",
+      "czech republic",
+      "czechia",
+      "poland",
+      "germany",
+      "austria",
+      "netherlands",
+      "belgium",
+      "france",
+      "italy",
+      "spain",
+      "portugal",
+      "united kingdom",
+      "uk",
+      "ireland",
+      "sweden",
+      "norway",
+      "finland",
+      "denmark",
+      "romania",
+      "hungary",
+      "croatia",
+      "serbia",
+      "slovenia",
+      "greece",
+      "ukraine"
+    ].includes(country)
+  ) {
+    return "europe";
+  }
+
+  return fallback;
+}
+
+const ARTIST_REGION_HINTS: Array<[RegExp, MbpRegion]> = [
+  [/\b(terror basslines|romee storm|ayla|riax|the-wolfs|the wolfs|daniel joseph)\b/i, "europe"],
+  [/\b(rodrigo stadt|dulehec|artphazers|valkrize)\b/i, "america"],
+  [/\b(donkey tae|kapkakasmaka|k3nto|mitsucaster|chris ponate|emrion|star-shards|star shards|blastrix|il4um|zha_sty|yuebai)\b/i, "asia"],
+  [/\b(id pleaz|rikkore)\b/i, "australia"]
+];
+
+export function inferMbpRegionFromArtistName(value: unknown, fallback: MbpRegion = "world"): MbpRegion {
+  const name = String(value ?? "").trim();
+  if (!name) return fallback;
+
+  for (const [pattern, region] of ARTIST_REGION_HINTS) {
+    if (pattern.test(name)) return region;
+  }
+
+  return fallback;
+}
+
+export function inferReleaseRegion(regions: unknown[], fallback: MbpRegion = "world"): MbpRegion {
+  const normalized = [...new Set(regions.map((region) => normalizeMbpRegion(region)))];
+  if (normalized.length === 0) return fallback;
+  return normalized.length === 1 ? normalized[0] : "world";
+}
 
 const FEATURE_MARKER_PATTERN = /\s*(?:[\(\[]\s*)?(?:feat\.?|ft\.?|featuring)\s+/i;
 
@@ -178,12 +312,13 @@ async function upsertCreditArtist(db: D1Database, artistName: string, sourceUrl?
 
   if (!artist) {
     const artistId = id("art");
+    const mbpRegion = inferMbpRegionFromArtistName(artistName);
     await db
       .prepare(
-        `INSERT INTO artists (id, slug, name, profile, image_url, is_featured, updated_at)
-         VALUES (?, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP)`
+        `INSERT INTO artists (id, slug, name, profile, image_url, is_featured, mbp_region, updated_at)
+         VALUES (?, ?, ?, ?, ?, 0, ?, CURRENT_TIMESTAMP)`
       )
-      .bind(artistId, slug, artistName, sourceUrl ? `Imported from ${sourceUrl}` : null, null)
+      .bind(artistId, slug, artistName, sourceUrl ? `Imported from ${sourceUrl}` : null, null, mbpRegion)
       .run();
     artist = { id: artistId };
   }
@@ -504,6 +639,49 @@ export async function sendDemoReceivedEmail(env: Env, input: { to: string; artis
   }
 
   return { sent: true, status: "demo_received_email_sent" };
+}
+
+export async function sendDemoNotificationEmail(env: Env, input: { artistName: string; artistEmail: string; country: string; trackTitle: string; genre: string; streamingLink: string; hasUpload: boolean }) {
+  const config = emailConfig(env);
+  if (!config.ok) {
+    return { sent: false, status: config.status };
+  }
+
+  const notifyEmail = env.DEMO_NOTIFY_EMAIL?.trim() || "demo@themasterbeatproject.com";
+  const text = [
+    "New demo submission received.",
+    "",
+    `Artist: ${input.artistName}`,
+    `Email: ${input.artistEmail}`,
+    `Country: ${input.country}`,
+    `Track: ${input.trackTitle}`,
+    `Genre: ${input.genre}`,
+    `Private stream: ${input.streamingLink}`,
+    `Uploaded file: ${input.hasUpload ? "yes" : "no"}`,
+    "",
+    "Review it in the MBP admin dashboard."
+  ].join("\n");
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${config.apiKey}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      from: config.from,
+      to: notifyEmail,
+      reply_to: input.artistEmail || config.replyTo,
+      subject: `New MBP demo: ${input.artistName} - ${input.trackTitle}`,
+      text
+    })
+  });
+
+  if (!response.ok) {
+    return { sent: false, status: emailFailureStatus(response.status) };
+  }
+
+  return { sent: true, status: "demo_notify_email_sent" };
 }
 
 export async function sendArtistInviteEmail(env: Env, input: { to: string; artistName: string; claimUrl: string; role: string }) {

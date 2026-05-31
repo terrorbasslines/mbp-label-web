@@ -1,4 +1,4 @@
-import { id, isCollabArtistName, isResponse, json, methodNotAllowed, optionalString, readJson, requireAdmin, requireDb, requiredString, slugify, type Env } from "../_shared";
+import { id, inferMbpRegionFromArtistName, inferMbpRegionFromCountry, isCollabArtistName, isResponse, json, methodNotAllowed, normalizeMbpRegion, optionalString, readJson, requireAdmin, requireDb, requiredString, slugify, type Env } from "../_shared";
 
 type ArtistRow = {
   id: string;
@@ -9,6 +9,7 @@ type ArtistRow = {
   image_url: string | null;
   links_json: string;
   is_featured: number;
+  mbp_region: string;
   created_at: string;
   updated_at: string;
 };
@@ -70,21 +71,24 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const artistId = id("art");
   const slug = slugify(optionalString(body.slug, 120) ?? name);
   const links = Array.isArray(body.links) ? body.links : [];
+  const country = optionalString(body.country, 120);
+  const mbpRegion = normalizeMbpRegion(body.mbp_region, inferMbpRegionFromCountry(country, inferMbpRegionFromArtistName(name)));
 
   await db
     .prepare(
-      `INSERT INTO artists (id, slug, name, country, profile, image_url, links_json, is_featured, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
+      `INSERT INTO artists (id, slug, name, country, profile, image_url, links_json, is_featured, mbp_region, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
     )
     .bind(
       artistId,
       slug,
       name,
-      optionalString(body.country, 120),
+      country,
       optionalString(body.profile, 4000),
       optionalString(body.image_url, 2000),
       JSON.stringify(links),
-      body.is_featured ? 1 : 0
+      body.is_featured ? 1 : 0,
+      mbpRegion
     )
     .run();
 

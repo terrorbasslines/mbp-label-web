@@ -14,7 +14,7 @@ function normalizeHref(href: string) {
   <div class="section-shell flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
     <a href="/" class="group flex items-center gap-3" aria-label={`${siteConfig.name} home`}>
       <span class="grid h-11 w-11 place-items-center overflow-hidden rounded-md border border-white/10 bg-black">
-        <img src="/assets/brand/logo-clear.png" alt="" class="h-10 w-10 object-contain transition duration-300 group-hover:scale-105" />
+        <img src={siteConfig.logo} alt="" class="h-10 w-10 object-cover transition duration-300 group-hover:scale-105" />
       </span>
       <span class="leading-none">
         <span class="block font-display text-lg font-black uppercase text-white">The MasterBeat</span>

@@ -1,4 +1,4 @@
-import { id, isResponse, json, methodNotAllowed, optionalString, readJson, requireAdmin, requireDb, requiredString, slugify, syncReleaseArtistCredits, type Env } from "../_shared";
+import { id, isResponse, json, methodNotAllowed, normalizeMbpRegion, optionalString, readJson, requireAdmin, requireDb, requiredString, slugify, syncReleaseArtistCredits, type Env } from "../_shared";
 
 type ReleaseRow = {
   id: string;
@@ -14,6 +14,7 @@ type ReleaseRow = {
   ffm_url: string | null;
   presave_url: string | null;
   status: string;
+  mbp_region: string;
   description: string | null;
   created_at: string;
   updated_at: string;
@@ -96,8 +97,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   await db
     .prepare(
       `INSERT INTO releases
-       (id, catalog_number, slug, title, artist_display, primary_artist_id, release_date, release_type, genre, artwork_url, ffm_url, presave_url, status, description, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
+       (id, catalog_number, slug, title, artist_display, primary_artist_id, release_date, release_type, genre, artwork_url, ffm_url, presave_url, status, mbp_region, description, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
     )
     .bind(
       releaseId,
@@ -113,6 +114,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       optionalString(body.ffm_url, 2000),
       optionalString(body.presave_url, 2000),
       optionalString(body.status, 40) ?? "published",
+      normalizeMbpRegion(body.mbp_region),
       optionalString(body.description, 4000)
     )
     .run();

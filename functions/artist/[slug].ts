@@ -1,4 +1,5 @@
 import type { Env } from "../api/_shared";
+import { mbpRegionDetails, normalizeMbpRegion } from "../api/_shared";
 import { absoluteUrl, escapeHtml, htmlResponse, notFoundPage, pageShell, SITE_NAME, SITE_URL } from "../_seo";
 
 type ArtistRow = {
@@ -9,6 +10,7 @@ type ArtistRow = {
   profile?: string | null;
   image_url?: string | null;
   links_json?: string | null;
+  mbp_region?: string | null;
 };
 
 type ReleaseRow = {
@@ -82,11 +84,13 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
     .all<ReleaseRow>();
 
   const artistLinks = parseLinks(artist.links_json);
+  const region = normalizeMbpRegion(artist.mbp_region);
+  const regionInfo = mbpRegionDetails(region);
   const canonicalPath = `/artist/${artist.slug}`;
   const description =
     publicProfile(artist) ||
     `${artist.name} is an artist connected to ${SITE_NAME}, a hardstyle, hard dance and electronic music label.`;
-  const image = artist.image_url || "/assets/brand/logo-clear.png";
+  const image = artist.image_url || "/assets/brand/logo-official-purple.png";
   const title = `${artist.name} - ${SITE_NAME} artist`;
   const releaseRows = releases.results ?? [];
   const jsonLd = [
@@ -128,12 +132,15 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
           <p class="eyebrow">Label artist</p>
           <h1>${escapeHtml(artist.name)}</h1>
           <p>${escapeHtml(artist.country || SITE_NAME)}</p>
+          <div class="meta">
+            <span class="pill" style="border-color:${escapeHtml(regionInfo.color)}66;color:${escapeHtml(regionInfo.color)}">${escapeHtml(regionInfo.label)}</span>
+          </div>
         </section>
         <section class="grid">
           <div>
-            <img class="art" src="${escapeHtml(absoluteUrl(image))}" alt="${escapeHtml(artist.name)} artist profile image" />
+            <img class="art" style="border-color:${escapeHtml(regionInfo.color)}66;box-shadow:0 0 34px ${escapeHtml(regionInfo.color)}24" src="${escapeHtml(absoluteUrl(image))}" alt="${escapeHtml(artist.name)} artist profile image" />
           </div>
-          <article class="card">
+          <article class="card" style="border-color:${escapeHtml(regionInfo.color)}55;box-shadow:0 0 28px ${escapeHtml(regionInfo.color)}14">
             <p>${escapeHtml(description)}</p>
             <div class="links">
               ${artistLinks

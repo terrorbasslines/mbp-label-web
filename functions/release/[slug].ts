@@ -1,5 +1,5 @@
 import type { Env } from "../api/_shared";
-import { parseArtistCredits, syncReleaseArtistCredits } from "../api/_shared";
+import { inferReleaseRegion, mbpRegionDetails, normalizeMbpRegion, parseArtistCredits, syncReleaseArtistCredits } from "../api/_shared";
 import { absoluteUrl, escapeHtml, htmlResponse, notFoundPage, pageShell, SITE_NAME, SITE_URL } from "../_seo";
 
 type ReleaseRow = {
@@ -17,6 +17,7 @@ type ReleaseRow = {
   presave_url?: string | null;
   status?: string | null;
   description?: string | null;
+  mbp_region?: string | null;
 };
 
 type PlatformLinkRow = {
@@ -31,6 +32,7 @@ type ArtistRow = {
   slug: string;
   name: string;
   role?: string;
+  mbp_region?: string | null;
 };
 
 type ArtistReleaseRow = {
@@ -126,6 +128,11 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
   const platformLinks = links.results ?? [];
   const playablePlatformLinks = platformLinks.filter((link) => !/email|subscribe/i.test(`${link.platform} ${link.label}`));
   const isPresave = playablePlatformLinks.length === 0;
+  const region = inferReleaseRegion(
+    artists.map((artist) => artist.mbp_region),
+    normalizeMbpRegion(release.mbp_region)
+  );
+  const regionInfo = mbpRegionDetails(region);
   const canonicalPath = `/release/${release.slug}`;
   const description =
     release.description ||
@@ -182,14 +189,15 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
           <div class="meta">
             <span class="pill">${escapeHtml(release.catalog_number)}</span>
             <span class="pill">${isPresave ? "Pre-save" : escapeHtml(release.status || "published")}</span>
+            <span class="pill" style="border-color:${escapeHtml(regionInfo.color)}66;color:${escapeHtml(regionInfo.color)}">${escapeHtml(regionInfo.label)}</span>
             ${release.genre ? `<span class="pill">${escapeHtml(release.genre)}</span>` : ""}
           </div>
         </section>
         <section class="grid">
           <div>
-            <img class="art" src="${escapeHtml(absoluteUrl(image))}" alt="${escapeHtml(release.title)} artwork" />
+            <img class="art" style="border-color:${escapeHtml(regionInfo.color)}66;box-shadow:0 0 34px ${escapeHtml(regionInfo.color)}24" src="${escapeHtml(absoluteUrl(image))}" alt="${escapeHtml(release.title)} artwork" />
           </div>
-          <article class="card">
+          <article class="card" style="border-color:${escapeHtml(regionInfo.color)}55;box-shadow:0 0 28px ${escapeHtml(regionInfo.color)}14">
             <p>${escapeHtml(isPresave ? "Pre-save is open. Platform links update from FFM when the release goes live." : description)}</p>
             <div class="links">
               ${platformLinks

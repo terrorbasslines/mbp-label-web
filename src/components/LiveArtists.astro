@@ -7,6 +7,14 @@
         <span class="field-label">Search artist roster</span>
         <input class="field-control" type="search" placeholder="Search Terror Basslines, Romee Storm or hardstyle" data-artist-search />
       </label>
+      <div class="mt-4 flex flex-wrap gap-2" aria-label="MBP region artist filter">
+        <button class="rounded-md bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-black" data-artist-region="all" type="button">All MBP</button>
+        <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-haze hover:text-white" data-artist-region="europe" type="button">Europe</button>
+        <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-haze hover:text-white" data-artist-region="america" type="button">America</button>
+        <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-haze hover:text-white" data-artist-region="asia" type="button">Asia</button>
+        <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-haze hover:text-white" data-artist-region="world" type="button">World</button>
+        <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-haze hover:text-white" data-artist-region="australia" type="button">Australia</button>
+      </div>
     </div>
     <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
       <p class="text-sm text-steel" data-artist-count>Loading artists...</p>
@@ -26,9 +34,11 @@
   const artistClear = document.querySelector("[data-artist-clear]");
   const artistCount = document.querySelector("[data-artist-count]");
   const artistPager = document.querySelector("[data-artist-pager]");
+  const artistRegionButtons = [...document.querySelectorAll("[data-artist-region]")];
   let allArtists = [];
   let visibleArtists = [];
   let artistPage = 1;
+  let artistRegionFilter = "all";
   const artistPageSize = 12;
 
   const escapeArtistHtml = (value) =>
@@ -40,22 +50,37 @@
       .replaceAll("'", "&#39;");
 
   function searchableArtistText(artist) {
-    return [artist.name, artist.country, artist.profile]
+    return [artist.name, artist.country, artist.profile, artist.mbp_region, artist.mbp_region_label]
       .filter(Boolean)
       .join(" ")
       .toLowerCase();
   }
 
+  function updateArtistRegionButtons() {
+    artistRegionButtons.forEach((button) => {
+      const active = button.getAttribute("data-artist-region") === artistRegionFilter;
+      button.className = active
+        ? "rounded-md bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-black"
+        : "rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-haze hover:text-white";
+    });
+  }
+
   function filterArtists() {
     const query = String(artistSearch?.value || "").trim().toLowerCase();
-    visibleArtists = allArtists.filter((artist) => !query || searchableArtistText(artist).includes(query));
+    visibleArtists = allArtists.filter((artist) => {
+      const regionMatch = artistRegionFilter === "all" || artist.mbp_region === artistRegionFilter;
+      const searchMatch = !query || searchableArtistText(artist).includes(query);
+      return regionMatch && searchMatch;
+    });
     artistClear?.classList.toggle("hidden", !query);
   }
 
   function renderArtist(artist) {
     const artistPath = `/artist/${encodeURIComponent(String(artist.slug || artist.name || "").toLowerCase())}`;
+    const regionColor = artist.mbp_region_color || "#bd00ff";
+    const regionLabel = artist.mbp_region_label || "MBP World";
     return `
-      <article class="rounded-lg border border-white/10 bg-carbon/80 p-5">
+      <article class="rounded-lg border bg-carbon/80 p-5" style="border-color:${escapeArtistHtml(regionColor)}66; box-shadow:0 0 22px ${escapeArtistHtml(regionColor)}14;">
         <div class="flex items-center gap-4">
           <a href="${escapeArtistHtml(artistPath)}" aria-label="${escapeArtistHtml(artist.name)} artist profile">
             ${artist.image_url ? `<img class="h-20 w-20 rounded-md border border-white/10 object-cover" src="${escapeArtistHtml(artist.image_url)}" alt="" loading="lazy" decoding="async" />` : `<div class="grid h-20 w-20 place-items-center rounded-md border border-white/10 bg-black font-display text-3xl font-black text-white">${escapeArtistHtml(String(artist.name || "?").slice(0, 1))}</div>`}
@@ -64,6 +89,7 @@
             <p class="text-xs font-bold uppercase tracking-[0.18em] text-neon-cyan">Artist</p>
             <h3 class="mt-2 font-display text-3xl font-black uppercase leading-none text-white"><a class="hover:text-neon-cyan" href="${escapeArtistHtml(artistPath)}">${escapeArtistHtml(artist.name)}</a></h3>
             <p class="mt-1 text-sm text-steel">${escapeArtistHtml(artist.country || "The MasterBeat Project")}</p>
+            <p class="mt-2 inline-flex rounded border px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.14em]" style="border-color:${escapeArtistHtml(regionColor)}66; color:${escapeArtistHtml(regionColor)}">${escapeArtistHtml(regionLabel)}</p>
           </div>
         </div>
         <p class="mt-5 text-sm leading-6 text-haze">${escapeArtistHtml(artist.profile || "Artist profile coming soon.")}</p>
@@ -112,7 +138,7 @@
   async function loadLiveArtists() {
     if (!liveArtistsSection || !liveArtists) return;
     try {
-      const response = await fetch("/api/catalog", { cache: "force-cache" });
+      const response = await fetch("/api/catalog", { cache: "no-store" });
       const data = await response.json();
       if (!data.ok || !Array.isArray(data.artists) || data.artists.length === 0) {
         staticArtists?.classList.remove("hidden");
@@ -140,6 +166,15 @@
     renderArtists();
   });
 
+  artistRegionButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      artistRegionFilter = button.getAttribute("data-artist-region") || "all";
+      artistPage = 1;
+      updateArtistRegionButtons();
+      renderArtists();
+    });
+  });
+
   document.addEventListener("click", (event) => {
     const target = event.target;
     if (!(target instanceof HTMLElement)) return;
@@ -150,5 +185,6 @@
     liveArtistsSection?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 
+  updateArtistRegionButtons();
   loadLiveArtists();
 </script>

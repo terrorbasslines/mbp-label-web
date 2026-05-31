@@ -39,22 +39,26 @@ const homeJsonLd = {
   </section>
 
   <section class="border-b border-white/10 bg-obsidian py-14">
-    <div class="section-shell grid gap-4 md:grid-cols-5">
-      {
-        labelStats.map((stat) => (
-          <div class="rounded-lg border border-white/10 bg-white/[0.035] p-5">
-            <p class="font-display text-4xl font-black uppercase leading-none text-white">{stat.value}</p>
-            <p class="mt-2 text-sm uppercase tracking-[0.14em] text-steel">{stat.label}</p>
-          </div>
-        ))
-      }
-      <div class="hidden rounded-lg border border-neon-cyan/25 bg-neon-cyan/[0.04] p-5" data-home-count-card>
-        <p class="font-display text-4xl font-black uppercase leading-none text-white" data-home-artist-count>0</p>
-        <p class="mt-2 text-sm uppercase tracking-[0.14em] text-steel">current artists</p>
+    <div class="section-shell">
+      <div class="grid gap-4 md:grid-cols-3">
+        {
+          labelStats.map((stat) => (
+            <div class="rounded-lg border border-white/10 bg-white/[0.035] p-5">
+              <p class="font-display text-4xl font-black uppercase leading-none text-white">{stat.value}</p>
+              <p class="mt-2 text-sm uppercase tracking-[0.14em] text-steel">{stat.label}</p>
+            </div>
+          ))
+        }
       </div>
-      <div class="hidden rounded-lg border border-neon-violet/30 bg-neon-violet/[0.05] p-5" data-home-count-card>
-        <p class="font-display text-4xl font-black uppercase leading-none text-white" data-home-release-count>0</p>
-        <p class="mt-2 text-sm uppercase tracking-[0.14em] text-steel">catalogue releases</p>
+      <div class="mt-4 grid gap-4 md:grid-cols-2">
+        <div class="hidden rounded-lg border border-neon-cyan/25 bg-neon-cyan/[0.04] p-5" data-home-count-card>
+          <p class="font-display text-4xl font-black uppercase leading-none text-white" data-home-artist-count>0</p>
+          <p class="mt-2 text-sm uppercase tracking-[0.14em] text-steel">current artists</p>
+        </div>
+        <div class="hidden rounded-lg border border-neon-violet/30 bg-neon-violet/[0.05] p-5" data-home-count-card>
+          <p class="font-display text-4xl font-black uppercase leading-none text-white" data-home-release-count>0</p>
+          <p class="mt-2 text-sm uppercase tracking-[0.14em] text-steel">catalogue releases</p>
+        </div>
       </div>
     </div>
   </section>

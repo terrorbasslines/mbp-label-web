@@ -5,7 +5,7 @@ export const siteConfig = {
   email: "contact@themasterbeatproject.com",
   demoEmail: "demos@themasterbeatproject.com",
   url: "https://themasterbeatproject.com",
-  logo: "/assets/brand/logo-clear.png",
+  logo: "/assets/brand/logo-official-purple.png",
   defaultImage: "/assets/brand/stage-hero.png",
   seoDescription:
     "The MasterBeat Project is a hardstyle, hard dance and electronic music label releasing high-energy tracks, artist profiles and official MBP catalogue links.",

@@ -1,4 +1,4 @@
-import { isResponse, json, methodNotAllowed, optionalString, readJson, requireAdmin, requireDb, requiredString, slugify, syncReleaseArtistCredits, type Env } from "../../_shared";
+import { isResponse, json, methodNotAllowed, normalizeMbpRegion, optionalString, readJson, requireAdmin, requireDb, requiredString, slugify, syncReleaseArtistCredits, type Env } from "../../_shared";
 
 async function replaceLinks(db: D1Database, releaseId: string, links: unknown) {
   await db.prepare("DELETE FROM release_platform_links WHERE release_id = ?").bind(releaseId).run();
@@ -49,7 +49,7 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
     .prepare(
       `UPDATE releases
        SET catalog_number = ?, slug = ?, title = ?, artist_display = ?, primary_artist_id = ?, release_date = ?,
-           release_type = ?, genre = ?, artwork_url = ?, ffm_url = ?, presave_url = ?, status = ?, description = ?,
+           release_type = ?, genre = ?, artwork_url = ?, ffm_url = ?, presave_url = ?, status = ?, mbp_region = ?, description = ?,
            updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`
     )
@@ -66,6 +66,7 @@ export const onRequestPut: PagesFunction<Env> = async ({ request, env, params })
       optionalString(body.ffm_url, 2000),
       optionalString(body.presave_url, 2000),
       optionalString(body.status, 40) ?? "published",
+      normalizeMbpRegion(body.mbp_region),
       optionalString(body.description, 4000),
       params.id
     )
