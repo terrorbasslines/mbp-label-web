@@ -107,12 +107,12 @@ export function pageShell(input: {
   return `<!doctype html>
 <html lang="en">
   <head>
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-FJGJH00E3F"></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-P3CVW360V0"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-      gtag('config', 'G-FJGJH00E3F');
+      gtag('config', 'G-P3CVW360V0');
     </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
