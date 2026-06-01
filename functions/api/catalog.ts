@@ -26,7 +26,7 @@ const MANAGEMENT_PROFILES = new Map([
 ]);
 
 const ARTIST_PRIORITY = new Map(
-  ["rodrigo stadt", "terror basslines", "alexair", "romee storm"].map((name, index) => [name, index])
+  ["terror basslines", "romee storm", "alexair", "rodrigo stadt"].map((name, index) => [name, index])
 );
 
 function publicArtistProfile(artist: ArtistRow) {

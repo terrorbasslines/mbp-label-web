@@ -265,6 +265,12 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         method: "POST",
         body: JSON.stringify({ email: formData.get("email"), password: formData.get("password") })
       });
+      if (result.role === "admin") {
+        dispatchAuth("admin");
+        loginStatus.textContent = "Logged in. Opening admin dashboard...";
+        location.href = "/admin/";
+        return;
+      }
       dispatchAuth(result.role || "artist");
       await loadProfile();
       loginStatus.textContent = "Logged in.";

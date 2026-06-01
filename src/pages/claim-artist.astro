@@ -77,6 +77,11 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         throw new Error(text.trim() ? text.slice(0, 180) : "Claim API returned an empty response.");
       }
       if (!response.ok || data.ok === false) throw new Error(data.error || "Claim failed.");
+      if (data.role === "admin") {
+        status.textContent = "Account created. Opening admin dashboard...";
+        location.href = "/admin/";
+        return;
+      }
       status.textContent = "Account created. Opening artist dashboard...";
       location.href = "/artist-dashboard/";
     } catch (error) {
