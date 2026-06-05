@@ -46,6 +46,19 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           <section class="surface rounded-lg p-5">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
+                <p class="eyebrow">Demo inbox</p>
+                <h3 class="mt-2 font-display text-2xl font-black uppercase text-white">Pending submissions</h3>
+              </div>
+              <a class="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-haze transition hover:border-neon-cyan hover:text-white" href="/admin/demo-archive/">
+                Archive demos
+              </a>
+            </div>
+            <div class="mt-5 space-y-4" data-submissions-list></div>
+          </section>
+
+          <section class="surface rounded-lg p-5">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
                 <p class="eyebrow">FFM import</p>
                 <h3 class="mt-2 font-display text-2xl font-black uppercase text-white">Import MBP smartlinks</h3>
               </div>
@@ -201,19 +214,6 @@ import BaseLayout from "../layouts/BaseLayout.astro";
               </form>
             </section>
           </div>
-
-          <section class="surface rounded-lg p-5">
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p class="eyebrow">Demo inbox</p>
-                <h3 class="mt-2 font-display text-2xl font-black uppercase text-white">Pending submissions</h3>
-              </div>
-              <a class="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-haze transition hover:border-neon-cyan hover:text-white" href="/admin/demo-archive/">
-                Archive demos
-              </a>
-            </div>
-            <div class="mt-5 space-y-4" data-submissions-list></div>
-          </section>
 
           <section class="surface rounded-lg p-5">
             <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">

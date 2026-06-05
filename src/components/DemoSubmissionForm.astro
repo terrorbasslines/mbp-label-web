@@ -1,5 +1,21 @@
 ---
 const genres = ["Hardstyle", "Rawstyle", "Euphoric hardstyle", "Hardcore", "Uptempo", "Hard dance", "Electronic", "Other"];
+const socialPlatforms = [
+  { key: "spotify", label: "Spotify", placeholder: "https://open.spotify.com/artist/..." },
+  { key: "instagram", label: "Instagram", placeholder: "https://instagram.com/artist" },
+  { key: "youtube", label: "YouTube", placeholder: "https://youtube.com/@artist" },
+  { key: "facebook", label: "Facebook", placeholder: "https://facebook.com/artist" },
+  { key: "soundcloud", label: "SoundCloud", placeholder: "https://soundcloud.com/artist" },
+  { key: "tiktok", label: "TikTok", placeholder: "https://tiktok.com/@artist" },
+  { key: "x", label: "X / Twitter", placeholder: "https://x.com/artist" },
+  { key: "threads", label: "Threads", placeholder: "https://threads.net/@artist" },
+  { key: "apple", label: "Apple Music", placeholder: "https://music.apple.com/artist/..." },
+  { key: "beatport", label: "Beatport", placeholder: "https://beatport.com/artist/..." },
+  { key: "bandcamp", label: "Bandcamp", placeholder: "https://artist.bandcamp.com" },
+  { key: "audiomack", label: "Audiomack", placeholder: "https://audiomack.com/artist" },
+  { key: "linktree", label: "Linktree", placeholder: "https://linktr.ee/artist" },
+  { key: "website", label: "Website", placeholder: "https://artist.com" }
+];
 ---
 
 <form class="surface rounded-lg p-5 sm:p-7" data-demo-form data-endpoint="/api/demo-submission" novalidate>
@@ -19,10 +35,32 @@ const genres = ["Hardstyle", "Rawstyle", "Euphoric hardstyle", "Hardcore", "Upte
       <input class="field-control" name="country" type="text" autocomplete="country-name" required placeholder="Country" />
     </label>
 
-    <label>
-      <span class="field-label">Artist / social links</span>
-      <input class="field-control" name="links" type="url" inputmode="url" required placeholder="https://soundcloud.com/artist" />
-    </label>
+    <input name="links" type="hidden" data-demo-social-output />
+
+    <fieldset class="md:col-span-2">
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <legend class="field-label">Artist / social links</legend>
+        <span class="text-xs leading-5 text-steel">Add at least one official artist profile.</span>
+      </div>
+      <div class="mt-3 grid gap-3 md:grid-cols-2">
+        {
+          socialPlatforms.map((platform) => (
+            <label>
+              <span class="field-label">{platform.label}</span>
+              <input
+                class="field-control"
+                name={`social_${platform.key}`}
+                type="url"
+                inputmode="url"
+                placeholder={platform.placeholder}
+                data-demo-social-link
+                data-social-label={platform.label}
+              />
+            </label>
+          ))
+        }
+      </div>
+    </fieldset>
 
     <label>
       <span class="field-label">Track title</span>
@@ -71,6 +109,8 @@ const genres = ["Hardstyle", "Rawstyle", "Euphoric hardstyle", "Hardcore", "Upte
   // @ts-nocheck
   const form = document.querySelector("[data-demo-form]");
   const status = document.querySelector("[data-demo-status]");
+  const socialOutput = document.querySelector("[data-demo-social-output]");
+  const socialInputs = [...document.querySelectorAll("[data-demo-social-link]")];
 
   if (form instanceof HTMLFormElement && status instanceof HTMLElement) {
     form.addEventListener("submit", async (event) => {
@@ -84,13 +124,28 @@ const genres = ["Hardstyle", "Rawstyle", "Euphoric hardstyle", "Hardcore", "Upte
 
       const formData = new FormData(form);
       const agreement = formData.get("agreement");
+      const socialLines = socialInputs
+        .map((input) => {
+          const value = String(input.value || "").trim();
+          const label = input.getAttribute("data-social-label") || input.name;
+          return value ? `${label}: ${value}` : "";
+        })
+        .filter(Boolean);
 
       if (!agreement) {
         status.textContent = "Agreement is required before a demo can be reviewed.";
         return;
       }
 
+      if (socialLines.length === 0) {
+        status.textContent = "Please add at least one official artist or social link.";
+        socialInputs[0]?.focus();
+        return;
+      }
+
       formData.set("agreement", "true");
+      formData.set("links", socialLines.join("\n"));
+      if (socialOutput instanceof HTMLInputElement) socialOutput.value = socialLines.join("\n");
       status.textContent = "Submitting demo...";
 
       try {

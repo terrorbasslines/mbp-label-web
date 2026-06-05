@@ -14,6 +14,7 @@ export const siteConfig = {
     { label: "Instagram", href: "https://www.instagram.com/themasterbeatproject/" },
     { label: "YouTube", href: "https://www.youtube.com/@TheMasterBeatProject" },
     { label: "Facebook", href: "https://www.facebook.com/themasterbeatproject/" },
+    { label: "Discord", href: "https://discord.gg/HpKbNEDZGA" },
     { label: "Spotify", href: "https://open.spotify.com/artist/6gvTgDZfvlNEffTG2bCL84" },
     { label: "SoundCloud", href: "https://www.soundcloud.com/the-masterbeat-project" },
     { label: "Email", href: "mailto:contact@themasterbeatproject.com" }

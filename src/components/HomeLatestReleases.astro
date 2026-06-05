@@ -24,6 +24,8 @@
   const homeCountCards = [...document.querySelectorAll("[data-home-count-card]")];
   const homeArtistCount = document.querySelector("[data-home-artist-count]");
   const homeReleaseCount = document.querySelector("[data-home-release-count]");
+  const homeRegionCounts = document.querySelector("[data-home-region-counts]");
+  const homeRegionCountValues = [...document.querySelectorAll("[data-home-region-count]")];
 
   const escapeLatestHtml = (value) =>
     String(value ?? "")
@@ -74,6 +76,14 @@
     if (homeArtistCount) homeArtistCount.textContent = String(counts.artists ?? 0);
     if (homeReleaseCount) homeReleaseCount.textContent = String(counts.releases ?? 0);
     homeCountCards.forEach((card) => card.classList.remove("hidden"));
+    if (Array.isArray(counts.regions)) {
+      const regionMap = new Map(counts.regions.map((region) => [region.key, region.releases]));
+      homeRegionCountValues.forEach((element) => {
+        const key = element.getAttribute("data-home-region-count");
+        element.textContent = String(regionMap.get(key) ?? 0);
+      });
+      homeRegionCounts?.classList.remove("hidden");
+    }
   }
 
   async function loadHomeLatestReleases() {

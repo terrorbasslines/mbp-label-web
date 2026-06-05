@@ -1,4 +1,4 @@
-import { inferReleaseRegion, isCollabArtistName, isResponse, json, mbpRegionDetails, normalizeMbpRegion, requireDb, syncReleaseArtistCredits, type Env } from "./_shared";
+import { inferReleaseRegion, isCollabArtistName, isResponse, json, MBP_REGION_KEYS, mbpRegionDetails, normalizeMbpRegion, requireDb, syncReleaseArtistCredits, type Env } from "./_shared";
 import { parseFfmRelease } from "./_ffm";
 
 type ReleaseRow = Record<string, unknown> & { id: string };
@@ -42,6 +42,9 @@ function artistSortRank(artist: { name?: unknown }) {
 
 async function updateReleaseRegionFromCredits(db: D1Database, releaseId: string) {
   try {
+    const current = await db.prepare("SELECT mbp_region FROM releases WHERE id = ?").bind(releaseId).first<{ mbp_region?: string | null }>();
+    if (current?.mbp_region && String(current.mbp_region).trim()) return;
+
     const regions = await db
       .prepare(
         `SELECT a.mbp_region
@@ -195,11 +198,12 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, waitUntil
     const playableLinks = platform_links.filter((link) => !/email|subscribe/i.test(`${link.platform ?? ""} ${link.label ?? ""}`));
     const storedRegion = normalizeMbpRegion(release.mbp_region);
     const linkedRegion = inferReleaseRegion(artistRegionsByRelease.get(release.id) ?? [], storedRegion);
+    const releaseRegion = storedRegion !== "world" ? storedRegion : linkedRegion;
     return {
       ...release,
-      mbp_region: linkedRegion,
-      mbp_region_label: mbpRegionDetails(linkedRegion).label,
-      mbp_region_color: mbpRegionDetails(linkedRegion).color,
+      mbp_region: releaseRegion,
+      mbp_region_label: mbpRegionDetails(releaseRegion).label,
+      mbp_region_color: mbpRegionDetails(releaseRegion).color,
       status: playableLinks.length > 0 ? "published" : "presave",
       platform_links
     };
@@ -208,6 +212,11 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, waitUntil
   if (view === "home") {
     const published = publicReleases.filter((release) => release.status !== "presave").slice(0, 4);
     const presaves = publicReleases.filter((release) => release.status === "presave").slice(0, 4);
+    const regionCounts = Object.fromEntries(MBP_REGION_KEYS.map((region) => [region, 0]));
+    for (const release of publicReleases) {
+      const region = normalizeMbpRegion(release.mbp_region);
+      regionCounts[region] = (regionCounts[region] ?? 0) + 1;
+    }
     return json(
       {
         ok: true,
@@ -218,7 +227,13 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, waitUntil
           artists: publicArtists.length,
           releases: publicReleases.length,
           published: publicReleases.filter((release) => release.status !== "presave").length,
-          presaves: publicReleases.filter((release) => release.status === "presave").length
+          presaves: publicReleases.filter((release) => release.status === "presave").length,
+          regions: MBP_REGION_KEYS.map((region) => ({
+            key: region,
+            label: mbpRegionDetails(region).label,
+            color: mbpRegionDetails(region).color,
+            releases: regionCounts[region] ?? 0
+          }))
         }
       },
       { headers: cacheHeaders }

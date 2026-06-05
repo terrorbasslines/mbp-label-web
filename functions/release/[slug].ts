@@ -66,7 +66,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
   }
 
   const linkedArtists = await env.DB.prepare(
-    `SELECT DISTINCT a.id, a.slug, a.name, ra.role
+    `SELECT DISTINCT a.id, a.slug, a.name, a.mbp_region, ra.role
      FROM release_artists ra
      INNER JOIN artists a ON a.id = ra.artist_id
      WHERE ra.release_id = ?
@@ -79,7 +79,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
   if (artists.length === 0) {
     const fallbackArtists: ArtistRow[] = [];
     for (const credit of parseArtistCredits(release.artist_display)) {
-      const artist = await env.DB.prepare("SELECT id, slug, name FROM artists WHERE lower(name) = lower(?) LIMIT 1").bind(credit.name).first<ArtistRow>();
+      const artist = await env.DB.prepare("SELECT id, slug, name, mbp_region FROM artists WHERE lower(name) = lower(?) LIMIT 1").bind(credit.name).first<ArtistRow>();
       if (artist) fallbackArtists.push({ ...artist, role: credit.role });
     }
     artists = fallbackArtists;
@@ -128,10 +128,12 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
   const platformLinks = links.results ?? [];
   const playablePlatformLinks = platformLinks.filter((link) => !/email|subscribe/i.test(`${link.platform} ${link.label}`));
   const isPresave = playablePlatformLinks.length === 0;
-  const region = inferReleaseRegion(
+  const storedRegion = normalizeMbpRegion(release.mbp_region);
+  const linkedRegion = inferReleaseRegion(
     artists.map((artist) => artist.mbp_region),
-    normalizeMbpRegion(release.mbp_region)
+    storedRegion
   );
+  const region = storedRegion !== "world" ? storedRegion : linkedRegion;
   const regionInfo = mbpRegionDetails(region);
   const canonicalPath = `/release/${release.slug}`;
   const description =
