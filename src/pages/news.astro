@@ -1,0 +1,34 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import NewsList from "../components/NewsList.astro";
+import { siteConfig } from "../data/site";
+
+const description =
+  "Read The MasterBeat Project news, label updates, artist stories and official hardstyle catalogue announcements.";
+
+const newsJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  name: "The MasterBeat Project News",
+  url: `${siteConfig.url}/news/`,
+  description
+};
+---
+
+<BaseLayout title="News" description={description} jsonLd={newsJsonLd}>
+  <section class="border-b border-white/10 bg-black/50 py-20">
+    <div class="section-shell">
+      <p class="eyebrow">Label news</p>
+      <h1 class="page-title mt-4">MBP News</h1>
+      <p class="mt-5 max-w-3xl text-pretty text-lg leading-8 text-haze">
+        Official updates from The MasterBeat Project, including catalogue announcements, artist stories, label notes and music industry news from the MBP world.
+      </p>
+    </div>
+  </section>
+
+  <section class="py-20">
+    <div class="section-shell">
+      <NewsList />
+    </div>
+  </section>
+</BaseLayout>

@@ -19,6 +19,7 @@ function urlEntry(path: string, priority: string, changefreq: string, lastmod?: 
 export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   const staticUrls = [
     urlEntry("/", "1.0", "weekly"),
+    urlEntry("/news/", "0.8", "daily"),
     urlEntry("/releases/", "0.9", "daily"),
     urlEntry("/artists/", "0.9", "daily"),
     urlEntry("/demo-submission/", "0.8", "monthly"),
@@ -29,15 +30,29 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
 
   let dynamicUrls: string[] = [];
   if (env.DB) {
-    const [releases, artists] = await Promise.all([
-      env.DB.prepare("SELECT slug, updated_at FROM releases WHERE status IN ('published', 'presave') ORDER BY catalog_number DESC").all<SitemapRow>(),
-      env.DB.prepare("SELECT slug, updated_at FROM artists ORDER BY name ASC").all<SitemapRow>()
-    ]);
+    try {
+      const [releases, artists] = await Promise.all([
+        env.DB.prepare("SELECT slug, updated_at FROM releases WHERE status IN ('published', 'presave') ORDER BY catalog_number DESC").all<SitemapRow>(),
+        env.DB.prepare("SELECT slug, updated_at FROM artists ORDER BY name ASC").all<SitemapRow>()
+      ]);
 
-    dynamicUrls = [
-      ...(releases.results ?? []).map((release) => urlEntry(`/release/${release.slug}`, "0.8", "weekly", release.updated_at)),
-      ...(artists.results ?? []).map((artist) => urlEntry(`/artist/${artist.slug}`, "0.7", "weekly", artist.updated_at))
-    ];
+      dynamicUrls.push(
+        ...(releases.results ?? []).map((release) => urlEntry(`/release/${release.slug}`, "0.8", "weekly", release.updated_at)),
+        ...(artists.results ?? []).map((artist) => urlEntry(`/artist/${artist.slug}`, "0.7", "weekly", artist.updated_at))
+      );
+    } catch {
+      dynamicUrls = [];
+    }
+
+    try {
+      const news = await env.DB
+        .prepare("SELECT slug, updated_at FROM news_articles WHERE status = 'published' ORDER BY datetime(COALESCE(published_at, updated_at, created_at)) DESC")
+        .all<SitemapRow>();
+
+      dynamicUrls.push(...(news.results ?? []).map((article) => urlEntry(`/news/${article.slug}`, "0.7", "weekly", article.updated_at)));
+    } catch {
+      // News migration may not be applied yet. Keep the public sitemap online.
+    }
   }
 
   return new Response(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[...staticUrls, ...dynamicUrls].join("\n")}\n</urlset>`, {

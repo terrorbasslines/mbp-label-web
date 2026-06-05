@@ -1,0 +1,136 @@
+<div class="space-y-8" data-news-app>
+  <div class="surface rounded-lg p-5">
+    <label>
+      <span class="field-label">Search news</span>
+      <input class="field-control" data-news-search type="search" placeholder="Search article title, category or text" />
+    </label>
+  </div>
+
+  <p class="text-sm text-steel" data-news-count>Loading news...</p>
+  <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3" data-news-grid></div>
+</div>
+
+<script>
+  type NewsArticle = {
+    slug: string;
+    title: string;
+    excerpt?: string;
+    category?: string;
+    author_name?: string;
+    published_at?: string;
+    cover_image_url?: string;
+    accent_color?: string;
+    comments_count?: number;
+    reactions_count?: number;
+    url?: string;
+  };
+
+  const app = document.querySelector("[data-news-app]");
+  const grid = app?.querySelector("[data-news-grid]");
+  const count = app?.querySelector("[data-news-count]");
+  const search = app?.querySelector("[data-news-search]") as HTMLInputElement | null;
+  let articles: NewsArticle[] = [];
+  let query = "";
+
+  const escapeHtml = (value: unknown) =>
+    String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+
+  function formatDate(value?: string) {
+    if (!value) return "MBP News";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "MBP News";
+    return date.toLocaleDateString("en", { year: "numeric", month: "short", day: "numeric" });
+  }
+
+  function articleUrl(article: NewsArticle) {
+    return article.url || `/news/${article.slug}`;
+  }
+
+  function absoluteArticleUrl(article: NewsArticle) {
+    return new URL(articleUrl(article), window.location.origin).toString();
+  }
+
+  function filteredArticles() {
+    const term = query.trim().toLowerCase();
+    if (!term) return articles;
+    return articles.filter((article) =>
+      [article.title, article.excerpt, article.category, article.author_name].some((value) => String(value || "").toLowerCase().includes(term))
+    );
+  }
+
+  function renderArticles() {
+    if (!grid || !count) return;
+    const filtered = filteredArticles();
+    count.textContent = filtered.length === 1 ? "1 article found" : `${filtered.length} articles found`;
+    grid.innerHTML = filtered.length
+      ? filtered
+          .map((article) => {
+            const url = articleUrl(article);
+            const fullUrl = absoluteArticleUrl(article);
+            const accent = /^#[0-9a-f]{6}$/i.test(article.accent_color || "") ? article.accent_color : "#bd00ff";
+            const image = article.cover_image_url || `${url}/social-image.svg?platform=og`;
+            return `
+              <article class="clip-diagonal border bg-carbon/90 transition hover:-translate-y-1" style="border-color:${escapeHtml(accent)}55; box-shadow:0 0 28px ${escapeHtml(accent)}12;">
+                <a href="${escapeHtml(url)}" class="block aspect-[16/9] overflow-hidden border-b border-white/10 bg-black">
+                  <img src="${escapeHtml(image)}" alt="${escapeHtml(article.title)} news cover" class="h-full w-full object-cover transition duration-500 hover:scale-[1.03]" loading="lazy" />
+                </a>
+                <div class="p-5">
+                  <p class="font-mono text-xs font-bold uppercase tracking-[0.16em]" style="color:${escapeHtml(accent)};">${escapeHtml(article.category || "News")} | ${escapeHtml(formatDate(article.published_at))}</p>
+                  <h2 class="mt-3 font-display text-3xl font-black uppercase leading-tight text-white">
+                    <a href="${escapeHtml(url)}" class="hover:text-neon-cyan">${escapeHtml(article.title)}</a>
+                  </h2>
+                  <p class="mt-3 text-sm leading-7 text-haze">${escapeHtml(article.excerpt || "Read the latest MBP label update.")}</p>
+                  <p class="mt-4 text-xs uppercase tracking-[0.14em] text-steel">${Number(article.reactions_count || 0)} reactions | ${Number(article.comments_count || 0)} comments</p>
+                  <div class="mt-5 flex flex-wrap gap-2">
+                    <a class="rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(url)}">Read article</a>
+                    <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-haze hover:border-neon-cyan hover:text-white" data-share-news="${escapeHtml(fullUrl)}" data-share-title="${escapeHtml(article.title)}" type="button">Share</button>
+                  </div>
+                </div>
+              </article>
+            `;
+          })
+          .join("")
+      : `<div class="surface rounded-lg p-6 md:col-span-2 xl:col-span-3"><p class="text-sm text-steel">${articles.length ? "No article matches this search." : "No published MBP news yet."}</p></div>`;
+  }
+
+  search?.addEventListener("input", () => {
+    query = search.value || "";
+    renderArticles();
+  });
+
+  document.addEventListener("click", async (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    const shareButton = target.closest("[data-share-news]");
+    if (!(shareButton instanceof HTMLElement)) return;
+    const url = shareButton.getAttribute("data-share-news") || window.location.href;
+    const title = shareButton.getAttribute("data-share-title") || "The MasterBeat Project News";
+    if (navigator.share) {
+      await navigator.share({ title, url }).catch(() => {});
+      return;
+    }
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(url).catch(() => {});
+    }
+    shareButton.textContent = "Copied";
+    setTimeout(() => {
+      shareButton.textContent = "Share";
+    }, 1600);
+  });
+
+  fetch("/api/news?limit=48")
+    .then((response) => response.json())
+    .then((data) => {
+      const payload = data as { articles?: NewsArticle[] };
+      articles = payload.articles || [];
+      renderArticles();
+    })
+    .catch(() => {
+      if (count) count.textContent = "News could not be loaded right now.";
+    });
+</script>

@@ -70,6 +70,9 @@ Planned endpoint:
 - `/admin`
 - `/api/admin/*`
 - `/api/catalog`
+- `/news`
+- `/api/news`
+- `/api/admin/news`
 - `/claim-artist`
 - `/artist-dashboard`
 - `/api/auth/claim`
@@ -92,6 +95,7 @@ Current status:
 - Optional demo file uploads are stored privately in Cloudflare R2 when `DEMO_BUCKET` is bound.
 - Demo approval/rejection is implemented in admin. Email sending is active only when Resend env variables are configured.
 - Artist claim invitations and artist profile editing are implemented with email/password login. Google OAuth can be added after OAuth credentials are created.
+- News articles are implemented with admin publishing, public article pages, generated social thumbnails, artist reactions and artist comments.
 
 ## D1 Setup
 
@@ -114,6 +118,12 @@ Apply migrations:
 
 ```bash
 npx wrangler d1 migrations apply mbp_label_web --remote
+```
+
+If Cloudflare dashboard migration was used manually before, apply the new News schema directly:
+
+```bash
+npx wrangler d1 execute mbp_label_web --remote --file=./migrations/0011_news_articles.sql
 ```
 
 In Cloudflare Pages dashboard, confirm the binding:
@@ -157,6 +167,7 @@ Use the admin dashboard to:
 - import FFM smartlinks in batches, for example `1` to `25`
 - add artists and profiles
 - add releases and playable platform links
+- publish News articles with generated 1200x630, 1080x1080 and story thumbnails
 - create artist claim links with artist or admin role
 - approve or reject demos with a reason
 

@@ -1,0 +1,78 @@
+<div class="hidden" data-home-news-section>
+  <div class="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+    <div>
+      <p class="eyebrow">News</p>
+      <h2 class="section-title mt-3">Recent articles</h2>
+      <p class="mt-4 max-w-3xl text-pretty text-lg leading-8 text-haze">
+        Latest label updates, artist stories and catalogue notes from The MasterBeat Project.
+      </p>
+    </div>
+    <a class="inline-flex min-h-12 items-center justify-center rounded-md border border-white/10 px-5 py-3 text-sm font-black uppercase tracking-[0.14em] text-haze transition hover:border-neon-cyan hover:text-white" href="/news/">
+      View News
+    </a>
+  </div>
+  <div class="mt-10 grid gap-5 md:grid-cols-3" data-home-news-grid></div>
+</div>
+
+<script>
+  type NewsArticle = {
+    slug: string;
+    title: string;
+    excerpt?: string;
+    category?: string;
+    published_at?: string;
+    cover_image_url?: string;
+    accent_color?: string;
+    url?: string;
+  };
+
+  const section = document.querySelector("[data-home-news-section]");
+  const grid = document.querySelector("[data-home-news-grid]");
+
+  const escapeHtml = (value: unknown) =>
+    String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+
+  function formatDate(value?: string) {
+    if (!value) return "MBP News";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "MBP News";
+    return date.toLocaleDateString("en", { year: "numeric", month: "short", day: "numeric" });
+  }
+
+  fetch("/api/news?limit=3")
+    .then((response) => response.json())
+    .then((data) => {
+      const payload = data as { articles?: NewsArticle[] };
+      const articles = payload.articles || [];
+      if (!section || !grid || !articles.length) return;
+      section.classList.remove("hidden");
+      grid.innerHTML = articles
+        .map((article) => {
+          const url = article.url || `/news/${article.slug}`;
+          const accent = /^#[0-9a-f]{6}$/i.test(article.accent_color || "") ? article.accent_color : "#bd00ff";
+          const image = article.cover_image_url || `${url}/social-image.svg?platform=og`;
+          return `
+            <article class="clip-diagonal border bg-carbon/90" style="border-color:${escapeHtml(accent)}55; box-shadow:0 0 24px ${escapeHtml(accent)}10;">
+              <a href="${escapeHtml(url)}" class="block aspect-[16/9] overflow-hidden border-b border-white/10 bg-black">
+                <img src="${escapeHtml(image)}" alt="${escapeHtml(article.title)} article cover" class="h-full w-full object-cover transition duration-500 hover:scale-[1.03]" loading="lazy" />
+              </a>
+              <div class="p-5">
+                <p class="font-mono text-xs font-bold uppercase tracking-[0.16em]" style="color:${escapeHtml(accent)};">${escapeHtml(article.category || "News")} | ${escapeHtml(formatDate(article.published_at))}</p>
+                <h3 class="mt-3 font-display text-2xl font-black uppercase leading-tight text-white">
+                  <a href="${escapeHtml(url)}" class="hover:text-neon-cyan">${escapeHtml(article.title)}</a>
+                </h3>
+                <p class="mt-3 text-sm leading-7 text-haze">${escapeHtml(article.excerpt || "Read the latest MBP label update.")}</p>
+                <a class="mt-5 inline-flex rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(url)}">Read article</a>
+              </div>
+            </article>
+          `;
+        })
+        .join("");
+    })
+    .catch(() => {});
+</script>

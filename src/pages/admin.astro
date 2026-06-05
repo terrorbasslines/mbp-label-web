@@ -41,7 +41,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
             </div>
           </div>
 
-          <div class="grid gap-5 lg:grid-cols-4" data-stats></div>
+          <div class="grid gap-5 lg:grid-cols-5" data-stats></div>
 
           <section class="surface rounded-lg p-5">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -54,6 +54,74 @@ import BaseLayout from "../layouts/BaseLayout.astro";
               </a>
             </div>
             <div class="mt-5 space-y-4" data-submissions-list></div>
+          </section>
+
+          <section class="surface rounded-lg p-5">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p class="eyebrow">News desk</p>
+                <h3 class="mt-2 font-display text-2xl font-black uppercase text-white" data-news-form-title>Publish News article</h3>
+                <p class="mt-2 text-sm leading-6 text-steel">Create official MBP articles with generated share thumbnails for Open Graph, square posts and stories.</p>
+              </div>
+              <a class="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-haze transition hover:border-neon-cyan hover:text-white" href="/news/">
+                Open News
+              </a>
+            </div>
+            <form data-news-form class="mt-5 grid gap-4 md:grid-cols-2">
+              <input name="id" type="hidden" data-news-edit-id />
+              <label>
+                <span class="field-label">Title</span>
+                <input class="field-control" name="title" maxlength="180" required />
+              </label>
+              <label>
+                <span class="field-label">Slug</span>
+                <input class="field-control" name="slug" maxlength="160" placeholder="auto-generated if empty" />
+              </label>
+              <label>
+                <span class="field-label">Status</span>
+                <select class="field-control" name="status">
+                  <option value="draft">Draft</option>
+                  <option value="published">Published</option>
+                </select>
+              </label>
+              <label>
+                <span class="field-label">Category</span>
+                <input class="field-control" name="category" maxlength="120" placeholder="Label news" />
+              </label>
+              <label>
+                <span class="field-label">Author</span>
+                <input class="field-control" name="author_name" maxlength="160" placeholder="The MasterBeat Project" />
+              </label>
+              <label>
+                <span class="field-label">Accent color</span>
+                <input class="field-control min-h-12" name="accent_color" type="color" value="#bd00ff" />
+              </label>
+              <label class="md:col-span-2">
+                <span class="field-label">Cover image URL</span>
+                <input class="field-control" name="cover_image_url" type="url" placeholder="https://..." />
+              </label>
+              <label>
+                <span class="field-label">Social title</span>
+                <input class="field-control" name="social_title" maxlength="180" placeholder="Optional custom share headline" />
+              </label>
+              <label>
+                <span class="field-label">Social description</span>
+                <input class="field-control" name="social_description" maxlength="320" placeholder="Optional text for generated thumbnails" />
+              </label>
+              <label class="md:col-span-2">
+                <span class="field-label">Excerpt</span>
+                <textarea class="field-control min-h-20" name="excerpt" maxlength="500" placeholder="Short public summary for cards and SEO."></textarea>
+              </label>
+              <label class="md:col-span-2">
+                <span class="field-label">Article content</span>
+                <textarea class="field-control min-h-52" name="content" required placeholder="Write paragraphs separated by blank lines. Use lines starting with ## for section headings."></textarea>
+              </label>
+              <div class="flex flex-wrap gap-2 md:col-span-2">
+                <button class="rounded-md bg-white px-4 py-3 text-sm font-black uppercase text-black hover:bg-neon-cyan" data-news-submit type="submit">Save article</button>
+                <button class="rounded-md border border-white/10 px-4 py-3 text-sm font-bold uppercase text-haze hover:border-neon-cyan hover:text-white" data-news-cancel hidden type="button">Cancel edit</button>
+              </div>
+            </form>
+            <div class="mt-6 space-y-3" data-news-list></div>
           </section>
 
           <section class="surface rounded-lg p-5">
@@ -256,6 +324,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   const artistsList = document.querySelector("[data-artists-list]");
   const releasesList = document.querySelector("[data-releases-list]");
   const submissionsList = document.querySelector("[data-submissions-list]");
+  const newsList = document.querySelector("[data-news-list]");
   const artistSelect = document.querySelector("[data-artist-select]");
   const importStatus = document.querySelector("[data-import-status]");
   const artistForm = document.querySelector("[data-artist-form]");
@@ -266,6 +335,10 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   const releaseFormTitle = document.querySelector("[data-release-form-title]");
   const releaseSubmit = document.querySelector("[data-release-submit]");
   const releaseCancel = document.querySelector("[data-release-cancel]");
+  const newsForm = document.querySelector("[data-news-form]");
+  const newsFormTitle = document.querySelector("[data-news-form-title]");
+  const newsSubmit = document.querySelector("[data-news-submit]");
+  const newsCancel = document.querySelector("[data-news-cancel]");
   const adminArtistSearch = document.querySelector("[data-admin-artist-search]");
   const adminReleaseSearch = document.querySelector("[data-admin-release-search]");
   const adminArtistRegion = document.querySelector("[data-admin-artist-region]");
@@ -273,13 +346,14 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   let artists = [];
   let releases = [];
   let submissions = [];
+  let newsArticles = [];
   let artistSearchTerm = "";
   let releaseSearchTerm = "";
   let artistRegionTerm = "all";
   let releaseRegionTerm = "all";
   let submissionCounts = { pending: 0, archived: 0, total: 0 };
-  const pages = { artists: 1, releases: 1, submissions: 1 };
-  const pageSizes = { artists: 10, releases: 8, submissions: 5 };
+  const pages = { artists: 1, releases: 1, submissions: 1, news: 1 };
+  const pageSizes = { artists: 10, releases: 8, submissions: 5, news: 6 };
   const mbpRegions = {
     europe: { label: "MBP Europe", color: "#ffd000" },
     america: { label: "MBP America", color: "#23df1e" },
@@ -418,6 +492,17 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     return mbpRegions[String(region || "").toLowerCase()] || mbpRegions.world;
   }
 
+  function formatAdminDate(value) {
+    if (!value) return "No date";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return date.toLocaleDateString("en", { year: "numeric", month: "short", day: "numeric" });
+  }
+
+  function newsAccent(value) {
+    return /^#[0-9a-f]{6}$/i.test(String(value || "")) ? String(value) : "#bd00ff";
+  }
+
   function renderRegionBadge(region) {
     const meta = regionMeta(region);
     return `<span class="inline-flex rounded border px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.14em]" style="border-color:${escapeHtml(meta.color)}66; color:${escapeHtml(meta.color)}">${escapeHtml(meta.label)}</span>`;
@@ -502,11 +587,42 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     releaseForm.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  function resetNewsEditor() {
+    if (!(newsForm instanceof HTMLFormElement)) return;
+    newsForm.reset();
+    newsForm.removeAttribute("data-editing-news");
+    if (newsForm.elements.accent_color) newsForm.elements.accent_color.value = "#bd00ff";
+    if (newsFormTitle) newsFormTitle.textContent = "Publish News article";
+    if (newsSubmit) newsSubmit.textContent = "Save article";
+    newsCancel?.setAttribute("hidden", "");
+  }
+
+  function startNewsEditor(article) {
+    if (!(newsForm instanceof HTMLFormElement)) return;
+    newsForm.setAttribute("data-editing-news", article.id);
+    newsForm.elements.title.value = article.title || "";
+    newsForm.elements.slug.value = article.slug || "";
+    newsForm.elements.status.value = article.status || "draft";
+    newsForm.elements.category.value = article.category || "";
+    newsForm.elements.author_name.value = article.author_name || "";
+    newsForm.elements.accent_color.value = newsAccent(article.accent_color);
+    newsForm.elements.cover_image_url.value = article.cover_image_url || "";
+    newsForm.elements.social_title.value = article.social_title || "";
+    newsForm.elements.social_description.value = article.social_description || "";
+    newsForm.elements.excerpt.value = article.excerpt || "";
+    newsForm.elements.content.value = article.content || "";
+    if (newsFormTitle) newsFormTitle.textContent = `Edit ${article.title}`;
+    if (newsSubmit) newsSubmit.textContent = "Update article";
+    newsCancel?.removeAttribute("hidden");
+    newsForm.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   function renderStats() {
     if (!statsEl) return;
     const items = [
       { label: "Artists", value: artists.length },
       { label: "Releases", value: releases.length },
+      { label: "News posts", value: newsArticles.length, href: "/news/" },
       { label: "Pending demos", value: submissionCounts.pending },
       { label: "Archive demos", value: submissionCounts.archived, href: "/admin/demo-archive/" }
     ];
@@ -648,22 +764,65 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       : `<p class="text-sm text-steel">No pending demo submissions. Approved and rejected demos are available in the archive.</p>`;
   }
 
+  function renderNewsArticles() {
+    if (!newsList) return;
+    const items = pageItems(newsArticles, "news");
+    newsList.innerHTML = newsArticles.length
+      ? items
+          .map((article) => {
+            const accent = newsAccent(article.accent_color);
+            const publicPath = `/news/${encodeURIComponent(String(article.slug || "").toLowerCase())}`;
+            const published = article.status === "published";
+            return `
+              <article class="rounded-md border bg-black/35 p-4" style="border-color:${escapeHtml(accent)}55;">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div class="min-w-0 flex-1">
+                    <p class="font-mono text-xs font-bold uppercase tracking-[0.16em]" style="color:${escapeHtml(accent)};">${escapeHtml(article.status || "draft")} | ${escapeHtml(article.category || "News")}</p>
+                    <h4 class="mt-2 font-display text-2xl font-black uppercase text-white">${escapeHtml(article.title)}</h4>
+                    <p class="mt-1 text-sm text-steel">${escapeHtml(article.slug)} | ${escapeHtml(formatAdminDate(article.published_at || article.updated_at))} | ${Number(article.reactions_count || 0)} reactions | ${Number(article.comments_count || 0)} comments</p>
+                    <p class="mt-3 text-sm leading-6 text-haze">${escapeHtml(article.excerpt || "No excerpt yet.")}</p>
+                    <div class="mt-4 flex flex-wrap gap-2">
+                      ${
+                        published
+                          ? `<a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(publicPath)}" target="_blank" rel="noreferrer">Open</a>
+                             <a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(`${publicPath}/social-image.svg?platform=og`)}" target="_blank" rel="noreferrer">1200x630</a>
+                             <a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(`${publicPath}/social-image.svg?platform=square`)}" target="_blank" rel="noreferrer">1080x1080</a>
+                             <a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(`${publicPath}/social-image.svg?platform=story`)}" target="_blank" rel="noreferrer">Story</a>`
+                          : `<span class="rounded border border-white/10 px-2 py-1 text-xs text-steel">Draft not public yet</span>`
+                      }
+                    </div>
+                  </div>
+                  <div class="flex flex-wrap gap-2">
+                    <button class="text-xs font-bold uppercase text-neon-cyan hover:text-white" data-edit-news="${escapeHtml(article.id)}" type="button">Edit</button>
+                    <button class="text-xs font-bold uppercase text-neon-cyan hover:text-white" data-delete-news="${escapeHtml(article.id)}" type="button">Delete</button>
+                  </div>
+                </div>
+              </article>
+            `;
+          })
+          .join("") + renderPager("news", newsArticles.length)
+      : `<p class="text-sm text-steel">No News articles yet. Create the first MBP update above.</p>`;
+  }
+
   function render() {
     renderStats();
     renderArtists();
     renderReleases();
     renderSubmissions();
+    renderNewsArticles();
   }
 
   async function loadDashboard() {
-    const [artistData, releaseData, submissionData] = await Promise.all([
+    const [artistData, releaseData, submissionData, newsData] = await Promise.all([
       api("/api/admin/artists"),
       api("/api/admin/releases"),
-      api("/api/admin/demo-submissions?scope=pending")
+      api("/api/admin/demo-submissions?scope=pending"),
+      api("/api/admin/news")
     ]);
     artists = artistData.artists || [];
     releases = releaseData.releases || [];
     submissions = submissionData.submissions || [];
+    newsArticles = newsData.articles || [];
     submissionCounts = submissionData.counts || { pending: submissions.length, archived: 0, total: submissions.length };
     render();
   }
@@ -781,6 +940,34 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
   releaseCancel?.addEventListener("click", resetReleaseEditor);
 
+  newsForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const editingNewsId = form.getAttribute("data-editing-news");
+    await api(editingNewsId ? `/api/admin/news/${editingNewsId}` : "/api/admin/news", {
+      method: editingNewsId ? "PUT" : "POST",
+      body: JSON.stringify({
+        title: formData.get("title"),
+        slug: formData.get("slug"),
+        status: formData.get("status"),
+        category: formData.get("category"),
+        author_name: formData.get("author_name"),
+        accent_color: formData.get("accent_color"),
+        cover_image_url: formData.get("cover_image_url"),
+        social_title: formData.get("social_title"),
+        social_description: formData.get("social_description"),
+        excerpt: formData.get("excerpt"),
+        content: formData.get("content")
+      })
+    });
+    resetNewsEditor();
+    pages.news = 1;
+    await loadDashboard();
+  });
+
+  newsCancel?.addEventListener("click", resetNewsEditor);
+
   document.querySelector("[data-import-form]")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -822,6 +1009,8 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     const artistId = target.getAttribute("data-delete-artist");
     const editReleaseId = target.getAttribute("data-edit-release");
     const releaseId = target.getAttribute("data-delete-release");
+    const editNewsId = target.getAttribute("data-edit-news");
+    const newsId = target.getAttribute("data-delete-news");
     if (editArtistId) {
       const artist = artists.find((item) => item.id === editArtistId);
       if (artist) startArtistEditor(artist);
@@ -840,6 +1029,17 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     if (releaseId) {
       await api(`/api/admin/releases/${releaseId}`, { method: "DELETE", body: "{}" });
       resetReleaseEditor();
+      await loadDashboard();
+    }
+    if (editNewsId) {
+      const article = newsArticles.find((item) => item.id === editNewsId);
+      if (article) startNewsEditor(article);
+      return;
+    }
+    if (newsId) {
+      if (!window.confirm("Delete this News article?")) return;
+      await api(`/api/admin/news/${newsId}`, { method: "DELETE", body: "{}" });
+      resetNewsEditor();
       await loadDashboard();
     }
   });

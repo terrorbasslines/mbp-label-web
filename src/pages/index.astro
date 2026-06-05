@@ -5,6 +5,7 @@ import SectionHeader from "../components/SectionHeader.astro";
 import ReleaseCard from "../components/ReleaseCard.astro";
 import HomeLatestReleases from "../components/HomeLatestReleases.astro";
 import HomeManagementTeam from "../components/HomeManagementTeam.astro";
+import HomeRecentNews from "../components/HomeRecentNews.astro";
 import { labelStats, releases, siteConfig } from "../data/site";
 
 const homeJsonLd = {
@@ -91,6 +92,12 @@ const mbpRegionCards = [
       <div class="mt-10 hidden grid gap-5 sm:grid-cols-2 lg:grid-cols-4" data-home-static-releases>
         {releases.map((release) => <ReleaseCard release={release} />)}
       </div>
+    </div>
+  </section>
+
+  <section class="border-y border-white/10 bg-black/40 py-20">
+    <div class="section-shell">
+      <HomeRecentNews />
     </div>
   </section>
 

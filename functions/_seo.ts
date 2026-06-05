@@ -80,6 +80,7 @@ export function pageShell(input: {
   const path = input.canonicalPath.replace(/\/$/, "") || "/";
   const navItems = [
     { href: "/", label: "Home", active: path === "/" },
+    { href: "/news/", label: "News", active: path === "/news" || path.startsWith("/news/") },
     { href: "/releases/", label: "Releases", active: path === "/releases" || path.startsWith("/release/") },
     { href: "/artists/", label: "Artists", active: path === "/artists" || path.startsWith("/artist/") },
     { href: "/demo-submission/", label: "Demo Submission", active: path === "/demo-submission" },
