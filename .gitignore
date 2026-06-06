@@ -3,6 +3,7 @@ dist/
 .astro/
 .wrangler/
 .tools/
+backups/
 *.zip
 data/ffm-catalog.json
 
