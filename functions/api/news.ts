@@ -1,5 +1,5 @@
 import { isResponse, json, methodNotAllowed, optionalString, requireDb, verifySession, type Env } from "./_shared";
-import { invalidNewsTableResponse, isNewsTableMissing, serializeArticle, type NewsArticleRow } from "./_news";
+import { ensureDefaultNewsCategories, invalidNewsTableResponse, isNewsTableMissing, serializeArticle, type NewsArticleRow } from "./_news";
 
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const db = requireDb(env);
@@ -12,6 +12,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const includeDrafts = url.searchParams.get("preview") === "admin" && session?.role === "admin";
 
   try {
+    await ensureDefaultNewsCategories(db);
     const where: string[] = [];
     const bindValues: Array<string | number> = [];
     if (!includeDrafts) where.push("a.status = 'published'");

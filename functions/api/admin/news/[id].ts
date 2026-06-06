@@ -10,6 +10,7 @@ import {
   type Env
 } from "../../_shared";
 import {
+  ensureDefaultNewsCategories,
   findArticleById,
   isNewsTableMissing,
   normalizeAccentColor,
@@ -28,10 +29,6 @@ export const onRequestPut: PagesFunction<Env> = async ({ params, request, env })
   const db = requireDb(env);
   if (isResponse(db)) return db;
 
-  const articleId = String(params.id ?? "");
-  const existing = await findArticleById(db, articleId);
-  if (!existing) return json({ ok: false, error: "News article not found." }, { status: 404 });
-
   const body = await readJson<Record<string, unknown>>(request);
   if (body instanceof Response) return body;
 
@@ -41,47 +38,63 @@ export const onRequestPut: PagesFunction<Env> = async ({ params, request, env })
   if (isResponse(title)) return title;
   if (isResponse(content)) return content;
 
-  const status = normalizeArticleStatus(body.status);
-  const slug = await uniqueArticleSlug(db, title, optionalString(body.slug, 160) ?? existing.slug, articleId);
-  const publishedAt =
-    status === "published"
-      ? optionalString(body.published_at, 80) ?? existing.published_at ?? new Date().toISOString()
-      : optionalString(body.published_at, 80);
-  const category = await resolveNewsCategory(db, body.category_id);
-  if (optionalString(body.category_id, 160) && !category) {
-    return json({ ok: false, error: "News category not found." }, { status: 400 });
+  const articleId = String(params.id ?? "");
+
+  try {
+    await ensureDefaultNewsCategories(db);
+    const existing = await findArticleById(db, articleId);
+    if (!existing) return json({ ok: false, error: "News article not found." }, { status: 404 });
+
+    const status = normalizeArticleStatus(body.status);
+    const slug = await uniqueArticleSlug(db, title, optionalString(body.slug, 160) ?? existing.slug, articleId);
+    const publishedAt =
+      status === "published"
+        ? optionalString(body.published_at, 80) ?? existing.published_at ?? new Date().toISOString()
+        : optionalString(body.published_at, 80);
+    const category = await resolveNewsCategory(db, body.category_id);
+    if (optionalString(body.category_id, 160) && !category) {
+      return json({ ok: false, error: "News category not found." }, { status: 400 });
+    }
+
+    await db
+      .prepare(
+        `UPDATE news_articles
+         SET slug = ?, title = ?, excerpt = ?, content = ?, cover_image_url = ?, status = ?, category_id = ?, category = ?,
+             author_name = ?, seo_title = ?, seo_description = ?, social_title = ?, social_description = ?, accent_color = ?, published_at = ?,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`
+      )
+      .bind(
+        slug,
+        title,
+        optionalString(body.excerpt, 500),
+        contentHtml,
+        optionalString(body.cover_image_url, 2000),
+        status,
+        category?.id ?? null,
+        category?.name ?? optionalString(body.category, 120),
+        optionalString(body.author_name, 160) ?? "The MasterBeat Project",
+        optionalString(body.seo_title, 180),
+        optionalString(body.seo_description, 320),
+        optionalString(body.social_title, 180),
+        optionalString(body.social_description, 320),
+        normalizeAccentColor(body.accent_color ?? category?.accent_color),
+        publishedAt,
+        articleId
+      )
+      .run();
+
+    const article = await findArticleById(db, articleId);
+    return json({ ok: true, article: article ? serializeArticle(article) : { id: articleId, slug, title } });
+  } catch (error) {
+    if (isNewsTableMissing(error)) {
+      return json(
+        { ok: false, error: "News articles are not installed yet. Run D1 migrations 0011, 0012 and 0013 for the production database." },
+        { status: 409 }
+      );
+    }
+    throw error;
   }
-
-  await db
-    .prepare(
-      `UPDATE news_articles
-       SET slug = ?, title = ?, excerpt = ?, content = ?, cover_image_url = ?, status = ?, category_id = ?, category = ?,
-           author_name = ?, seo_title = ?, seo_description = ?, social_title = ?, social_description = ?, accent_color = ?, published_at = ?,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE id = ?`
-    )
-    .bind(
-      slug,
-      title,
-      optionalString(body.excerpt, 500),
-      contentHtml,
-      optionalString(body.cover_image_url, 2000),
-      status,
-      category?.id ?? null,
-      category?.name ?? optionalString(body.category, 120),
-      optionalString(body.author_name, 160) ?? "The MasterBeat Project",
-      optionalString(body.seo_title, 180),
-      optionalString(body.seo_description, 320),
-      optionalString(body.social_title, 180),
-      optionalString(body.social_description, 320),
-      normalizeAccentColor(body.accent_color ?? category?.accent_color),
-      publishedAt,
-      articleId
-    )
-    .run();
-
-  const article = await findArticleById(db, articleId);
-  return json({ ok: true, article: article ? serializeArticle(article) : { id: articleId, slug, title } });
 };
 
 export const onRequestDelete: PagesFunction<Env> = async ({ params, request, env }) => {

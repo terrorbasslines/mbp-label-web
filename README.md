@@ -120,10 +120,12 @@ Apply migrations:
 npx wrangler d1 migrations apply mbp_label_web --remote
 ```
 
-If Cloudflare dashboard migration was used manually before, apply the new News schema directly:
+If Cloudflare dashboard migration was used manually before, apply the News schema and default News categories directly:
 
 ```bash
 npx wrangler d1 execute mbp_label_web --remote --file=./migrations/0011_news_articles.sql
+npx wrangler d1 execute mbp_label_web --remote --file=./migrations/0012_news_editor_seo_categories.sql
+npx wrangler d1 execute mbp_label_web --remote --file=./migrations/0013_news_categories_and_draft_seed.sql
 ```
 
 In Cloudflare Pages dashboard, confirm the binding:

@@ -26,6 +26,54 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     background: rgba(34, 247, 255, 0.12) !important;
     color: #fff !important;
   }
+  .mbp-news-editor .ck.ck-dropdown__panel,
+  .mbp-news-editor .ck.ck-list {
+    border-color: rgba(255, 255, 255, 0.18) !important;
+    background: #08090f !important;
+  }
+  .mbp-news-editor .ck.ck-list__item .ck-button {
+    background: #08090f !important;
+    color: #f8f8fb !important;
+  }
+  .mbp-news-editor .ck.ck-list__item .ck-button .ck-button__label {
+    color: #f8f8fb !important;
+  }
+  .mbp-news-editor .ck.ck-list__item .ck-button:hover,
+  .mbp-news-editor .ck.ck-list__item .ck-button.ck-on {
+    background: rgba(34, 247, 255, 0.16) !important;
+    color: #fff !important;
+  }
+  .mbp-news-editor .ck-content figure {
+    margin: 1.5rem 0;
+  }
+  .mbp-news-editor .ck-content img {
+    max-width: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 8px;
+  }
+  .mbp-news-editor .ck-content .media,
+  .mbp-news-editor .ck-content .media-embed {
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 8px;
+    background: #000;
+  }
+  .mbp-news-editor .ck-content .media iframe,
+  .mbp-news-editor .ck-content .media-embed iframe {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border: 0;
+  }
+  .mbp-news-editor .ck-content video,
+  .mbp-news-editor .ck-content audio {
+    display: block;
+    width: 100%;
+  }
+  .mbp-news-editor .ck-content video {
+    aspect-ratio: 16 / 9;
+    background: #000;
+  }
   .mbp-news-editor .ck.ck-editor__editable {
     min-height: 360px;
     padding: 18px !important;
@@ -128,6 +176,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                 <div class="md:col-span-3">
                   <button class="rounded-md bg-white px-4 py-3 text-sm font-black uppercase text-black hover:bg-neon-cyan" data-news-category-submit type="submit">Save category</button>
                 </div>
+                <p class="text-sm text-steel md:col-span-3" data-news-category-status></p>
               </form>
               <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3" data-news-category-list></div>
             </div>
@@ -194,10 +243,17 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                 <span class="field-label">Excerpt</span>
                 <textarea class="field-control min-h-20" name="excerpt" maxlength="500" placeholder="Short public summary for cards and SEO."></textarea>
               </label>
-              <label class="md:col-span-2 mbp-news-editor">
+              <div class="md:col-span-2 mbp-news-editor">
                 <span class="field-label">Article content</span>
+                <div class="mb-3 flex flex-wrap gap-2">
+                  <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-haze hover:border-neon-cyan hover:text-white" data-news-insert-media type="button">Embed link</button>
+                  <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-haze hover:border-neon-cyan hover:text-white" data-news-insert-image type="button">Image URL</button>
+                  <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-haze hover:border-neon-cyan hover:text-white" data-news-upload-media type="button">Upload media</button>
+                  <input data-news-media-input type="file" accept="image/*,video/*,audio/*" hidden />
+                </div>
                 <textarea class="field-control min-h-52" name="content" data-news-editor required placeholder="Write the article body here. The rich editor loads automatically when available."></textarea>
-              </label>
+                <p class="mt-2 text-xs leading-5 text-steel" data-news-media-status>Use YouTube, SoundCloud, Spotify or Vimeo links for embeds. Upload images, audio or short video files when the article needs hosted media.</p>
+              </div>
               <div class="flex flex-wrap gap-2 md:col-span-2">
                 <button class="rounded-md bg-white px-4 py-3 text-sm font-black uppercase text-black hover:bg-neon-cyan" data-news-submit type="submit">Save article</button>
                 <button class="rounded-md border border-white/10 px-4 py-3 text-sm font-bold uppercase text-haze hover:border-neon-cyan hover:text-white" data-news-cancel hidden type="button">Cancel edit</button>
@@ -428,8 +484,14 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   const newsCategoryList = document.querySelector("[data-news-category-list]");
   const newsCategorySelect = document.querySelector("[data-news-category-select]");
   const newsAuthorSelect = document.querySelector("[data-news-author-select]");
+  const newsCategoryStatus = document.querySelector("[data-news-category-status]");
   const newsUploadStatus = document.querySelector("[data-news-upload-status]");
   const newsEditorTextarea = document.querySelector("[data-news-editor]");
+  const newsInsertMedia = document.querySelector("[data-news-insert-media]");
+  const newsInsertImage = document.querySelector("[data-news-insert-image]");
+  const newsUploadMedia = document.querySelector("[data-news-upload-media]");
+  const newsMediaInput = document.querySelector("[data-news-media-input]");
+  const newsMediaStatus = document.querySelector("[data-news-media-status]");
   const adminArtistSearch = document.querySelector("[data-admin-artist-search]");
   const adminReleaseSearch = document.querySelector("[data-admin-release-search]");
   const adminArtistRegion = document.querySelector("[data-admin-artist-region]");
@@ -543,10 +605,27 @@ import BaseLayout from "../layouts/BaseLayout.astro";
               "bulletedList",
               "numberedList",
               "blockQuote",
+              "mediaEmbed",
               "|",
               "undo",
               "redo"
             ],
+            link: {
+              defaultProtocol: "https://",
+              decorators: {
+                openInNewTab: {
+                  mode: "manual",
+                  label: "Open in new tab",
+                  attributes: {
+                    target: "_blank",
+                    rel: "noopener noreferrer"
+                  }
+                }
+              }
+            },
+            mediaEmbed: {
+              previewsInData: false
+            },
             heading: {
               options: [
                 { model: "paragraph", title: "Paragraph", class: "ck-heading_paragraph" },
@@ -588,6 +667,32 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     if (newsEditorTextarea) newsEditorTextarea.value = String(value || "");
   }
 
+  function insertNewsHtml(html) {
+    if (!html) return;
+    if (newsEditor) {
+      const viewFragment = newsEditor.data.processor.toView(html);
+      const modelFragment = newsEditor.data.toModel(viewFragment);
+      newsEditor.model.insertContent(modelFragment);
+      return;
+    }
+    if (newsEditorTextarea) {
+      const current = String(newsEditorTextarea.value || "").trim();
+      newsEditorTextarea.value = current ? `${current}\n\n${html}` : html;
+    }
+  }
+
+  function safeNewsUrl(value, allowRelative = false) {
+    const url = String(value || "").trim();
+    if (!url) return "";
+    if (allowRelative && url.startsWith("/")) return url;
+    try {
+      const parsed = new URL(url);
+      return parsed.protocol === "https:" ? parsed.toString() : "";
+    } catch {
+      return "";
+    }
+  }
+
   async function uploadNewsCover(file, articleId) {
     const formData = new FormData();
     formData.append("image", file);
@@ -600,6 +705,35 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     const data = await response.json().catch(() => ({ ok: false, error: "Invalid upload response." }));
     if (!response.ok || data.ok === false) throw new Error(data.error || `Upload failed: ${response.status}`);
     return data.url;
+  }
+
+  async function uploadNewsMedia(file, articleId) {
+    const formData = new FormData();
+    formData.append("media", file);
+    if (articleId) formData.append("article_id", articleId);
+    const response = await fetch("/api/admin/news/media-upload", {
+      method: "POST",
+      credentials: "same-origin",
+      body: formData
+    });
+    const data = await response.json().catch(() => ({ ok: false, error: "Invalid upload response." }));
+    if (!response.ok || data.ok === false) throw new Error(data.error || `Upload failed: ${response.status}`);
+    return data;
+  }
+
+  function mediaHtml(url, type) {
+    const safeUrl = safeNewsUrl(url, true);
+    if (!safeUrl) return "";
+    if (String(type || "").startsWith("image/")) {
+      return `<figure class="image"><img src="${escapeHtml(safeUrl)}" alt="" /></figure>`;
+    }
+    if (String(type || "").startsWith("video/")) {
+      return `<figure class="media-embed"><video controls preload="metadata" src="${escapeHtml(safeUrl)}"></video></figure>`;
+    }
+    if (String(type || "").startsWith("audio/")) {
+      return `<figure class="media-embed"><audio controls src="${escapeHtml(safeUrl)}"></audio></figure>`;
+    }
+    return "";
   }
 
   function dispatchAuth(role = "admin") {
@@ -713,6 +847,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     if (newsCategoryForm.elements.accent_color) newsCategoryForm.elements.accent_color.value = "#bd00ff";
     if (newsCategoryFormTitle) newsCategoryFormTitle.textContent = "News categories";
     if (newsCategorySubmit) newsCategorySubmit.textContent = "Save category";
+    if (newsCategoryStatus) newsCategoryStatus.textContent = "";
     newsCategoryCancel?.setAttribute("hidden", "");
   }
 
@@ -726,6 +861,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     newsCategoryForm.elements.accent_color.value = newsAccent(category.accent_color);
     if (newsCategoryFormTitle) newsCategoryFormTitle.textContent = `Edit ${category.name}`;
     if (newsCategorySubmit) newsCategorySubmit.textContent = "Update category";
+    if (newsCategoryStatus) newsCategoryStatus.textContent = "";
     newsCategoryCancel?.removeAttribute("hidden");
   }
 
@@ -1248,6 +1384,45 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
   newsCancel?.addEventListener("click", resetNewsEditor);
 
+  newsInsertMedia?.addEventListener("click", async () => {
+    await loadNewsEditor();
+    const url = safeNewsUrl(window.prompt("Paste a YouTube, SoundCloud, Spotify or Vimeo link") || "");
+    if (!url) return;
+    insertNewsHtml(`<figure class="media"><oembed url="${escapeHtml(url)}"></oembed></figure>`);
+  });
+
+  newsInsertImage?.addEventListener("click", async () => {
+    await loadNewsEditor();
+    const url = safeNewsUrl(window.prompt("Paste an HTTPS image URL or site media path") || "", true);
+    if (!url) return;
+    insertNewsHtml(`<figure class="image"><img src="${escapeHtml(url)}" alt="" /></figure>`);
+  });
+
+  newsUploadMedia?.addEventListener("click", async () => {
+    await loadNewsEditor();
+    if (newsMediaInput instanceof HTMLInputElement) {
+      newsMediaInput.value = "";
+      newsMediaInput.click();
+    }
+  });
+
+  newsMediaInput?.addEventListener("change", async () => {
+    if (!(newsMediaInput instanceof HTMLInputElement)) return;
+    const file = newsMediaInput.files?.[0];
+    if (!file) return;
+    const editingNewsId = newsForm?.getAttribute("data-editing-news") || "";
+    if (newsMediaStatus) newsMediaStatus.textContent = "Uploading article media...";
+    try {
+      const media = await uploadNewsMedia(file, editingNewsId || undefined);
+      const html = mediaHtml(media.url, media.type);
+      if (!html) throw new Error("Uploaded media type cannot be inserted into the editor.");
+      insertNewsHtml(html);
+      if (newsMediaStatus) newsMediaStatus.textContent = "Media uploaded and inserted.";
+    } catch (error) {
+      if (newsMediaStatus) newsMediaStatus.textContent = error.message;
+    }
+  });
+
   newsCategoryCancel?.addEventListener("click", resetNewsCategoryEditor);
 
   newsCategoryForm?.addEventListener("submit", async (event) => {
@@ -1255,17 +1430,23 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     const form = event.currentTarget;
     const formData = new FormData(form);
     const editingCategoryId = form.getAttribute("data-editing-category");
-    await api(editingCategoryId ? `/api/admin/news-categories/${editingCategoryId}` : "/api/admin/news-categories", {
-      method: editingCategoryId ? "PUT" : "POST",
-      body: JSON.stringify({
-        name: formData.get("name"),
-        slug: formData.get("slug"),
-        description: formData.get("description"),
-        accent_color: formData.get("accent_color")
-      })
-    });
-    resetNewsCategoryEditor();
-    await loadDashboard();
+    if (newsCategoryStatus) newsCategoryStatus.textContent = editingCategoryId ? "Updating category..." : "Saving category...";
+    try {
+      await api(editingCategoryId ? `/api/admin/news-categories/${editingCategoryId}` : "/api/admin/news-categories", {
+        method: editingCategoryId ? "PUT" : "POST",
+        body: JSON.stringify({
+          name: formData.get("name"),
+          slug: formData.get("slug"),
+          description: formData.get("description"),
+          accent_color: formData.get("accent_color")
+        })
+      });
+      resetNewsCategoryEditor();
+      if (newsCategoryStatus) newsCategoryStatus.textContent = "Category saved.";
+      await loadDashboard();
+    } catch (error) {
+      if (newsCategoryStatus) newsCategoryStatus.textContent = error.message;
+    }
   });
 
   document.querySelector("[data-import-form]")?.addEventListener("submit", async (event) => {

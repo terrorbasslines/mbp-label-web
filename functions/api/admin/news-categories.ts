@@ -10,7 +10,7 @@ import {
   requiredString,
   type Env
 } from "../_shared";
-import { isNewsTableMissing, normalizeAccentColor, uniqueNewsCategorySlug, type NewsCategoryRow } from "../_news";
+import { ensureDefaultNewsCategories, isNewsTableMissing, normalizeAccentColor, uniqueNewsCategorySlug, type NewsCategoryRow } from "../_news";
 
 type CategoryWithCounts = NewsCategoryRow & {
   article_count?: number;
@@ -26,6 +26,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   if (isResponse(db)) return db;
 
   try {
+    await ensureDefaultNewsCategories(db);
     const result = await db
       .prepare(
         `SELECT c.*,
@@ -65,18 +66,29 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const name = requiredString(body.name, "name", 2, 120);
   if (isResponse(name)) return name;
 
-  const categoryId = id("newscat");
-  const slug = await uniqueNewsCategorySlug(db, name, optionalString(body.slug, 120));
-  await db
-    .prepare(
-      `INSERT INTO news_categories (id, slug, name, description, accent_color, updated_at)
-       VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
-    )
-    .bind(categoryId, slug, name, optionalString(body.description, 500), normalizeAccentColor(body.accent_color))
-    .run();
+  try {
+    await ensureDefaultNewsCategories(db);
+    const categoryId = id("newscat");
+    const slug = await uniqueNewsCategorySlug(db, name, optionalString(body.slug, 120));
+    await db
+      .prepare(
+        `INSERT INTO news_categories (id, slug, name, description, accent_color, updated_at)
+         VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
+      )
+      .bind(categoryId, slug, name, optionalString(body.description, 500), normalizeAccentColor(body.accent_color))
+      .run();
 
-  const category = await db.prepare("SELECT * FROM news_categories WHERE id = ? LIMIT 1").bind(categoryId).first<NewsCategoryRow>();
-  return json({ ok: true, category }, { status: 201 });
+    const category = await db.prepare("SELECT * FROM news_categories WHERE id = ? LIMIT 1").bind(categoryId).first<NewsCategoryRow>();
+    return json({ ok: true, category }, { status: 201 });
+  } catch (error) {
+    if (isNewsTableMissing(error)) {
+      return json(
+        { ok: false, error: "News categories are not installed yet. Run D1 migrations 0011, 0012 and 0013 for the production database." },
+        { status: 409 }
+      );
+    }
+    throw error;
+  }
 };
 
 export const onRequest: PagesFunction<Env> = async () => methodNotAllowed(["GET", "POST"]);

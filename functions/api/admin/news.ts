@@ -11,6 +11,7 @@ import {
   type Env
 } from "../_shared";
 import {
+  ensureDefaultNewsCategories,
   findArticleById,
   invalidNewsTableResponse,
   isNewsTableMissing,
@@ -26,18 +27,47 @@ import {
 } from "../_news";
 
 async function listNewsAuthors(db: D1Database) {
-  const result = await db
-    .prepare("SELECT DISTINCT name, email FROM users WHERE role = 'admin' ORDER BY lower(name)")
-    .all<{ name: string | null; email: string | null }>();
   const names = new Set<string>(["The MasterBeat Project"]);
-  for (const row of result.results ?? []) {
+
+  const claimedAdmins = await db
+    .prepare(
+      `SELECT DISTINCT COALESCE(NULLIF(u.name, ''), NULLIF(a.name, ''), u.email) AS name, u.email
+       FROM users u
+       LEFT JOIN user_artists ua ON ua.user_id = u.id
+       LEFT JOIN artists a ON a.id = ua.artist_id
+       WHERE lower(u.role) = 'admin'
+       ORDER BY lower(name)`
+    )
+    .all<{ name: string | null; email: string | null }>();
+  for (const row of claimedAdmins.results ?? []) {
     const name = optionalString(row.name, 160) || optionalString(row.email, 160);
     if (name) names.add(name);
   }
+
+  const managementAuthors = await db
+    .prepare(
+      `SELECT name
+       FROM artists
+       WHERE lower(name) IN ('terror basslines', 'romee storm', 'alexair', 'rodrigo stadt')
+       ORDER BY CASE lower(name)
+         WHEN 'terror basslines' THEN 1
+         WHEN 'romee storm' THEN 2
+         WHEN 'alexair' THEN 3
+         WHEN 'rodrigo stadt' THEN 4
+         ELSE 99
+       END`
+    )
+    .all<{ name: string | null }>();
+  for (const row of managementAuthors.results ?? []) {
+    const name = optionalString(row.name, 160);
+    if (name) names.add(name);
+  }
+
   return [...names].map((name) => ({ name }));
 }
 
 async function listNewsCategories(db: D1Database) {
+  await ensureDefaultNewsCategories(db);
   const result = await db
     .prepare(
       `SELECT c.*,
@@ -64,6 +94,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   if (isResponse(db)) return db;
 
   try {
+    await ensureDefaultNewsCategories(db);
     const result = await db
       .prepare(
         `SELECT a.*, c.slug AS category_slug, c.name AS category_name, c.description AS category_description,
@@ -109,44 +140,55 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   if (isResponse(title)) return title;
   if (isResponse(content)) return content;
 
-  const articleId = id("news");
-  const status = normalizeArticleStatus(body.status);
-  const publishedAt = status === "published" ? optionalString(body.published_at, 80) ?? new Date().toISOString() : optionalString(body.published_at, 80);
-  const slug = await uniqueArticleSlug(db, title, optionalString(body.slug, 160));
-  const category = await resolveNewsCategory(db, body.category_id);
-  if (optionalString(body.category_id, 160) && !category) {
-    return json({ ok: false, error: "News category not found." }, { status: 400 });
+  try {
+    await ensureDefaultNewsCategories(db);
+    const articleId = id("news");
+    const status = normalizeArticleStatus(body.status);
+    const publishedAt = status === "published" ? optionalString(body.published_at, 80) ?? new Date().toISOString() : optionalString(body.published_at, 80);
+    const slug = await uniqueArticleSlug(db, title, optionalString(body.slug, 160));
+    const category = await resolveNewsCategory(db, body.category_id);
+    if (optionalString(body.category_id, 160) && !category) {
+      return json({ ok: false, error: "News category not found." }, { status: 400 });
+    }
+
+    await db
+      .prepare(
+        `INSERT INTO news_articles
+         (id, slug, title, excerpt, content, cover_image_url, status, category_id, category, author_name, seo_title, seo_description,
+          social_title, social_description, accent_color, published_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
+      )
+      .bind(
+        articleId,
+        slug,
+        title,
+        optionalString(body.excerpt, 500),
+        contentHtml,
+        optionalString(body.cover_image_url, 2000),
+        status,
+        category?.id ?? null,
+        category?.name ?? optionalString(body.category, 120),
+        optionalString(body.author_name, 160) ?? "The MasterBeat Project",
+        optionalString(body.seo_title, 180),
+        optionalString(body.seo_description, 320),
+        optionalString(body.social_title, 180),
+        optionalString(body.social_description, 320),
+        normalizeAccentColor(body.accent_color ?? category?.accent_color),
+        publishedAt
+      )
+      .run();
+
+    const article = await findArticleById(db, articleId);
+    return json({ ok: true, article: article ? serializeArticle(article) : { id: articleId, slug, title } }, { status: 201 });
+  } catch (error) {
+    if (isNewsTableMissing(error)) {
+      return json(
+        { ok: false, error: "News articles are not installed yet. Run D1 migrations 0011, 0012 and 0013 for the production database." },
+        { status: 409 }
+      );
+    }
+    throw error;
   }
-
-  await db
-    .prepare(
-      `INSERT INTO news_articles
-       (id, slug, title, excerpt, content, cover_image_url, status, category_id, category, author_name, seo_title, seo_description,
-        social_title, social_description, accent_color, published_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
-    )
-    .bind(
-      articleId,
-      slug,
-      title,
-      optionalString(body.excerpt, 500),
-      contentHtml,
-      optionalString(body.cover_image_url, 2000),
-      status,
-      category?.id ?? null,
-      category?.name ?? optionalString(body.category, 120),
-      optionalString(body.author_name, 160) ?? "The MasterBeat Project",
-      optionalString(body.seo_title, 180),
-      optionalString(body.seo_description, 320),
-      optionalString(body.social_title, 180),
-      optionalString(body.social_description, 320),
-      normalizeAccentColor(body.accent_color ?? category?.accent_color),
-      publishedAt
-    )
-    .run();
-
-  const article = await findArticleById(db, articleId);
-  return json({ ok: true, article: article ? serializeArticle(article) : { id: articleId, slug, title } }, { status: 201 });
 };
 
 export const onRequest: PagesFunction<Env> = async () => methodNotAllowed(["GET", "POST"]);
