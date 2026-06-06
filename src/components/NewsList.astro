@@ -4,6 +4,11 @@
       <span class="field-label">Search news</span>
       <input class="field-control" data-news-search type="search" placeholder="Search article title, category or text" />
     </label>
+    <div class="mt-4 flex flex-wrap gap-2" data-news-categories></div>
+    <label class="mt-4 hidden items-center gap-2 text-sm font-bold text-haze" data-news-draft-toggle>
+      <input class="h-4 w-4 accent-neon-cyan" data-news-include-drafts type="checkbox" />
+      Show admin drafts
+    </label>
   </div>
 
   <p class="text-sm text-steel" data-news-count>Loading news...</p>
@@ -20,17 +25,34 @@
     published_at?: string;
     cover_image_url?: string;
     accent_color?: string;
+    status?: "draft" | "published";
+    category_slug?: string;
     comments_count?: number;
     reactions_count?: number;
     url?: string;
   };
 
+  type NewsCategory = {
+    id: string;
+    slug: string;
+    name: string;
+    accent_color?: string;
+    count: number;
+  };
+
   const app = document.querySelector("[data-news-app]");
   const grid = app?.querySelector("[data-news-grid]");
   const count = app?.querySelector("[data-news-count]");
+  const categoriesEl = app?.querySelector("[data-news-categories]");
   const search = app?.querySelector("[data-news-search]") as HTMLInputElement | null;
+  const draftToggle = app?.querySelector("[data-news-draft-toggle]");
+  const draftInput = app?.querySelector("[data-news-include-drafts]") as HTMLInputElement | null;
   let articles: NewsArticle[] = [];
+  let categories: NewsCategory[] = [];
   let query = "";
+  let selectedCategory = "all";
+  let includeDrafts = false;
+  let isAdmin = false;
 
   const escapeHtml = (value: unknown) =>
     String(value ?? "")
@@ -57,15 +79,34 @@
 
   function filteredArticles() {
     const term = query.trim().toLowerCase();
-    if (!term) return articles;
-    return articles.filter((article) =>
-      [article.title, article.excerpt, article.category, article.author_name].some((value) => String(value || "").toLowerCase().includes(term))
-    );
+    return articles.filter((article) => {
+      if (!includeDrafts && article.status === "draft") return false;
+      if (selectedCategory !== "all" && article.category_slug !== selectedCategory && article.category !== selectedCategory) return false;
+      if (!term) return true;
+      return [article.title, article.excerpt, article.category, article.author_name].some((value) => String(value || "").toLowerCase().includes(term));
+    });
+  }
+
+  function renderCategories() {
+    if (!categoriesEl) return;
+    const allCount = articles.filter((article) => includeDrafts || article.status !== "draft").length;
+    const buttons = [
+      { slug: "all", name: "All News", count: allCount, accent_color: "#22f7ff" },
+      ...categories
+    ];
+    categoriesEl.innerHTML = buttons
+      .map((category) => {
+        const active = selectedCategory === category.slug;
+        const accent = /^#[0-9a-f]{6}$/i.test(category.accent_color || "") ? category.accent_color : "#bd00ff";
+        return `<button class="rounded-md border px-3 py-2 text-xs font-black uppercase tracking-[0.12em] transition ${active ? "bg-white text-black" : "text-haze hover:text-white"}" style="border-color:${escapeHtml(accent)}77;" data-news-category="${escapeHtml(category.slug)}" type="button">${escapeHtml(category.name)} ${Number(category.count || 0)}</button>`;
+      })
+      .join("");
   }
 
   function renderArticles() {
     if (!grid || !count) return;
     const filtered = filteredArticles();
+    renderCategories();
     count.textContent = filtered.length === 1 ? "1 article found" : `${filtered.length} articles found`;
     grid.innerHTML = filtered.length
       ? filtered
@@ -80,7 +121,7 @@
                   <img src="${escapeHtml(image)}" alt="${escapeHtml(article.title)} news cover" class="h-full w-full object-cover transition duration-500 hover:scale-[1.03]" loading="lazy" />
                 </a>
                 <div class="p-5">
-                  <p class="font-mono text-xs font-bold uppercase tracking-[0.16em]" style="color:${escapeHtml(accent)};">${escapeHtml(article.category || "News")} | ${escapeHtml(formatDate(article.published_at))}</p>
+                  <p class="font-mono text-xs font-bold uppercase tracking-[0.16em]" style="color:${escapeHtml(accent)};">${article.status === "draft" ? "Draft | " : ""}${escapeHtml(article.category || "News")} | ${escapeHtml(formatDate(article.published_at))}</p>
                   <h2 class="mt-3 font-display text-3xl font-black uppercase leading-tight text-white">
                     <a href="${escapeHtml(url)}" class="hover:text-neon-cyan">${escapeHtml(article.title)}</a>
                   </h2>
@@ -103,9 +144,20 @@
     renderArticles();
   });
 
+  draftInput?.addEventListener("change", () => {
+    includeDrafts = Boolean(draftInput.checked);
+    renderArticles();
+  });
+
   document.addEventListener("click", async (event) => {
     const target = event.target;
     if (!(target instanceof HTMLElement)) return;
+    const categoryButton = target.closest("[data-news-category]");
+    if (categoryButton instanceof HTMLElement) {
+      selectedCategory = categoryButton.getAttribute("data-news-category") || "all";
+      renderArticles();
+      return;
+    }
     const shareButton = target.closest("[data-share-news]");
     if (!(shareButton instanceof HTMLElement)) return;
     const url = shareButton.getAttribute("data-share-news") || window.location.href;
@@ -123,11 +175,18 @@
     }, 1600);
   });
 
-  fetch("/api/news?limit=48")
+  fetch("/api/admin/session", { credentials: "same-origin" })
     .then((response) => response.json())
+    .catch(() => ({ authenticated: false }))
+    .then((session) => {
+      isAdmin = Boolean((session as { authenticated?: boolean }).authenticated);
+      if (isAdmin && draftToggle instanceof HTMLElement) draftToggle.classList.remove("hidden");
+      return fetch("/api/news?limit=48" + (isAdmin ? "&preview=admin" : ""), { credentials: "same-origin" }).then((response) => response.json());
+    })
     .then((data) => {
-      const payload = data as { articles?: NewsArticle[] };
+      const payload = data as { articles?: NewsArticle[]; categories?: NewsCategory[] };
       articles = payload.articles || [];
+      categories = payload.categories || [];
       renderArticles();
     })
     .catch(() => {

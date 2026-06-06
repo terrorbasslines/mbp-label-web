@@ -2,6 +2,38 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 ---
 
+<style is:global>
+  .mbp-news-editor .ck.ck-editor {
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .mbp-news-editor .ck.ck-toolbar,
+  .mbp-news-editor .ck.ck-editor__main > .ck-editor__editable {
+    border-color: rgba(255, 255, 255, 0.14) !important;
+    background: #050508 !important;
+    color: #fff !important;
+  }
+  .mbp-news-editor .ck.ck-toolbar {
+    border-bottom-color: rgba(255, 255, 255, 0.18) !important;
+  }
+  .mbp-news-editor .ck.ck-button,
+  .mbp-news-editor .ck.ck-button .ck-icon,
+  .mbp-news-editor .ck.ck-dropdown__button {
+    color: #d6d8e2 !important;
+  }
+  .mbp-news-editor .ck.ck-button:hover,
+  .mbp-news-editor .ck.ck-button.ck-on {
+    background: rgba(34, 247, 255, 0.12) !important;
+    color: #fff !important;
+  }
+  .mbp-news-editor .ck.ck-editor__editable {
+    min-height: 360px;
+    padding: 18px !important;
+    font-size: 1rem;
+    line-height: 1.8;
+  }
+</style>
+
 <BaseLayout title="Admin" description="The MasterBeat Project admin dashboard." noindex={true}>
   <section class="border-b border-white/10 bg-black/50 py-16">
     <div class="section-shell">
@@ -41,7 +73,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
             </div>
           </div>
 
-          <div class="grid gap-5 lg:grid-cols-5" data-stats></div>
+          <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-6" data-stats></div>
 
           <section class="surface rounded-lg p-5">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -61,11 +93,43 @@ import BaseLayout from "../layouts/BaseLayout.astro";
               <div>
                 <p class="eyebrow">News desk</p>
                 <h3 class="mt-2 font-display text-2xl font-black uppercase text-white" data-news-form-title>Publish News article</h3>
-                <p class="mt-2 text-sm leading-6 text-steel">Create official MBP articles with generated share thumbnails for Open Graph, square posts and stories.</p>
+                <p class="mt-2 text-sm leading-6 text-steel">Create official MBP articles with SEO metadata, category filters, rich article content and generated share thumbnails.</p>
               </div>
               <a class="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-haze transition hover:border-neon-cyan hover:text-white" href="/news/">
                 Open News
               </a>
+            </div>
+            <div class="mt-5 rounded-lg border border-white/10 bg-black/30 p-4">
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p class="eyebrow">Categories</p>
+                  <h4 class="mt-2 font-display text-xl font-black uppercase text-white" data-news-category-form-title>News categories</h4>
+                </div>
+                <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-haze hover:border-neon-cyan hover:text-white" data-news-category-cancel hidden type="button">Cancel edit</button>
+              </div>
+              <form data-news-category-form class="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+                <input name="id" type="hidden" />
+                <label>
+                  <span class="field-label">Category name</span>
+                  <input class="field-control" name="name" maxlength="120" placeholder="Release Stories" required />
+                </label>
+                <label>
+                  <span class="field-label">Slug</span>
+                  <input class="field-control" name="slug" maxlength="120" placeholder="auto-generated if empty" />
+                </label>
+                <label>
+                  <span class="field-label">Accent</span>
+                  <input class="field-control min-h-12" name="accent_color" type="color" value="#bd00ff" />
+                </label>
+                <label class="md:col-span-3">
+                  <span class="field-label">Description</span>
+                  <input class="field-control" name="description" maxlength="500" placeholder="Short internal/public category context" />
+                </label>
+                <div class="md:col-span-3">
+                  <button class="rounded-md bg-white px-4 py-3 text-sm font-black uppercase text-black hover:bg-neon-cyan" data-news-category-submit type="submit">Save category</button>
+                </div>
+              </form>
+              <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3" data-news-category-list></div>
             </div>
             <form data-news-form class="mt-5 grid gap-4 md:grid-cols-2">
               <input name="id" type="hidden" data-news-edit-id />
@@ -86,19 +150,37 @@ import BaseLayout from "../layouts/BaseLayout.astro";
               </label>
               <label>
                 <span class="field-label">Category</span>
-                <input class="field-control" name="category" maxlength="120" placeholder="Label news" />
+                <select class="field-control" name="category_id" data-news-category-select>
+                  <option value="">Uncategorized</option>
+                </select>
+                <input name="category" type="hidden" />
               </label>
               <label>
                 <span class="field-label">Author</span>
-                <input class="field-control" name="author_name" maxlength="160" placeholder="The MasterBeat Project" />
+                <select class="field-control" name="author_name" data-news-author-select>
+                  <option value="The MasterBeat Project">The MasterBeat Project</option>
+                </select>
               </label>
               <label>
                 <span class="field-label">Accent color</span>
                 <input class="field-control min-h-12" name="accent_color" type="color" value="#bd00ff" />
               </label>
+              <label>
+                <span class="field-label">SEO title</span>
+                <input class="field-control" name="seo_title" maxlength="180" placeholder="Search result headline" />
+              </label>
+              <label>
+                <span class="field-label">SEO description</span>
+                <input class="field-control" name="seo_description" maxlength="320" placeholder="Search result description" />
+              </label>
               <label class="md:col-span-2">
                 <span class="field-label">Cover image URL</span>
-                <input class="field-control" name="cover_image_url" type="url" placeholder="https://..." />
+                <input class="field-control" name="cover_image_url" type="text" inputmode="url" placeholder="https://... or /media/news-images/..." />
+              </label>
+              <label class="md:col-span-2">
+                <span class="field-label">Upload cover image</span>
+                <input class="field-control" name="cover_image_upload" type="file" accept="image/*" />
+                <span class="mt-2 block text-xs text-steel" data-news-upload-status>Optional. Uploaded covers are stored privately in Cloudflare R2 and served through the site.</span>
               </label>
               <label>
                 <span class="field-label">Social title</span>
@@ -112,9 +194,9 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                 <span class="field-label">Excerpt</span>
                 <textarea class="field-control min-h-20" name="excerpt" maxlength="500" placeholder="Short public summary for cards and SEO."></textarea>
               </label>
-              <label class="md:col-span-2">
+              <label class="md:col-span-2 mbp-news-editor">
                 <span class="field-label">Article content</span>
-                <textarea class="field-control min-h-52" name="content" required placeholder="Write paragraphs separated by blank lines. Use lines starting with ## for section headings."></textarea>
+                <textarea class="field-control min-h-52" name="content" data-news-editor required placeholder="Write the article body here. The rich editor loads automatically when available."></textarea>
               </label>
               <div class="flex flex-wrap gap-2 md:col-span-2">
                 <button class="rounded-md bg-white px-4 py-3 text-sm font-black uppercase text-black hover:bg-neon-cyan" data-news-submit type="submit">Save article</button>
@@ -339,6 +421,15 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   const newsFormTitle = document.querySelector("[data-news-form-title]");
   const newsSubmit = document.querySelector("[data-news-submit]");
   const newsCancel = document.querySelector("[data-news-cancel]");
+  const newsCategoryForm = document.querySelector("[data-news-category-form]");
+  const newsCategoryFormTitle = document.querySelector("[data-news-category-form-title]");
+  const newsCategorySubmit = document.querySelector("[data-news-category-submit]");
+  const newsCategoryCancel = document.querySelector("[data-news-category-cancel]");
+  const newsCategoryList = document.querySelector("[data-news-category-list]");
+  const newsCategorySelect = document.querySelector("[data-news-category-select]");
+  const newsAuthorSelect = document.querySelector("[data-news-author-select]");
+  const newsUploadStatus = document.querySelector("[data-news-upload-status]");
+  const newsEditorTextarea = document.querySelector("[data-news-editor]");
   const adminArtistSearch = document.querySelector("[data-admin-artist-search]");
   const adminReleaseSearch = document.querySelector("[data-admin-release-search]");
   const adminArtistRegion = document.querySelector("[data-admin-artist-region]");
@@ -347,6 +438,10 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   let releases = [];
   let submissions = [];
   let newsArticles = [];
+  let newsCategories = [];
+  let newsAuthors = [{ name: "The MasterBeat Project" }];
+  let newsEditor = null;
+  let newsEditorPromise = null;
   let artistSearchTerm = "";
   let releaseSearchTerm = "";
   let artistRegionTerm = "all";
@@ -428,6 +523,85 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     return data;
   }
 
+  async function loadNewsEditor() {
+    if (!newsEditorTextarea || newsEditor) return newsEditor;
+    if (newsEditorPromise) return newsEditorPromise;
+    newsEditorPromise = new Promise((resolve) => {
+      const startEditor = async () => {
+        try {
+          if (!window.ClassicEditor) {
+            resolve(null);
+            return;
+          }
+          newsEditor = await window.ClassicEditor.create(newsEditorTextarea, {
+            toolbar: [
+              "heading",
+              "|",
+              "bold",
+              "italic",
+              "link",
+              "bulletedList",
+              "numberedList",
+              "blockQuote",
+              "|",
+              "undo",
+              "redo"
+            ],
+            heading: {
+              options: [
+                { model: "paragraph", title: "Paragraph", class: "ck-heading_paragraph" },
+                { model: "heading2", view: "h2", title: "Section heading", class: "ck-heading_heading2" },
+                { model: "heading3", view: "h3", title: "Subheading", class: "ck-heading_heading3" }
+              ]
+            }
+          });
+          resolve(newsEditor);
+        } catch {
+          resolve(null);
+        }
+      };
+
+      if (window.ClassicEditor) {
+        startEditor();
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = "https://cdn.ckeditor.com/ckeditor5/41.4.2/classic/ckeditor.js";
+      script.async = true;
+      script.onload = startEditor;
+      script.onerror = () => resolve(null);
+      document.head.append(script);
+    });
+    return newsEditorPromise;
+  }
+
+  function getNewsContent() {
+    if (newsEditor) return newsEditor.getData();
+    return newsEditorTextarea?.value || "";
+  }
+
+  function setNewsContent(value) {
+    if (newsEditor) {
+      newsEditor.setData(String(value || ""));
+      return;
+    }
+    if (newsEditorTextarea) newsEditorTextarea.value = String(value || "");
+  }
+
+  async function uploadNewsCover(file, articleId) {
+    const formData = new FormData();
+    formData.append("image", file);
+    if (articleId) formData.append("article_id", articleId);
+    const response = await fetch("/api/admin/news/image-upload", {
+      method: "POST",
+      credentials: "same-origin",
+      body: formData
+    });
+    const data = await response.json().catch(() => ({ ok: false, error: "Invalid upload response." }));
+    if (!response.ok || data.ok === false) throw new Error(data.error || `Upload failed: ${response.status}`);
+    return data.url;
+  }
+
   function dispatchAuth(role = "admin") {
     window.dispatchEvent(new CustomEvent("mbp-auth-changed", { detail: { authenticated: true, role } }));
   }
@@ -501,6 +675,83 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
   function newsAccent(value) {
     return /^#[0-9a-f]{6}$/i.test(String(value || "")) ? String(value) : "#bd00ff";
+  }
+
+  function syncNewsCategoryHidden() {
+    if (!(newsForm instanceof HTMLFormElement)) return;
+    const selected = newsCategories.find((category) => category.id === newsForm.elements.category_id?.value);
+    if (newsForm.elements.category) newsForm.elements.category.value = selected?.name || "";
+    if (selected && newsForm.elements.accent_color && !newsForm.getAttribute("data-editing-news")) {
+      newsForm.elements.accent_color.value = newsAccent(selected.accent_color);
+    }
+  }
+
+  function renderNewsControls() {
+    const authorNames = new Set(["The MasterBeat Project"]);
+    for (const author of newsAuthors) {
+      if (author?.name) authorNames.add(author.name);
+    }
+    for (const article of newsArticles) {
+      if (article?.author_name) authorNames.add(article.author_name);
+    }
+    if (newsCategorySelect) {
+      newsCategorySelect.innerHTML = `<option value="">Uncategorized</option>${newsCategories
+        .map((category) => `<option value="${escapeHtml(category.id)}">${escapeHtml(category.name)}</option>`)
+        .join("")}`;
+    }
+    if (newsAuthorSelect) {
+      newsAuthorSelect.innerHTML = [...authorNames]
+        .map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`)
+        .join("");
+    }
+  }
+
+  function resetNewsCategoryEditor() {
+    if (!(newsCategoryForm instanceof HTMLFormElement)) return;
+    newsCategoryForm.reset();
+    newsCategoryForm.removeAttribute("data-editing-category");
+    if (newsCategoryForm.elements.accent_color) newsCategoryForm.elements.accent_color.value = "#bd00ff";
+    if (newsCategoryFormTitle) newsCategoryFormTitle.textContent = "News categories";
+    if (newsCategorySubmit) newsCategorySubmit.textContent = "Save category";
+    newsCategoryCancel?.setAttribute("hidden", "");
+  }
+
+  function startNewsCategoryEditor(category) {
+    if (!(newsCategoryForm instanceof HTMLFormElement)) return;
+    newsCategoryForm.setAttribute("data-editing-category", category.id);
+    newsCategoryForm.elements.id.value = category.id || "";
+    newsCategoryForm.elements.name.value = category.name || "";
+    newsCategoryForm.elements.slug.value = category.slug || "";
+    newsCategoryForm.elements.description.value = category.description || "";
+    newsCategoryForm.elements.accent_color.value = newsAccent(category.accent_color);
+    if (newsCategoryFormTitle) newsCategoryFormTitle.textContent = `Edit ${category.name}`;
+    if (newsCategorySubmit) newsCategorySubmit.textContent = "Update category";
+    newsCategoryCancel?.removeAttribute("hidden");
+  }
+
+  function renderNewsCategories() {
+    if (!newsCategoryList) return;
+    newsCategoryList.innerHTML = newsCategories.length
+      ? newsCategories
+          .map(
+            (category) => `
+              <article class="rounded-md border bg-black/35 p-3" style="border-color:${escapeHtml(newsAccent(category.accent_color))}55;">
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <p class="font-bold text-white">${escapeHtml(category.name)}</p>
+                    <p class="mt-1 text-xs text-steel">/${escapeHtml(category.slug)} | ${Number(category.published_count || 0)} published | ${Number(category.draft_count || 0)} draft</p>
+                    ${category.description ? `<p class="mt-2 text-xs leading-5 text-haze">${escapeHtml(category.description)}</p>` : ""}
+                  </div>
+                  <div class="flex gap-2">
+                    <button class="text-xs font-bold uppercase text-neon-cyan hover:text-white" data-edit-news-category="${escapeHtml(category.id)}" type="button">Edit</button>
+                    <button class="text-xs font-bold uppercase text-neon-cyan hover:text-white" data-delete-news-category="${escapeHtml(category.id)}" type="button">Delete</button>
+                  </div>
+                </div>
+              </article>
+            `
+          )
+          .join("")
+      : `<p class="text-sm text-steel">No categories yet. Run the latest migration or create the first category here.</p>`;
   }
 
   function renderRegionBadge(region) {
@@ -592,6 +843,10 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     newsForm.reset();
     newsForm.removeAttribute("data-editing-news");
     if (newsForm.elements.accent_color) newsForm.elements.accent_color.value = "#bd00ff";
+    if (newsForm.elements.category_id) newsForm.elements.category_id.value = "";
+    if (newsForm.elements.category) newsForm.elements.category.value = "";
+    setNewsContent("");
+    if (newsUploadStatus) newsUploadStatus.textContent = "Optional. Uploaded covers are stored privately in Cloudflare R2 and served through the site.";
     if (newsFormTitle) newsFormTitle.textContent = "Publish News article";
     if (newsSubmit) newsSubmit.textContent = "Save article";
     newsCancel?.setAttribute("hidden", "");
@@ -603,14 +858,18 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     newsForm.elements.title.value = article.title || "";
     newsForm.elements.slug.value = article.slug || "";
     newsForm.elements.status.value = article.status || "draft";
+    newsForm.elements.category_id.value = article.category_id || "";
     newsForm.elements.category.value = article.category || "";
     newsForm.elements.author_name.value = article.author_name || "";
     newsForm.elements.accent_color.value = newsAccent(article.accent_color);
+    newsForm.elements.seo_title.value = article.seo_title || "";
+    newsForm.elements.seo_description.value = article.seo_description || "";
     newsForm.elements.cover_image_url.value = article.cover_image_url || "";
     newsForm.elements.social_title.value = article.social_title || "";
     newsForm.elements.social_description.value = article.social_description || "";
     newsForm.elements.excerpt.value = article.excerpt || "";
-    newsForm.elements.content.value = article.content || "";
+    setNewsContent(article.content || "");
+    if (newsUploadStatus) newsUploadStatus.textContent = article.cover_image_url ? "Current cover is kept unless you upload a new image." : "Optional. Uploaded covers are stored privately in Cloudflare R2 and served through the site.";
     if (newsFormTitle) newsFormTitle.textContent = `Edit ${article.title}`;
     if (newsSubmit) newsSubmit.textContent = "Update article";
     newsCancel?.removeAttribute("hidden");
@@ -619,10 +878,13 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
   function renderStats() {
     if (!statsEl) return;
+    const publishedNews = newsArticles.filter((article) => article.status === "published").length;
+    const draftNews = newsArticles.filter((article) => article.status !== "published").length;
     const items = [
       { label: "Artists", value: artists.length },
       { label: "Releases", value: releases.length },
-      { label: "News posts", value: newsArticles.length, href: "/news/" },
+      { label: "Published News", value: publishedNews, href: "/news/" },
+      { label: "Draft News", value: draftNews },
       { label: "Pending demos", value: submissionCounts.pending },
       { label: "Archive demos", value: submissionCounts.archived, href: "/admin/demo-archive/" }
     ];
@@ -773,27 +1035,26 @@ import BaseLayout from "../layouts/BaseLayout.astro";
             const accent = newsAccent(article.accent_color);
             const publicPath = `/news/${encodeURIComponent(String(article.slug || "").toLowerCase())}`;
             const published = article.status === "published";
+            const previewPath = `${publicPath}${published ? "" : "?preview=admin"}`;
             return `
               <article class="rounded-md border bg-black/35 p-4" style="border-color:${escapeHtml(accent)}55;">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div class="min-w-0 flex-1">
                     <p class="font-mono text-xs font-bold uppercase tracking-[0.16em]" style="color:${escapeHtml(accent)};">${escapeHtml(article.status || "draft")} | ${escapeHtml(article.category || "News")}</p>
                     <h4 class="mt-2 font-display text-2xl font-black uppercase text-white">${escapeHtml(article.title)}</h4>
-                    <p class="mt-1 text-sm text-steel">${escapeHtml(article.slug)} | ${escapeHtml(formatAdminDate(article.published_at || article.updated_at))} | ${Number(article.reactions_count || 0)} reactions | ${Number(article.comments_count || 0)} comments</p>
+                    <p class="mt-1 text-sm text-steel">${escapeHtml(article.slug)} | ${escapeHtml(article.author_name || "The MasterBeat Project")} | ${escapeHtml(formatAdminDate(article.published_at || article.updated_at))} | ${Number(article.reactions_count || 0)} reactions | ${Number(article.comments_count || 0)} comments</p>
+                    ${article.seo_title || article.seo_description ? `<p class="mt-2 text-xs leading-5 text-steel">SEO: ${escapeHtml(article.seo_title || article.title)}${article.seo_description ? ` | ${escapeHtml(article.seo_description)}` : ""}</p>` : ""}
                     <p class="mt-3 text-sm leading-6 text-haze">${escapeHtml(article.excerpt || "No excerpt yet.")}</p>
                     <div class="mt-4 flex flex-wrap gap-2">
-                      ${
-                        published
-                          ? `<a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(publicPath)}" target="_blank" rel="noreferrer">Open</a>
-                             <a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(`${publicPath}/social-image.svg?platform=og`)}" target="_blank" rel="noreferrer">1200x630</a>
-                             <a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(`${publicPath}/social-image.svg?platform=square`)}" target="_blank" rel="noreferrer">1080x1080</a>
-                             <a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(`${publicPath}/social-image.svg?platform=story`)}" target="_blank" rel="noreferrer">Story</a>`
-                          : `<span class="rounded border border-white/10 px-2 py-1 text-xs text-steel">Draft not public yet</span>`
-                      }
+                      <a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(previewPath)}" target="_blank" rel="noreferrer">${published ? "Open" : "Preview draft"}</a>
+                      <a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(`${publicPath}/social-image.svg?platform=og`)}" target="_blank" rel="noreferrer">1200x630</a>
+                      <a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(`${publicPath}/social-image.svg?platform=square`)}" target="_blank" rel="noreferrer">1080x1080</a>
+                      <a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(`${publicPath}/social-image.svg?platform=story`)}" target="_blank" rel="noreferrer">Story</a>
                     </div>
                   </div>
                   <div class="flex flex-wrap gap-2">
                     <button class="text-xs font-bold uppercase text-neon-cyan hover:text-white" data-edit-news="${escapeHtml(article.id)}" type="button">Edit</button>
+                    <button class="text-xs font-bold uppercase text-neon-cyan hover:text-white" data-news-status="${escapeHtml(article.id)}" data-next-status="${published ? "draft" : "published"}" type="button">${published ? "Move to draft" : "Publish"}</button>
                     <button class="text-xs font-bold uppercase text-neon-cyan hover:text-white" data-delete-news="${escapeHtml(article.id)}" type="button">Delete</button>
                   </div>
                 </div>
@@ -806,6 +1067,8 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
   function render() {
     renderStats();
+    renderNewsControls();
+    renderNewsCategories();
     renderArtists();
     renderReleases();
     renderSubmissions();
@@ -823,8 +1086,11 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     releases = releaseData.releases || [];
     submissions = submissionData.submissions || [];
     newsArticles = newsData.articles || [];
+    newsCategories = newsData.categories || [];
+    newsAuthors = (newsData.authors && newsData.authors.length ? newsData.authors : [{ name: "The MasterBeat Project" }]);
     submissionCounts = submissionData.counts || { pending: submissions.length, archived: 0, total: submissions.length };
     render();
+    loadNewsEditor();
   }
 
   async function checkSession() {
@@ -911,6 +1177,8 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     renderReleases();
   });
 
+  newsCategorySelect?.addEventListener("change", syncNewsCategoryHidden);
+
   releaseForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -945,20 +1213,32 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     const form = event.currentTarget;
     const formData = new FormData(form);
     const editingNewsId = form.getAttribute("data-editing-news");
+    const upload = formData.get("cover_image_upload");
+    let coverImageUrl = formData.get("cover_image_url");
+    if (upload instanceof File && upload.size > 0) {
+      if (newsUploadStatus) newsUploadStatus.textContent = "Uploading cover image...";
+      coverImageUrl = await uploadNewsCover(upload, editingNewsId || undefined);
+      form.elements.cover_image_url.value = coverImageUrl;
+      if (newsUploadStatus) newsUploadStatus.textContent = "Cover image uploaded.";
+    }
+    syncNewsCategoryHidden();
     await api(editingNewsId ? `/api/admin/news/${editingNewsId}` : "/api/admin/news", {
       method: editingNewsId ? "PUT" : "POST",
       body: JSON.stringify({
         title: formData.get("title"),
         slug: formData.get("slug"),
         status: formData.get("status"),
-        category: formData.get("category"),
+        category_id: form.elements.category_id?.value,
+        category: form.elements.category?.value,
         author_name: formData.get("author_name"),
         accent_color: formData.get("accent_color"),
-        cover_image_url: formData.get("cover_image_url"),
+        seo_title: formData.get("seo_title"),
+        seo_description: formData.get("seo_description"),
+        cover_image_url: coverImageUrl,
         social_title: formData.get("social_title"),
         social_description: formData.get("social_description"),
         excerpt: formData.get("excerpt"),
-        content: formData.get("content")
+        content: getNewsContent()
       })
     });
     resetNewsEditor();
@@ -967,6 +1247,26 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   });
 
   newsCancel?.addEventListener("click", resetNewsEditor);
+
+  newsCategoryCancel?.addEventListener("click", resetNewsCategoryEditor);
+
+  newsCategoryForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const editingCategoryId = form.getAttribute("data-editing-category");
+    await api(editingCategoryId ? `/api/admin/news-categories/${editingCategoryId}` : "/api/admin/news-categories", {
+      method: editingCategoryId ? "PUT" : "POST",
+      body: JSON.stringify({
+        name: formData.get("name"),
+        slug: formData.get("slug"),
+        description: formData.get("description"),
+        accent_color: formData.get("accent_color")
+      })
+    });
+    resetNewsCategoryEditor();
+    await loadDashboard();
+  });
 
   document.querySelector("[data-import-form]")?.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -1011,6 +1311,9 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     const releaseId = target.getAttribute("data-delete-release");
     const editNewsId = target.getAttribute("data-edit-news");
     const newsId = target.getAttribute("data-delete-news");
+    const editNewsCategoryId = target.getAttribute("data-edit-news-category");
+    const deleteNewsCategoryId = target.getAttribute("data-delete-news-category");
+    const newsStatusId = target.getAttribute("data-news-status");
     if (editArtistId) {
       const artist = artists.find((item) => item.id === editArtistId);
       if (artist) startArtistEditor(artist);
@@ -1036,10 +1339,48 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       if (article) startNewsEditor(article);
       return;
     }
+    if (newsStatusId) {
+      const article = newsArticles.find((item) => item.id === newsStatusId);
+      const nextStatus = target.getAttribute("data-next-status") || "draft";
+      if (!article) return;
+      await api(`/api/admin/news/${newsStatusId}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          title: article.title,
+          slug: article.slug,
+          status: nextStatus,
+          category_id: article.category_id,
+          category: article.category,
+          author_name: article.author_name,
+          accent_color: article.accent_color,
+          seo_title: article.seo_title,
+          seo_description: article.seo_description,
+          cover_image_url: article.cover_image_url,
+          social_title: article.social_title,
+          social_description: article.social_description,
+          excerpt: article.excerpt,
+          content: article.content
+        })
+      });
+      await loadDashboard();
+      return;
+    }
     if (newsId) {
       if (!window.confirm("Delete this News article?")) return;
       await api(`/api/admin/news/${newsId}`, { method: "DELETE", body: "{}" });
       resetNewsEditor();
+      await loadDashboard();
+      return;
+    }
+    if (editNewsCategoryId) {
+      const category = newsCategories.find((item) => item.id === editNewsCategoryId);
+      if (category) startNewsCategoryEditor(category);
+      return;
+    }
+    if (deleteNewsCategoryId) {
+      if (!window.confirm("Delete this News category? Existing articles will become uncategorized.")) return;
+      await api(`/api/admin/news-categories/${deleteNewsCategoryId}`, { method: "DELETE", body: "{}" });
+      resetNewsCategoryEditor();
       await loadDashboard();
     }
   });

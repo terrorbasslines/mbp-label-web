@@ -14,7 +14,10 @@ import {
   isNewsTableMissing,
   normalizeAccentColor,
   normalizeArticleStatus,
+  resolveNewsCategory,
+  sanitizeArticleHtml,
   serializeArticle,
+  stripHtml,
   uniqueArticleSlug
 } from "../../_news";
 
@@ -33,7 +36,8 @@ export const onRequestPut: PagesFunction<Env> = async ({ params, request, env })
   if (body instanceof Response) return body;
 
   const title = requiredString(body.title, "title", 2, 180);
-  const content = requiredString(body.content, "content", 10, 30000);
+  const contentHtml = sanitizeArticleHtml(body.content);
+  const content = requiredString(stripHtml(contentHtml) || contentHtml, "content", 10, 60000);
   if (isResponse(title)) return title;
   if (isResponse(content)) return content;
 
@@ -43,12 +47,16 @@ export const onRequestPut: PagesFunction<Env> = async ({ params, request, env })
     status === "published"
       ? optionalString(body.published_at, 80) ?? existing.published_at ?? new Date().toISOString()
       : optionalString(body.published_at, 80);
+  const category = await resolveNewsCategory(db, body.category_id);
+  if (optionalString(body.category_id, 160) && !category) {
+    return json({ ok: false, error: "News category not found." }, { status: 400 });
+  }
 
   await db
     .prepare(
       `UPDATE news_articles
-       SET slug = ?, title = ?, excerpt = ?, content = ?, cover_image_url = ?, status = ?, category = ?,
-           author_name = ?, social_title = ?, social_description = ?, accent_color = ?, published_at = ?,
+       SET slug = ?, title = ?, excerpt = ?, content = ?, cover_image_url = ?, status = ?, category_id = ?, category = ?,
+           author_name = ?, seo_title = ?, seo_description = ?, social_title = ?, social_description = ?, accent_color = ?, published_at = ?,
            updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`
     )
@@ -56,14 +64,17 @@ export const onRequestPut: PagesFunction<Env> = async ({ params, request, env })
       slug,
       title,
       optionalString(body.excerpt, 500),
-      content,
+      contentHtml,
       optionalString(body.cover_image_url, 2000),
       status,
-      optionalString(body.category, 120),
+      category?.id ?? null,
+      category?.name ?? optionalString(body.category, 120),
       optionalString(body.author_name, 160) ?? "The MasterBeat Project",
+      optionalString(body.seo_title, 180),
+      optionalString(body.seo_description, 320),
       optionalString(body.social_title, 180),
       optionalString(body.social_description, 320),
-      normalizeAccentColor(body.accent_color),
+      normalizeAccentColor(body.accent_color ?? category?.accent_color),
       publishedAt,
       articleId
     )

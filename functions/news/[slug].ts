@@ -1,6 +1,15 @@
-import type { Env } from "../api/_shared";
+import { verifySession, type Env } from "../api/_shared";
 import { absoluteUrl, escapeHtml, htmlResponse, notFoundPage, pageShell, SITE_NAME, SITE_URL } from "../_seo";
-import { articleExcerpt, findPublishedArticle, isNewsTableMissing, NEWS_REACTIONS, serializeArticle, type NewsArticleRow } from "../api/_news";
+import {
+  articleSeoDescription,
+  articleSeoTitle,
+  findArticleBySlug,
+  findPublishedArticle,
+  isNewsTableMissing,
+  NEWS_REACTIONS,
+  sanitizeArticleHtml,
+  type NewsArticleRow
+} from "../api/_news";
 
 function formatDate(value: string | null | undefined) {
   if (!value) return "";
@@ -10,7 +19,12 @@ function formatDate(value: string | null | undefined) {
 }
 
 function renderArticleBody(content: string) {
-  return content
+  const safeContent = sanitizeArticleHtml(content);
+  if (/<(p|h[1-6]|ul|ol|li|blockquote|strong|em|a|img|figure|br)\b/i.test(safeContent)) {
+    return safeContent;
+  }
+
+  return safeContent
     .split(/\n{2,}/)
     .map((block) => block.trim())
     .filter(Boolean)
@@ -43,13 +57,19 @@ function reactionLabel(reaction: string) {
   return labels[reaction] || reaction;
 }
 
-export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
+export const onRequestGet: PagesFunction<Env> = async ({ params, request, env }) => {
   if (!env.DB) return notFoundPage("News not available");
 
   const slug = String(params.slug ?? "").toLowerCase();
   let article: NewsArticleRow | null = null;
   try {
     article = await findPublishedArticle(env.DB, slug);
+    if (!article && new URL(request.url).searchParams.get("preview") === "admin") {
+      const session = await verifySession(request, env);
+      if (session?.role === "admin") {
+        article = await findArticleBySlug(env.DB, slug);
+      }
+    }
   } catch (error) {
     if (isNewsTableMissing(error)) return notFoundPage("News not available");
     throw error;
@@ -57,11 +77,11 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
 
   if (!article) return notFoundPage("News article not found");
 
-  const serialized = serializeArticle(article);
+  const isDraftPreview = article.status !== "published";
   const canonicalPath = `/news/${article.slug}`;
   const canonicalUrl = `${SITE_URL}${canonicalPath}`;
-  const title = String(serialized.social_title || article.title);
-  const description = String(serialized.social_description || articleExcerpt(article));
+  const title = String(articleSeoTitle(article));
+  const description = String(articleSeoDescription(article));
   const image = article.cover_image_url || `/news/${article.slug}/social-image.svg?platform=og`;
   const publishedDate = formatDate(article.published_at || article.created_at);
   const shareText = `${article.title} | ${SITE_NAME}`;
@@ -105,6 +125,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
       image,
       ogType: "article",
       jsonLd,
+      noindex: isDraftPreview,
       content: `
         <style>
           .news-article{padding-bottom:76px}.news-shell{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);gap:32px}.news-cover{width:100%;aspect-ratio:16/9;border:1px solid var(--line);border-radius:8px;background:#000;object-fit:cover}.article-body{margin-top:28px}.article-body p{font-size:17px;line-height:1.85}.article-body h2,.article-body h3{margin:34px 0 10px;font-size:clamp(24px,3vw,34px);text-transform:uppercase;letter-spacing:0;font-weight:1000}.article-body ul{margin:18px 0 0;padding-left:22px;color:var(--muted);line-height:1.8}.share-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.reaction-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}.reaction-grid button{border:1px solid var(--line);border-radius:6px;background:rgba(255,255,255,.04);color:#fff;padding:10px 8px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;cursor:pointer}.reaction-grid button:hover{border-color:var(--cyan);color:var(--cyan)}.comment{border:1px solid var(--line);border-radius:6px;padding:14px;background:rgba(255,255,255,.035)}textarea{width:100%;min-height:120px;border:1px solid var(--line);border-radius:6px;background:#050508;color:#fff;padding:12px;font:inherit}button.submit{border:0;border-radius:6px;background:#fff;color:#000;padding:12px 16px;font-weight:1000;text-transform:uppercase;letter-spacing:.12em;cursor:pointer}.thumb-links{display:grid;gap:8px;margin-top:12px}.thumb-links a{display:block;border:1px solid var(--line);border-radius:6px;padding:10px 12px;text-decoration:none;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:#d6d8e2}.thumb-links a:hover{border-color:var(--cyan);color:var(--cyan)}@media (max-width:860px){.news-shell{display:block}.card{margin-top:20px}.reaction-grid,.share-grid{grid-template-columns:1fr 1fr}}
@@ -114,6 +135,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
           <h1>${escapeHtml(article.title)}</h1>
           <p>${escapeHtml(description)}</p>
           <div class="meta">
+            ${isDraftPreview ? `<span class="pill">Admin draft preview</span>` : ""}
             ${publishedDate ? `<span class="pill">${escapeHtml(publishedDate)}</span>` : ""}
             <span class="pill">${escapeHtml(article.author_name || SITE_NAME)}</span>
           </div>
