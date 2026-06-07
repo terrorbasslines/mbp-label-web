@@ -26,7 +26,7 @@ type ImageData = {
 const FONT = `system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif`;
 const INK = "#050508";
 const CYAN = "#22f7ff";
-const SOCIAL_IMAGE_VERSION = "mbp-social-v6-2026-06-07";
+const SOCIAL_IMAGE_VERSION = "mbp-social-v7-2026-06-07";
 
 /* ─── Utilities ─── */
 
@@ -179,20 +179,23 @@ function svgDefs(accent: string, variant: CanvasSpec["kind"]) {
       <stop offset="0.42" stop-color="${a}" stop-opacity="0.08"/>
       <stop offset="1" stop-color="${a}" stop-opacity="0"/>
     </radialGradient>
+
+    <linearGradient id="storyReadability" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="${INK}" stop-opacity="0"/>
+      <stop offset="0.18" stop-color="${INK}" stop-opacity="0.24"/>
+      <stop offset="0.52" stop-color="${INK}" stop-opacity="0.76"/>
+      <stop offset="1" stop-color="${INK}" stop-opacity="0.98"/>
+    </linearGradient>
   </defs>`;
 }
 
 function svgBackground(data: ImageData, width: number, height: number, variant: CanvasSpec["kind"]) {
   const ogOverlay = variant === "og" ? `<rect width="100%" height="100%" fill="url(#ogOverlay)"/>` : "";
   const storyExtra = variant === "story"
-    ? `
-      <rect width="100%" height="100%" fill="#000000" opacity="0.10"/>
-      <rect x="0" y="0" width="100%" height="54%" fill="url(#centerLift)" opacity="0.72"/>
-      <rect x="0" y="0" width="100%" height="100%" fill="#020307" opacity="0.10"/>
-    `
+    ? `<rect width="100%" height="100%" fill="#000000" opacity="0.06"/>`
     : "";
 
-  const imageOpacity = variant === "story" ? 0.90 : 1;
+  const imageOpacity = variant === "story" ? 0.96 : 1;
 
   return `<rect width="100%" height="100%" fill="${INK}"/>
   <image href="${escapeHtml(data.cover)}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice" opacity="${imageOpacity}"/>
@@ -370,57 +373,48 @@ function renderSquare(data: ImageData, spec: CanvasSpec) {
 function renderStory(data: ImageData, spec: CanvasSpec) {
   const W = 1080;
   const H = 1920;
-  const P = 82;
+  const P = 66;
 
-  const titleLines = wrapWords(data.title, cleanText(data.title).length > 84 ? 14 : 16, 4);
+  // Story now follows the same visual language as the 1:1 Instagram post:
+  // full-bleed cover, no large glass card, bottom-left editorial text stack.
+  const titleLines = wrapWords(data.title, cleanText(data.title).length > 76 ? 16 : 18, 4);
   const titleSize = titleLines.length >= 4 ? 68 : 78;
-  const titleGap = Math.round(titleSize * 1.02);
+  const titleGap = Math.round(titleSize * 1.04);
 
-  const descLines = wrapWords(data.description, 38, 3);
+  const descLines = wrapWords(data.description, 42, 3);
   const descSize = 24;
   const descGap = 38;
 
-  const cardX = 46;
-  const cardY = 860;
-  const cardW = W - 92;
-  const cardH = 960;
-
-  const topBrandY = 84;
-  const categoryY = cardY + 86;
-  const titleY = categoryY + 126;
-  const descY = titleY + Math.max(0, titleLines.length - 1) * titleGap + titleSize + 44;
-  const domainY = H - 106;
+  const categoryY = 1178;
+  const titleY = categoryY + 94;
+  const descY = titleY + Math.max(0, titleLines.length - 1) * titleGap + titleSize + 28;
+  const domainY = H - 122;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
-  <!-- ${SOCIAL_IMAGE_VERSION} / instagram-story -->
+  <!-- ${SOCIAL_IMAGE_VERSION} / instagram-story / square-inspired -->
   ${svgDefs(data.accent, "story")}
 
   ${svgBackground(data, W, H, "story")}
 
-  <!-- Left accent + subtle framing -->
+  <!-- Strong bottom readability fade, same direction as Instagram post -->
+  <rect x="0" y="720" width="${W}" height="1200" fill="url(#storyReadability)"/>
+
+  <!-- Minimal frame accents copied from the 1:1 direction -->
   <rect x="0" y="0" width="7" height="${H}" fill="url(#accentV)" filter="url(#accentGlow)"/>
-  <rect x="${P}" y="62" width="228" height="5" rx="2.5" fill="url(#accentH)" opacity="0.92" filter="url(#accentGlow)"/>
-  <rect x="${P}" y="238" width="3" height="160" rx="1.5" fill="#ffffff" opacity="0.14"/>
-  <rect x="${P}" y="438" width="3" height="90" rx="1.5" fill="url(#accentV)" opacity="0.62"/>
+  <rect x="${P}" y="92" width="220" height="5" rx="2.5" fill="url(#accentH)" opacity="0.90" filter="url(#accentGlow)"/>
+  <rect x="${P}" y="248" width="3" height="150" rx="1.5" fill="#ffffff" opacity="0.14"/>
+  <rect x="${P}" y="430" width="3" height="86" rx="1.5" fill="url(#accentV)" opacity="0.58"/>
 
-  <!-- Top brand -->
-  ${svgBrand(data, P, topBrandY, 58, 25, 12, true)}
+  <!-- Brand stays top-left, same as the square version -->
+  ${svgBrand(data, P, 112, 56, 24, 12, true)}
 
-  <!-- Main editorial panel -->
-  ${svgGlassCard(cardX, cardY, cardW, cardH, 42, "left")}
-  <rect x="${cardX + 34}" y="${cardY + 84}" width="${cardW - 68}" height="1" fill="#ffffff" opacity="0.10"/>
-
-  <!-- Category -->
+  <!-- Bottom-left editorial content, no glass card -->
   ${svgCategoryPill(`${data.category} / ${spec.label}`, P, categoryY, 16, 470)}
 
-  <!-- Title -->
   ${svgTitle(titleLines, P, titleY, titleSize, titleGap, -1.55)}
-
-  <!-- Description -->
   ${svgDescription(descLines, P, descY, descSize, descGap)}
 
-  <!-- Footer / domain -->
   ${svgDomain(data, P, domainY, 30, 18, 270)}
 </svg>`;
 }
