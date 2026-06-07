@@ -69,8 +69,13 @@
     return date.toLocaleDateString("en", { year: "numeric", month: "short", day: "numeric" });
   }
 
+  function articleBasePath(article: NewsArticle) {
+    return article.url && !article.url.includes("?") ? article.url : `/news/${article.slug}`;
+  }
+
   function articleUrl(article: NewsArticle) {
-    return article.url || `/news/${article.slug}`;
+    const basePath = articleBasePath(article);
+    return article.status === "draft" ? `${basePath}?preview=admin` : basePath;
   }
 
   function absoluteArticleUrl(article: NewsArticle) {
@@ -113,8 +118,10 @@
           .map((article) => {
             const url = articleUrl(article);
             const fullUrl = absoluteArticleUrl(article);
+            const basePath = articleBasePath(article);
+            const isDraft = article.status === "draft";
             const accent = /^#[0-9a-f]{6}$/i.test(article.accent_color || "") ? article.accent_color : "#bd00ff";
-            const image = article.cover_image_url || `${url}/social-image.svg?platform=og`;
+            const image = article.cover_image_url || `${basePath}/social-image.svg?platform=og${isDraft ? "&preview=admin" : ""}`;
             return `
               <article class="clip-diagonal border bg-carbon/90 transition hover:-translate-y-1" style="border-color:${escapeHtml(accent)}55; box-shadow:0 0 28px ${escapeHtml(accent)}12;">
                 <a href="${escapeHtml(url)}" class="block aspect-[16/9] overflow-hidden border-b border-white/10 bg-black">
@@ -129,7 +136,11 @@
                   <p class="mt-4 text-xs uppercase tracking-[0.14em] text-steel">${Number(article.reactions_count || 0)} reactions | ${Number(article.comments_count || 0)} comments</p>
                   <div class="mt-5 flex flex-wrap gap-2">
                     <a class="rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(url)}">Read article</a>
-                    <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-haze hover:border-neon-cyan hover:text-white" data-share-news="${escapeHtml(fullUrl)}" data-share-title="${escapeHtml(article.title)}" type="button">Share</button>
+                    ${
+                      isDraft
+                        ? `<span class="rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-steel">Publish to share</span>`
+                        : `<button class="rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-haze hover:border-neon-cyan hover:text-white" data-share-news="${escapeHtml(fullUrl)}" data-share-title="${escapeHtml(article.title)}" type="button">Share</button>`
+                    }
                   </div>
                 </div>
               </article>

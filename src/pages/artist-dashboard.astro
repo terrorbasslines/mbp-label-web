@@ -369,7 +369,12 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   api("/api/auth/me", { method: "GET", headers: {} })
     .then((session) => {
       if (session.authenticated) {
-        dispatchAuth(session.session?.role || "artist");
+        const role = session.session?.role || "artist";
+        dispatchAuth(role);
+        if (role === "admin") {
+          location.href = "/admin/";
+          return;
+        }
         return loadProfile();
       }
       if (resetToken && resetForm instanceof HTMLFormElement) {

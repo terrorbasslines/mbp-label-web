@@ -1,6 +1,6 @@
-import type { Env } from "../../api/_shared";
+import { verifySession, type Env } from "../../api/_shared";
 import { absoluteUrl, escapeHtml, SITE_URL } from "../../_seo";
-import { articleExcerpt, findPublishedArticle, isNewsTableMissing } from "../../api/_news";
+import { articleExcerpt, findArticleBySlug, findPublishedArticle, isNewsTableMissing } from "../../api/_news";
 
 type CanvasSpec = {
   width: number;
@@ -46,6 +46,12 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
   let article;
   try {
     article = await findPublishedArticle(env.DB, String(params.slug ?? "").toLowerCase());
+    if (!article && url.searchParams.get("preview") === "admin") {
+      const session = await verifySession(request, env);
+      if (session?.role === "admin") {
+        article = await findArticleBySlug(env.DB, String(params.slug ?? "").toLowerCase());
+      }
+    }
   } catch (error) {
     if (isNewsTableMissing(error)) {
       return new Response("News article not available.", { status: 404 });

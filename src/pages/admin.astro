@@ -114,6 +114,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
             <div>
               <p class="eyebrow">Dashboard</p>
               <h2 class="mt-2 font-display text-3xl font-black uppercase text-white">Label database</h2>
+              <p class="mt-2 text-sm text-steel" data-dashboard-status>Loading dashboard data...</p>
             </div>
             <div class="flex flex-wrap gap-2">
               <button data-refresh class="rounded-md border border-white/10 px-4 py-2 text-sm font-bold text-haze hover:border-neon-cyan hover:text-white" type="button">Refresh</button>
@@ -458,6 +459,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   const loginForm = document.querySelector("[data-login-form]");
   const dashboard = document.querySelector("[data-dashboard]");
   const loginStatus = document.querySelector("[data-login-status]");
+  const dashboardStatus = document.querySelector("[data-dashboard-status]");
   const statsEl = document.querySelector("[data-stats]");
   const artistsList = document.querySelector("[data-artists-list]");
   const releasesList = document.querySelector("[data-releases-list]");
@@ -1172,6 +1174,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
             const publicPath = `/news/${encodeURIComponent(String(article.slug || "").toLowerCase())}`;
             const published = article.status === "published";
             const previewPath = `${publicPath}${published ? "" : "?preview=admin"}`;
+            const thumbnailPreviewParam = published ? "" : "&preview=admin";
             return `
               <article class="rounded-md border bg-black/35 p-4" style="border-color:${escapeHtml(accent)}55;">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -1183,9 +1186,9 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                     <p class="mt-3 text-sm leading-6 text-haze">${escapeHtml(article.excerpt || "No excerpt yet.")}</p>
                     <div class="mt-4 flex flex-wrap gap-2">
                       <a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(previewPath)}" target="_blank" rel="noreferrer">${published ? "Open" : "Preview draft"}</a>
-                      <a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(`${publicPath}/social-image.svg?platform=og`)}" target="_blank" rel="noreferrer">1200x630</a>
-                      <a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(`${publicPath}/social-image.svg?platform=square`)}" target="_blank" rel="noreferrer">1080x1080</a>
-                      <a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(`${publicPath}/social-image.svg?platform=story`)}" target="_blank" rel="noreferrer">Story</a>
+                      <a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(`${publicPath}/social-image.svg?platform=og${thumbnailPreviewParam}`)}" target="_blank" rel="noreferrer">1200x630</a>
+                      <a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(`${publicPath}/social-image.svg?platform=square${thumbnailPreviewParam}`)}" target="_blank" rel="noreferrer">1080x1080</a>
+                      <a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(`${publicPath}/social-image.svg?platform=story${thumbnailPreviewParam}`)}" target="_blank" rel="noreferrer">Story</a>
                     </div>
                   </div>
                   <div class="flex flex-wrap gap-2">
@@ -1212,21 +1215,47 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   }
 
   async function loadDashboard() {
-    const [artistData, releaseData, submissionData, newsData] = await Promise.all([
+    if (dashboardStatus) dashboardStatus.textContent = "Loading dashboard data...";
+    const errors = [];
+    const [artistResult, releaseResult, submissionResult, newsResult] = await Promise.allSettled([
       api("/api/admin/artists"),
       api("/api/admin/releases"),
       api("/api/admin/demo-submissions?scope=pending"),
       api("/api/admin/news")
     ]);
-    artists = artistData.artists || [];
-    releases = releaseData.releases || [];
-    submissions = submissionData.submissions || [];
-    newsArticles = newsData.articles || [];
-    newsCategories = newsData.categories || [];
-    newsAuthors = (newsData.authors && newsData.authors.length ? newsData.authors : [{ name: "The MasterBeat Project" }]);
-    submissionCounts = submissionData.counts || { pending: submissions.length, archived: 0, total: submissions.length };
+
+    if (artistResult.status === "fulfilled") {
+      artists = artistResult.value.artists || [];
+    } else {
+      errors.push(`Artists: ${artistResult.reason?.message || "failed to load"}`);
+    }
+
+    if (releaseResult.status === "fulfilled") {
+      releases = releaseResult.value.releases || [];
+    } else {
+      errors.push(`Releases: ${releaseResult.reason?.message || "failed to load"}`);
+    }
+
+    if (submissionResult.status === "fulfilled") {
+      submissions = submissionResult.value.submissions || [];
+      submissionCounts = submissionResult.value.counts || { pending: submissions.length, archived: 0, total: submissions.length };
+    } else {
+      errors.push(`Submissions: ${submissionResult.reason?.message || "failed to load"}`);
+    }
+
+    if (newsResult.status === "fulfilled") {
+      newsArticles = newsResult.value.articles || [];
+      newsCategories = newsResult.value.categories || [];
+      newsAuthors = newsResult.value.authors && newsResult.value.authors.length ? newsResult.value.authors : [{ name: "The MasterBeat Project" }];
+    } else {
+      errors.push(`News: ${newsResult.reason?.message || "failed to load"}`);
+    }
+
     render();
-    loadNewsEditor();
+    await loadNewsEditor().catch((error) => errors.push(`Editor: ${error.message}`));
+    if (dashboardStatus) {
+      dashboardStatus.textContent = errors.length ? `Dashboard loaded with issues: ${errors.join(" | ")}` : "Dashboard data loaded.";
+    }
   }
 
   async function checkSession() {
@@ -1237,10 +1266,14 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         loginForm?.setAttribute("hidden", "");
         dashboard?.removeAttribute("hidden");
         await loadDashboard();
+        return;
       }
-    } catch {
       loginForm?.removeAttribute("hidden");
       dashboard?.setAttribute("hidden", "");
+    } catch (error) {
+      loginForm?.removeAttribute("hidden");
+      dashboard?.setAttribute("hidden", "");
+      if (loginStatus) loginStatus.textContent = error.message || "Admin session could not be checked.";
     }
   }
 

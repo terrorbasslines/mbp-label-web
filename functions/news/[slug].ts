@@ -82,7 +82,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
   const canonicalUrl = `${SITE_URL}${canonicalPath}`;
   const title = String(articleSeoTitle(article));
   const description = String(articleSeoDescription(article));
-  const image = article.cover_image_url || `/news/${article.slug}/social-image.svg?platform=og`;
+  const previewImageParam = isDraftPreview ? "&preview=admin" : "";
+  const image = article.cover_image_url || `/news/${article.slug}/social-image.svg?platform=og${previewImageParam}`;
   const publishedDate = formatDate(article.published_at || article.created_at);
   const shareText = `${article.title} | ${SITE_NAME}`;
   const shareUrl = encodeURIComponent(canonicalUrl);
@@ -149,16 +150,20 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
             <p class="eyebrow">Share article</p>
             <h2>Social-ready story</h2>
             <p>Share this MBP news update directly, or open generated thumbnails prepared for common social formats.</p>
-            <div class="links share-grid">
-              <a href="https://www.facebook.com/sharer/sharer.php?u=${shareUrl}" target="_blank" rel="noreferrer">Facebook</a>
-              <a href="https://twitter.com/intent/tweet?url=${shareUrl}&text=${encodedTitle}" target="_blank" rel="noreferrer">X / Twitter</a>
-              <a href="https://www.linkedin.com/sharing/share-offsite/?url=${shareUrl}" target="_blank" rel="noreferrer">LinkedIn</a>
-              <a href="https://api.whatsapp.com/send?text=${encodedTitle}%20${shareUrl}" target="_blank" rel="noreferrer">WhatsApp</a>
-            </div>
+            ${
+              isDraftPreview
+                ? `<p class="status" style="font-size:13px;color:var(--muted)">Draft previews are private. Publish this article before using public social share links.</p>`
+                : `<div class="links share-grid">
+                    <a href="https://www.facebook.com/sharer/sharer.php?u=${shareUrl}" target="_blank" rel="noreferrer">Facebook</a>
+                    <a href="https://twitter.com/intent/tweet?url=${shareUrl}&text=${encodedTitle}" target="_blank" rel="noreferrer">X / Twitter</a>
+                    <a href="https://www.linkedin.com/sharing/share-offsite/?url=${shareUrl}" target="_blank" rel="noreferrer">LinkedIn</a>
+                    <a href="https://api.whatsapp.com/send?text=${encodedTitle}%20${shareUrl}" target="_blank" rel="noreferrer">WhatsApp</a>
+                  </div>`
+            }
             <div class="thumb-links">
-              <a href="/news/${escapeHtml(article.slug)}/social-image.svg?platform=og" target="_blank" rel="noreferrer">Open 1200x630 thumbnail</a>
-              <a href="/news/${escapeHtml(article.slug)}/social-image.svg?platform=square" target="_blank" rel="noreferrer">Open 1080x1080 thumbnail</a>
-              <a href="/news/${escapeHtml(article.slug)}/social-image.svg?platform=story" target="_blank" rel="noreferrer">Open 1080x1920 story</a>
+              <a href="/news/${escapeHtml(article.slug)}/social-image.svg?platform=og${previewImageParam}" target="_blank" rel="noreferrer">Open 1200x630 thumbnail</a>
+              <a href="/news/${escapeHtml(article.slug)}/social-image.svg?platform=square${previewImageParam}" target="_blank" rel="noreferrer">Open 1080x1080 thumbnail</a>
+              <a href="/news/${escapeHtml(article.slug)}/social-image.svg?platform=story${previewImageParam}" target="_blank" rel="noreferrer">Open 1080x1920 story</a>
             </div>
             <div class="card" style="margin-top:22px;padding:18px">
               <p class="eyebrow">Artist reactions</p>
