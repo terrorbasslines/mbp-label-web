@@ -26,7 +26,7 @@ type ImageData = {
 const FONT = `system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif`;
 const INK = "#050508";
 const CYAN = "#22f7ff";
-const SOCIAL_IMAGE_VERSION = "mbp-social-v5-2026-06-07";
+const SOCIAL_IMAGE_VERSION = "mbp-social-v6-2026-06-07";
 
 /* ─── Utilities ─── */
 
@@ -184,11 +184,21 @@ function svgDefs(accent: string, variant: CanvasSpec["kind"]) {
 
 function svgBackground(data: ImageData, width: number, height: number, variant: CanvasSpec["kind"]) {
   const ogOverlay = variant === "og" ? `<rect width="100%" height="100%" fill="url(#ogOverlay)"/>` : "";
+  const storyExtra = variant === "story"
+    ? `
+      <rect width="100%" height="100%" fill="#000000" opacity="0.10"/>
+      <rect x="0" y="0" width="100%" height="54%" fill="url(#centerLift)" opacity="0.72"/>
+      <rect x="0" y="0" width="100%" height="100%" fill="#020307" opacity="0.10"/>
+    `
+    : "";
+
+  const imageOpacity = variant === "story" ? 0.90 : 1;
 
   return `<rect width="100%" height="100%" fill="${INK}"/>
-  <image href="${escapeHtml(data.cover)}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice" opacity="1"/>
+  <image href="${escapeHtml(data.cover)}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice" opacity="${imageOpacity}"/>
   <rect width="100%" height="100%" fill="url(#centerLift)"/>
   ${ogOverlay}
+  ${storyExtra}
   <rect width="100%" height="100%" fill="url(#bottomOverlay)"/>
   <rect width="100%" height="100%" fill="url(#accentBloom)"/>
   <rect width="100%" height="100%" fill="#ffffff" opacity="0.05" filter="url(#noise)"/>`;
@@ -354,29 +364,32 @@ function renderSquare(data: ImageData, spec: CanvasSpec) {
 
 /* ═══════════════════════════════════════════════════════════════════════
    Instagram Story — 1080 × 1920
-   Tall premium story layout: clean hero area, strong lower editorial block,
-   readable title, no ghost watermark, no narrow broken text column.
+   Taller premium editorial block, stronger visual hierarchy, less dead space.
    ═══════════════════════════════════════════════════════════════════════ */
 
 function renderStory(data: ImageData, spec: CanvasSpec) {
   const W = 1080;
   const H = 1920;
-  const P = 76;
+  const P = 82;
 
-  const titleLines = wrapWords(data.title, cleanText(data.title).length > 88 ? 14 : 16, 4);
-  const titleSize = titleLines.length >= 4 ? 64 : 74;
-  const titleGap = Math.round(titleSize * 1.04);
-  const descLines = wrapWords(data.description, 36, 3);
+  const titleLines = wrapWords(data.title, cleanText(data.title).length > 84 ? 14 : 16, 4);
+  const titleSize = titleLines.length >= 4 ? 68 : 78;
+  const titleGap = Math.round(titleSize * 1.02);
+
+  const descLines = wrapWords(data.description, 38, 3);
+  const descSize = 24;
+  const descGap = 38;
 
   const cardX = 46;
-  const cardY = 1008;
+  const cardY = 860;
   const cardW = W - 92;
-  const cardH = 850;
+  const cardH = 960;
 
-  const categoryY = cardY + 88;
-  const titleY = categoryY + 118;
-  const descY = titleY + Math.max(0, titleLines.length - 1) * titleGap + titleSize + 34;
-  const domainY = H - 104;
+  const topBrandY = 84;
+  const categoryY = cardY + 86;
+  const titleY = categoryY + 126;
+  const descY = titleY + Math.max(0, titleLines.length - 1) * titleGap + titleSize + 44;
+  const domainY = H - 106;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
@@ -385,22 +398,30 @@ function renderStory(data: ImageData, spec: CanvasSpec) {
 
   ${svgBackground(data, W, H, "story")}
 
+  <!-- Left accent + subtle framing -->
   <rect x="0" y="0" width="7" height="${H}" fill="url(#accentV)" filter="url(#accentGlow)"/>
-  <rect x="${P}" y="60" width="210" height="5" rx="2.5" fill="url(#accentH)" opacity="0.90" filter="url(#accentGlow)"/>
-  <rect x="${P}" y="238" width="3" height="166" rx="1.5" fill="#ffffff" opacity="0.16"/>
-  <rect x="${P}" y="444" width="3" height="94" rx="1.5" fill="url(#accentV)" opacity="0.58"/>
+  <rect x="${P}" y="62" width="228" height="5" rx="2.5" fill="url(#accentH)" opacity="0.92" filter="url(#accentGlow)"/>
+  <rect x="${P}" y="238" width="3" height="160" rx="1.5" fill="#ffffff" opacity="0.14"/>
+  <rect x="${P}" y="438" width="3" height="90" rx="1.5" fill="url(#accentV)" opacity="0.62"/>
 
-  ${svgBrand(data, P, 84, 56, 24, 12, true)}
+  <!-- Top brand -->
+  ${svgBrand(data, P, topBrandY, 58, 25, 12, true)}
 
-  ${svgGlassCard(cardX, cardY, cardW, cardH, 38, "left")}
-  <rect x="${cardX + 34}" y="${cardY + 78}" width="${cardW - 68}" height="1" fill="#ffffff" opacity="0.10"/>
+  <!-- Main editorial panel -->
+  ${svgGlassCard(cardX, cardY, cardW, cardH, 42, "left")}
+  <rect x="${cardX + 34}" y="${cardY + 84}" width="${cardW - 68}" height="1" fill="#ffffff" opacity="0.10"/>
 
-  ${svgCategoryPill(`${data.category} / ${spec.label}`, P, categoryY, 15, 440)}
+  <!-- Category -->
+  ${svgCategoryPill(`${data.category} / ${spec.label}`, P, categoryY, 16, 470)}
 
-  ${svgTitle(titleLines, P, titleY, titleSize, titleGap, -1.45)}
-  ${svgDescription(descLines, P, descY, 23, 36)}
+  <!-- Title -->
+  ${svgTitle(titleLines, P, titleY, titleSize, titleGap, -1.55)}
 
-  ${svgDomain(data, P, domainY, 30, 18, 260)}
+  <!-- Description -->
+  ${svgDescription(descLines, P, descY, descSize, descGap)}
+
+  <!-- Footer / domain -->
+  ${svgDomain(data, P, domainY, 30, 18, 270)}
 </svg>`;
 }
 
