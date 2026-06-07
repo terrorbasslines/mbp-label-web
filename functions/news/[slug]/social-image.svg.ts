@@ -26,7 +26,7 @@ type ImageData = {
 const FONT = `system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif`;
 const INK = "#050508";
 const CYAN = "#22f7ff";
-const SOCIAL_IMAGE_VERSION = "mbp-social-v15-og-kicker-a-bit-higher-2026-06-07";
+const SOCIAL_IMAGE_VERSION = "mbp-social-v16-og-domain-line-longer-2026-06-07";
 
 /* ─── Utilities ─── */
 
@@ -315,7 +315,7 @@ function renderOg(data: ImageData, spec: CanvasSpec) {
   ${svgCategoryKicker(`${data.category} / ${spec.label}`, P, kickerY, 13, 42)}
   ${svgTitle(titleLines, P, titleY, titleSize, titleGap, -1.35)}
   ${svgDescription(descLines, P, descY, descSize, descGap)}
-  ${svgDomain(data, P, domainY, 24, 15, 215)}
+  ${svgDomain(data, P, domainY, 24, 15, 255)}
 </svg>`;
 }
 
