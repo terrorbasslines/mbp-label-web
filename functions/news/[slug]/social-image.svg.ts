@@ -2,6 +2,8 @@ import { verifySession, type Env } from "../../api/_shared";
 import { absoluteUrl, escapeHtml, SITE_URL } from "../../_seo";
 import { articleExcerpt, findArticleBySlug, findPublishedArticle, isNewsTableMissing } from "../../api/_news";
 
+/* ─── Types ─── */
+
 type CanvasSpec = {
   width: number;
   height: number;
@@ -19,6 +21,11 @@ type ImageData = {
   domain: string;
 };
 
+/** Cross-platform system font stack for consistent SVG rendering */
+const FONT = `'Segoe UI',system-ui,-apple-system,sans-serif`;
+
+/* ─── Utilities ─── */
+
 function canvasSpec(platform: string | null): CanvasSpec {
   const key = String(platform || "").toLowerCase();
   if (["square", "instagram", "instagram-post", "insta-post", "post"].includes(key)) {
@@ -32,7 +39,7 @@ function canvasSpec(platform: string | null): CanvasSpec {
 
 function truncate(value: string, max: number) {
   const clean = value.replace(/\s+/g, " ").trim();
-  return clean.length > max ? `${clean.slice(0, max - 1)}...` : clean;
+  return clean.length > max ? `${clean.slice(0, max - 1)}\u2026` : clean;
 }
 
 function wrapWords(value: string, maxChars: number, maxLines: number) {
@@ -52,156 +59,291 @@ function wrapWords(value: string, maxChars: number, maxLines: number) {
   }
 
   if (lines.length < maxLines && current) lines.push(current);
-  return lines.slice(0, maxLines).map((line, index, list) => (index === list.length - 1 ? truncate(line, maxChars) : line));
+  return lines
+    .slice(0, maxLines)
+    .map((l, i, a) => (i === a.length - 1 ? truncate(l, maxChars) : l));
 }
 
-function renderTextLines(
+/* ─── SVG building blocks ─── */
+
+function svgTitle(
   lines: string[],
   x: number,
   y: number,
-  fontSize: number,
-  lineGap: number,
-  color: string,
-  weight = "900",
-  family = "Arial Black, Arial, sans-serif"
+  size: number,
+  gap: number
 ) {
   return lines
     .map(
-      (line, index) =>
-        `<text x="${x}" y="${y + index * lineGap}" fill="${color}" font-family="${family}" font-size="${fontSize}" font-weight="${weight}" letter-spacing="0">${escapeHtml(line.toUpperCase())}</text>`
+      (l, i) =>
+        `<text x="${x}" y="${y + i * gap}" fill="#fff" font-family="${FONT}" font-size="${size}" font-weight="800" letter-spacing="-0.5" filter="url(#ts)">${escapeHtml(l.toUpperCase())}</text>`
     )
     .join("\n  ");
 }
 
-function renderBrand(data: ImageData, x: number, y: number, logoSize: number, titleSize: number, projectSize: number) {
-  return `
-  <image href="${escapeHtml(data.logo)}" x="${x}" y="${y}" width="${logoSize}" height="${logoSize}" preserveAspectRatio="xMidYMid meet"/>
-  <text x="${x + logoSize + 18}" y="${y + logoSize * 0.42}" fill="#ffffff" font-family="Arial Black, Arial, sans-serif" font-size="${titleSize}" font-weight="900" letter-spacing="0">THE MASTERBEAT</text>
-  <text x="${x + logoSize + 20}" y="${y + logoSize * 0.72}" fill="#d6dbef" font-family="Arial, sans-serif" font-size="${projectSize}" font-weight="900" letter-spacing="8">PROJECT</text>`;
+function svgDesc(
+  lines: string[],
+  x: number,
+  y: number,
+  size: number,
+  gap: number
+) {
+  return lines
+    .map(
+      (l, i) =>
+        `<text x="${x}" y="${y + i * gap}" fill="#c0c6dc" font-family="${FONT}" font-size="${size}" font-weight="400" filter="url(#ts)">${escapeHtml(l)}</text>`
+    )
+    .join("\n  ");
 }
 
-function commonDefs(data: ImageData, spec: CanvasSpec) {
-  return `
+function svgBrand(
+  d: ImageData,
+  x: number,
+  y: number,
+  sz: number,
+  tf: number,
+  sf: number
+) {
+  return `<image href="${escapeHtml(d.logo)}" x="${x}" y="${y}" width="${sz}" height="${sz}" preserveAspectRatio="xMidYMid meet"/>
+  <text x="${x + sz + 14}" y="${y + Math.round(sz * 0.44)}" fill="#fff" font-family="${FONT}" font-size="${tf}" font-weight="800" letter-spacing="0.5" filter="url(#ts)">THE MASTERBEAT</text>
+  <text x="${x + sz + 16}" y="${y + Math.round(sz * 0.76)}" fill="#8b91a8" font-family="${FONT}" font-size="${sf}" font-weight="700" letter-spacing="5">PROJECT</text>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   OG — 1200 × 630
+   Full-bleed cover with a left-to-right dark gradient so text on the
+   left stays readable while the cover image is visible on the right.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+function renderOg(data: ImageData, spec: CanvasSpec) {
+  const W = 1200, H = 630, P = 44;
+  const tl = wrapWords(data.title, 24, 3);
+  const tf = tl.length > 2 ? 48 : 56;
+  const tg = Math.round(tf * 1.1);
+  const tY = 218;
+  const dY = tY + (tl.length - 1) * tg + tf + 16;
+  const dl = wrapWords(data.description, 42, 2);
+  const cat = truncate(`${data.category} / ${spec.label}`, 40).toUpperCase();
+  const a = escapeHtml(data.accent);
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   <defs>
-    <linearGradient id="shade" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0" stop-color="#030307" stop-opacity="0.92"/>
-      <stop offset="0.45" stop-color="#050508" stop-opacity="0.42"/>
-      <stop offset="1" stop-color="#050508" stop-opacity="0.94"/>
+    <filter id="ts" x="-10%" y="-10%" width="120%" height="120%"><feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.8"/></filter>
+    <filter id="gl"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="#22f7ff"/></linearGradient>
+    <linearGradient id="agh" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="#22f7ff" stop-opacity="0.3"/></linearGradient>
+    <linearGradient id="ovlr" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#050508" stop-opacity="0.95"/>
+      <stop offset="0.48" stop-color="#050508" stop-opacity="0.78"/>
+      <stop offset="0.72" stop-color="#050508" stop-opacity="0.38"/>
+      <stop offset="1" stop-color="#050508" stop-opacity="0.08"/>
     </linearGradient>
-    <linearGradient id="glass" x1="0" x2="1">
-      <stop offset="0" stop-color="#040407" stop-opacity="0.98"/>
-      <stop offset="0.72" stop-color="#070711" stop-opacity="0.88"/>
-      <stop offset="1" stop-color="#0b0b13" stop-opacity="0.7"/>
+    <linearGradient id="ovtb" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#050508" stop-opacity="0.38"/>
+      <stop offset="0.18" stop-color="#050508" stop-opacity="0"/>
+      <stop offset="0.72" stop-color="#050508" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#050508" stop-opacity="0.52"/>
     </linearGradient>
-    <linearGradient id="rail" x1="0" x2="1">
-      <stop offset="0" stop-color="${escapeHtml(data.accent)}" stop-opacity="1"/>
-      <stop offset="1" stop-color="#22f7ff" stop-opacity="0.4"/>
-    </linearGradient>
-    <radialGradient id="accentGlow">
-      <stop offset="0" stop-color="${escapeHtml(data.accent)}" stop-opacity="0.32"/>
-      <stop offset="1" stop-color="${escapeHtml(data.accent)}" stop-opacity="0"/>
+    <radialGradient id="acg" cx="0.82" cy="0.22" r="0.5">
+      <stop offset="0" stop-color="${a}" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="${a}" stop-opacity="0"/>
     </radialGradient>
-    <filter id="glow">
-      <feGaussianBlur stdDeviation="${spec.kind === "story" ? 8 : 6}" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
-    <filter id="soft">
-      <feGaussianBlur stdDeviation="24"/>
-    </filter>
-  </defs>`;
-}
+  </defs>
 
-function renderBase(spec: CanvasSpec, data: ImageData) {
-  return `  <rect width="100%" height="100%" fill="#050508"/>
-  <image href="${escapeHtml(data.cover)}" x="0" y="0" width="${spec.width}" height="${spec.height}" preserveAspectRatio="xMidYMid slice" opacity="0.86"/>
-  <rect width="100%" height="100%" fill="url(#shade)"/>
-  <circle cx="${spec.width * 0.86}" cy="${spec.height * 0.18}" r="${spec.kind === "story" ? 430 : 290}" fill="url(#accentGlow)" filter="url(#soft)"/>
-  <path d="M0 ${spec.height * 0.78} C${spec.width * 0.28} ${spec.height * 0.7} ${spec.width * 0.68} ${spec.height * 0.92} ${spec.width} ${spec.height * 0.8}" fill="none" stroke="${escapeHtml(data.accent)}" stroke-width="${spec.kind === "story" ? 3 : 2}" opacity="0.28"/>`;
-}
+  <!-- Background with cover -->
+  <rect width="100%" height="100%" fill="#050508"/>
+  <image href="${escapeHtml(data.cover)}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice"/>
+  <rect width="100%" height="100%" fill="url(#ovlr)"/>
+  <rect width="100%" height="100%" fill="url(#ovtb)"/>
+  <rect width="100%" height="100%" fill="url(#acg)"/>
 
-function renderOg(data: ImageData) {
-  const titleLines = wrapWords(data.title, 17, 3);
-  const titleFont = titleLines.length > 2 ? 52 : 58;
-  const titleGap = titleFont * 1.05;
-  const descriptionY = 264 + titleLines.length * titleGap + 34;
-  const descriptionLines = wrapWords(data.description, 34, 2);
-  const meta = truncate(`${data.category} / MBP News`, 42).toUpperCase();
+  <!-- Left accent bar -->
+  <rect x="0" y="0" width="4" height="${H}" fill="url(#ag)" filter="url(#gl)"/>
 
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-  ${commonDefs(data, { width: 1200, height: 630, label: "Open Graph", kind: "og" })}
-${renderBase({ width: 1200, height: 630, label: "Open Graph", kind: "og" }, data)}
-  <rect x="54" y="46" width="632" height="538" rx="28" fill="url(#glass)" stroke="rgba(255,255,255,.16)"/>
-  <rect x="54" y="46" width="5" height="538" rx="3" fill="${escapeHtml(data.accent)}" filter="url(#glow)"/>
-  <path d="M86 82 H430" stroke="url(#rail)" stroke-width="3" opacity="0.9"/>
-  <image href="${escapeHtml(data.logo)}" x="760" y="104" width="360" height="360" preserveAspectRatio="xMidYMid meet" opacity="0.28"/>
-  <rect x="732" y="88" width="388" height="388" rx="28" fill="#050508" opacity="0.24"/>
-  ${renderBrand(data, 88, 86, 72, 29, 14)}
-  <text x="88" y="206" fill="${escapeHtml(data.accent)}" font-family="Arial, sans-serif" font-size="18" font-weight="900" letter-spacing="7">${escapeHtml(meta)}</text>
-  ${renderTextLines(titleLines, 88, 264, titleFont, titleGap, "#ffffff")}
-  ${renderTextLines(descriptionLines, 88, descriptionY, 25, 38, "#e8ecff", "800", "Arial, sans-serif")}
-  <text x="88" y="542" fill="#ffffff" font-family="Arial Black, Arial, sans-serif" font-size="23" font-weight="900" letter-spacing="0">${escapeHtml(data.domain)}</text>
-  <rect x="88" y="559" width="262" height="5" fill="${escapeHtml(data.accent)}"/>
+  <!-- Brand -->
+  ${svgBrand(data, P, 34, 50, 22, 11)}
+
+  <!-- Separator -->
+  <rect x="${P}" y="104" width="260" height="1" fill="rgba(255,255,255,0.08)"/>
+
+  <!-- Category -->
+  <text x="${P}" y="146" fill="${a}" font-family="${FONT}" font-size="13" font-weight="700" letter-spacing="4" filter="url(#ts)">${escapeHtml(cat)}</text>
+  <rect x="${P}" y="156" width="52" height="2" fill="url(#agh)" opacity="0.5"/>
+
+  <!-- Title -->
+  ${svgTitle(tl, P, tY, tf, tg)}
+
+  <!-- Description -->
+  ${svgDesc(dl, P, dY, 19, 30)}
+
+  <!-- Domain -->
+  <text x="${P}" y="${H - 38}" fill="#8b91a8" font-family="${FONT}" font-size="15" font-weight="700" letter-spacing="0.8" filter="url(#ts)">${escapeHtml(data.domain)}</text>
+  <rect x="${P}" y="${H - 24}" width="180" height="3" fill="url(#agh)"/>
 </svg>`;
 }
 
-function renderSquare(data: ImageData) {
-  const titleLines = wrapWords(data.title, 12, 5);
-  const titleFont = titleLines.length > 4 ? 56 : 62;
-  const titleGap = titleFont * 1.03;
-  const descriptionY = Math.min(770, 332 + titleLines.length * titleGap + 72);
-  const descriptionLines = wrapWords(data.description, 26, 4);
-  const meta = truncate(`${data.category} / MBP News`, 34).toUpperCase();
+/* ═══════════════════════════════════════════════════════════════════════
+   Instagram Post — 1080 × 1080
+   Cover image fills the canvas, content is bottom-anchored with a
+   bottom-up gradient. Brand sits top-left with a dark pill backdrop.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+function renderSquare(data: ImageData, spec: CanvasSpec) {
+  const W = 1080, H = 1080, P = 52;
+  const tl = wrapWords(data.title, 16, 4);
+  const tf = tl.length > 3 ? 48 : 54;
+  const tg = Math.round(tf * 1.08);
+  const dl = wrapWords(data.description, 32, 3);
+  const dgap = 28;
+  const cat = truncate(`${data.category} / ${spec.label}`, 34).toUpperCase();
+  const a = escapeHtml(data.accent);
+
+  // Bottom-anchored content positioning
+  const domainY = H - 66;
+  const ulY = domainY + 16;
+  const descEndY = domainY - 46;
+  const descStartY = descEndY - Math.max(0, dl.length - 1) * dgap;
+  const titleEndY = descStartY - 28;
+  const titleStartY = titleEndY - Math.max(0, tl.length - 1) * tg;
+  const catY = titleStartY - 56;
+  const catLineY = catY + 12;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080">
-  ${commonDefs(data, { width: 1080, height: 1080, label: "Instagram Post", kind: "square" })}
-${renderBase({ width: 1080, height: 1080, label: "Instagram Post", kind: "square" }, data)}
-  <rect x="64" y="64" width="952" height="952" rx="30" fill="#050508" opacity="0.38" stroke="${escapeHtml(data.accent)}" stroke-width="2"/>
-  <rect x="64" y="64" width="548" height="952" rx="30" fill="url(#glass)" opacity="0.94"/>
-  <rect x="98" y="92" width="350" height="4" fill="url(#rail)"/>
-  <image href="${escapeHtml(data.logo)}" x="574" y="292" width="490" height="490" preserveAspectRatio="xMidYMid meet" opacity="0.28"/>
-  <rect x="574" y="278" width="432" height="520" rx="30" fill="#050508" opacity="0.18"/>
-  ${renderBrand(data, 98, 118, 82, 28, 13)}
-  <text x="98" y="252" fill="${escapeHtml(data.accent)}" font-family="Arial, sans-serif" font-size="19" font-weight="900" letter-spacing="8">${escapeHtml(meta)}</text>
-  ${renderTextLines(titleLines, 98, 332, titleFont, titleGap, "#ffffff")}
-  ${renderTextLines(descriptionLines, 98, descriptionY, 27, 40, "#e8ecff", "800", "Arial, sans-serif")}
-  <text x="98" y="940" fill="#ffffff" font-family="Arial Black, Arial, sans-serif" font-size="25" font-weight="900" letter-spacing="0">${escapeHtml(data.domain)}</text>
-  <rect x="98" y="960" width="250" height="6" fill="${escapeHtml(data.accent)}"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+  <defs>
+    <filter id="ts" x="-10%" y="-10%" width="120%" height="120%"><feDropShadow dx="0" dy="2" stdDeviation="5" flood-color="#000" flood-opacity="0.82"/></filter>
+    <filter id="gl"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="#22f7ff"/></linearGradient>
+    <linearGradient id="agh" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="#22f7ff" stop-opacity="0.3"/></linearGradient>
+    <linearGradient id="ovbu" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#050508" stop-opacity="0.12"/>
+      <stop offset="0.30" stop-color="#050508" stop-opacity="0.04"/>
+      <stop offset="0.48" stop-color="#050508" stop-opacity="0.22"/>
+      <stop offset="0.65" stop-color="#050508" stop-opacity="0.68"/>
+      <stop offset="0.80" stop-color="#050508" stop-opacity="0.90"/>
+      <stop offset="1" stop-color="#050508" stop-opacity="0.97"/>
+    </linearGradient>
+    <radialGradient id="acg" cx="0.5" cy="0.4" r="0.5">
+      <stop offset="0" stop-color="${a}" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="${a}" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background with cover -->
+  <rect width="100%" height="100%" fill="#050508"/>
+  <image href="${escapeHtml(data.cover)}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice"/>
+  <rect width="100%" height="100%" fill="url(#ovbu)"/>
+  <rect width="100%" height="100%" fill="url(#acg)"/>
+
+  <!-- Left accent bar -->
+  <rect x="0" y="0" width="4" height="${H}" fill="url(#ag)" filter="url(#gl)"/>
+
+  <!-- Brand with dark backdrop for readability -->
+  <rect x="36" y="30" width="310" height="76" rx="12" fill="#050508" opacity="0.5"/>
+  ${svgBrand(data, P, 42, 48, 21, 10)}
+
+  <!-- Category -->
+  <text x="${P}" y="${catY}" fill="${a}" font-family="${FONT}" font-size="14" font-weight="700" letter-spacing="4.5" filter="url(#ts)">${escapeHtml(cat)}</text>
+  <rect x="${P}" y="${catLineY}" width="52" height="2" fill="url(#agh)" opacity="0.5"/>
+
+  <!-- Title -->
+  ${svgTitle(tl, P, titleStartY, tf, tg)}
+
+  <!-- Description -->
+  ${svgDesc(dl, P, descStartY, 18, dgap)}
+
+  <!-- Domain -->
+  <text x="${P}" y="${domainY}" fill="#8b91a8" font-family="${FONT}" font-size="16" font-weight="700" letter-spacing="0.8" filter="url(#ts)">${escapeHtml(data.domain)}</text>
+  <rect x="${P}" y="${ulY}" width="200" height="3" fill="url(#agh)"/>
 </svg>`;
 }
 
-function renderStory(data: ImageData) {
-  const titleLines = wrapWords(data.title, 11, 6);
-  const titleFont = titleLines.length > 5 ? 62 : 68;
-  const titleGap = titleFont * 1.05;
-  const descriptionY = Math.min(1120, 424 + titleLines.length * titleGap + 92);
-  const descriptionLines = wrapWords(data.description, 25, 4);
-  const meta = truncate(`${data.category} / MBP News`, 32).toUpperCase();
+/* ═══════════════════════════════════════════════════════════════════════
+   Instagram Story — 1080 × 1920
+   Tall format. Cover fills upper portion, content sits in the lower
+   half over a strong bottom-up gradient.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+function renderStory(data: ImageData, spec: CanvasSpec) {
+  const W = 1080, H = 1920, P = 56;
+  const tl = wrapWords(data.title, 14, 5);
+  const tf = tl.length > 4 ? 56 : 64;
+  const tg = Math.round(tf * 1.08);
+  const dl = wrapWords(data.description, 28, 3);
+  const dgap = 34;
+  const cat = truncate(`${data.category} / ${spec.label}`, 30).toUpperCase();
+  const a = escapeHtml(data.accent);
+
+  // Bottom-anchored content positioning
+  const domainY = H - 100;
+  const ulY = domainY + 18;
+  const descEndY = domainY - 56;
+  const descStartY = descEndY - Math.max(0, dl.length - 1) * dgap;
+  const titleEndY = descStartY - 36;
+  const titleStartY = titleEndY - Math.max(0, tl.length - 1) * tg;
+  const catY = titleStartY - 64;
+  const catLineY = catY + 14;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
-  ${commonDefs(data, { width: 1080, height: 1920, label: "Instagram Story", kind: "story" })}
-${renderBase({ width: 1080, height: 1920, label: "Instagram Story", kind: "story" }, data)}
-  <rect x="56" y="72" width="620" height="1776" rx="34" fill="url(#glass)" stroke="${escapeHtml(data.accent)}" stroke-width="3"/>
-  <rect x="88" y="110" width="350" height="4" fill="url(#rail)"/>
-  <rect x="56" y="72" width="7" height="1776" rx="4" fill="${escapeHtml(data.accent)}" filter="url(#glow)"/>
-  <image href="${escapeHtml(data.logo)}" x="430" y="574" width="720" height="720" preserveAspectRatio="xMidYMid meet" opacity="0.3"/>
-  <rect x="404" y="560" width="600" height="736" rx="34" fill="#050508" opacity="0.18"/>
-  ${renderBrand(data, 98, 142, 86, 30, 13)}
-  <text x="98" y="330" fill="${escapeHtml(data.accent)}" font-family="Arial, sans-serif" font-size="19" font-weight="900" letter-spacing="8">${escapeHtml(meta)}</text>
-  ${renderTextLines(titleLines, 98, 424, titleFont, titleGap, "#ffffff")}
-  ${renderTextLines(descriptionLines, 98, descriptionY, 30, 44, "#e8ecff", "800", "Arial, sans-serif")}
-  <text x="98" y="1708" fill="#ffffff" font-family="Arial Black, Arial, sans-serif" font-size="28" font-weight="900" letter-spacing="0">${escapeHtml(data.domain)}</text>
-  <rect x="98" y="1732" width="285" height="7" fill="${escapeHtml(data.accent)}"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+  <defs>
+    <filter id="ts" x="-10%" y="-10%" width="120%" height="120%"><feDropShadow dx="0" dy="2" stdDeviation="5" flood-color="#000" flood-opacity="0.82"/></filter>
+    <filter id="gl"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="#22f7ff"/></linearGradient>
+    <linearGradient id="agh" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="#22f7ff" stop-opacity="0.3"/></linearGradient>
+    <linearGradient id="ovbu" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#050508" stop-opacity="0.10"/>
+      <stop offset="0.28" stop-color="#050508" stop-opacity="0.03"/>
+      <stop offset="0.46" stop-color="#050508" stop-opacity="0.15"/>
+      <stop offset="0.60" stop-color="#050508" stop-opacity="0.55"/>
+      <stop offset="0.75" stop-color="#050508" stop-opacity="0.88"/>
+      <stop offset="1" stop-color="#050508" stop-opacity="0.97"/>
+    </linearGradient>
+    <radialGradient id="acg" cx="0.5" cy="0.3" r="0.5">
+      <stop offset="0" stop-color="${a}" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="${a}" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background with cover -->
+  <rect width="100%" height="100%" fill="#050508"/>
+  <image href="${escapeHtml(data.cover)}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice"/>
+  <rect width="100%" height="100%" fill="url(#ovbu)"/>
+  <rect width="100%" height="100%" fill="url(#acg)"/>
+
+  <!-- Left accent bar -->
+  <rect x="0" y="0" width="5" height="${H}" fill="url(#ag)" filter="url(#gl)"/>
+
+  <!-- Brand with dark backdrop -->
+  <rect x="38" y="38" width="330" height="84" rx="14" fill="#050508" opacity="0.5"/>
+  ${svgBrand(data, P, 52, 54, 23, 11)}
+
+  <!-- Category -->
+  <text x="${P}" y="${catY}" fill="${a}" font-family="${FONT}" font-size="15" font-weight="700" letter-spacing="4.5" filter="url(#ts)">${escapeHtml(cat)}</text>
+  <rect x="${P}" y="${catLineY}" width="55" height="2" fill="url(#agh)" opacity="0.5"/>
+
+  <!-- Title -->
+  ${svgTitle(tl, P, titleStartY, tf, tg)}
+
+  <!-- Description -->
+  ${svgDesc(dl, P, descStartY, 22, dgap)}
+
+  <!-- Domain -->
+  <text x="${P}" y="${domainY}" fill="#8b91a8" font-family="${FONT}" font-size="18" font-weight="700" letter-spacing="0.8" filter="url(#ts)">${escapeHtml(data.domain)}</text>
+  <rect x="${P}" y="${ulY}" width="220" height="4" fill="url(#agh)"/>
 </svg>`;
 }
+
+/* ─── Router ─── */
 
 function renderSocialImage(spec: CanvasSpec, data: ImageData) {
-  if (spec.kind === "story") return renderStory(data);
-  if (spec.kind === "square") return renderSquare(data);
-  return renderOg(data);
+  if (spec.kind === "story") return renderStory(data, spec);
+  if (spec.kind === "square") return renderSquare(data, spec);
+  return renderOg(data, spec);
 }
+
+/* ─── Handler ─── */
 
 export const onRequestGet: PagesFunction<Env> = async ({ params, request, env }) => {
   const url = new URL(request.url);
