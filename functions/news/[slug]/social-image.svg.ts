@@ -26,7 +26,7 @@ type ImageData = {
 const FONT = `system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif`;
 const INK = "#050508";
 const CYAN = "#22f7ff";
-const SOCIAL_IMAGE_VERSION = "mbp-social-v9-2026-06-07";
+const SOCIAL_IMAGE_VERSION = "mbp-social-v10-2026-06-07";
 
 /* ─── Utilities ─── */
 
@@ -332,8 +332,8 @@ function renderSquare(data: ImageData, spec: CanvasSpec) {
   const H = 1080;
   const P = 48;
 
-  // Keep the same typography style as the liked 1:1 design, but anchor the
-  // whole bottom stack from the footer upward so description/domain never overlap.
+  // Same typography style as the liked 1:1 design, but with the kicker placed
+  // more clearly above the title and without the top decorative stripe.
   const titleLines = wrapWords(data.title, cleanText(data.title).length > 78 ? 16 : 18, 4);
   const titleSize = titleLines.length >= 4 ? 50 : 60;
   const titleGap = Math.round(titleSize * 1.02);
@@ -345,7 +345,7 @@ function renderSquare(data: ImageData, spec: CanvasSpec) {
   const domainY = H - 66;
   const descY = domainY - 74 - Math.max(0, descLines.length - 1) * descGap;
   const titleY = descY - 34 - titleSize - Math.max(0, titleLines.length - 1) * titleGap;
-  const kickerY = titleY - 34;
+  const kickerY = titleY - 52;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
@@ -355,8 +355,6 @@ function renderSquare(data: ImageData, spec: CanvasSpec) {
   ${svgBackground(data, W, H, "square")}
 
   <rect x="0" y="0" width="6" height="${H}" fill="url(#accentV)" filter="url(#accentGlow)"/>
-  <rect x="${P}" y="172" width="220" height="4" rx="2" fill="url(#accentH)" opacity="0.88" filter="url(#accentGlow)"/>
-  <rect x="${P}" y="198" width="84" height="2" rx="1" fill="#ffffff" opacity="0.20"/>
 
   ${svgBrand(data, P, 58, 52, 22, 11, true)}
 
