@@ -26,7 +26,7 @@ type ImageData = {
 const FONT = `system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif`;
 const INK = "#050508";
 const CYAN = "#22f7ff";
-const SOCIAL_IMAGE_VERSION = "mbp-social-v14-og-kicker-higher-2026-06-07";
+const SOCIAL_IMAGE_VERSION = "mbp-social-v15-og-kicker-a-bit-higher-2026-06-07";
 
 /* ─── Utilities ─── */
 
@@ -299,7 +299,7 @@ function renderOg(data: ImageData, spec: CanvasSpec) {
   const domainY = H - 42;
   const descY = domainY - 64 - Math.max(0, descLines.length - 1) * descGap;
   const titleY = descY - 28 - titleSize - Math.max(0, titleLines.length - 1) * titleGap;
-  const kickerY = titleY - 52;
+  const kickerY = titleY - 64;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
