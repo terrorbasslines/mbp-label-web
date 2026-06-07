@@ -26,7 +26,7 @@ type ImageData = {
 const FONT = `system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif`;
 const INK = "#050508";
 const CYAN = "#22f7ff";
-const SOCIAL_IMAGE_VERSION = "mbp-social-v7-2026-06-07";
+const SOCIAL_IMAGE_VERSION = "mbp-social-v8-2026-06-07";
 
 /* ─── Utilities ─── */
 
@@ -251,6 +251,11 @@ function svgCategoryPill(label: string, x: number, y: number, fontSize: number, 
   </g>`;
 }
 
+function svgCategoryKicker(label: string, x: number, y: number, fontSize: number, maxChars = 46) {
+  const text = truncate(label, maxChars).toUpperCase();
+  return `<text x="${x}" y="${y}" fill="#39ff4d" font-family="${FONT}" font-size="${fontSize}" font-weight="800" letter-spacing="4.2" filter="url(#textShadow)">${escapeHtml(text)}</text>`;
+}
+
 function svgTitle(lines: string[], x: number, y: number, fontSize: number, lineGap: number, letterSpacing = -1.25) {
   return lines
     .map((line, index) => `<text x="${x}" y="${y + index * lineGap}" fill="#ffffff" font-family="${FONT}" font-size="${fontSize}" font-weight="850" letter-spacing="${letterSpacing}" filter="url(#textShadow)">${escapeHtml(line)}</text>`)
@@ -325,20 +330,15 @@ function renderOg(data: ImageData, spec: CanvasSpec) {
 function renderSquare(data: ImageData, spec: CanvasSpec) {
   const W = 1080;
   const H = 1080;
-  const P = 66;
+  const P = 48;
 
-  const titleLines = wrapWords(data.title, cleanText(data.title).length > 78 ? 17 : 19, 4);
+  const titleLines = wrapWords(data.title, cleanText(data.title).length > 78 ? 16 : 18, 4);
   const titleSize = titleLines.length >= 4 ? 50 : 60;
-  const titleGap = Math.round(titleSize * 1.05);
-  const descLines = wrapWords(data.description, 42, 3);
+  const titleGap = Math.round(titleSize * 1.02);
+  const descLines = wrapWords(data.description, 34, 3);
 
-  const cardX = 42;
-  const cardY = 592;
-  const cardW = W - 84;
-  const cardH = 430;
-
-  const categoryY = cardY + 46;
-  const titleY = categoryY + 92;
+  const kickerY = 720;
+  const titleY = 790;
   const descY = titleY + Math.max(0, titleLines.length - 1) * titleGap + titleSize + 22;
   const domainY = H - 66;
 
@@ -354,13 +354,10 @@ function renderSquare(data: ImageData, spec: CanvasSpec) {
   <rect x="${P}" y="198" width="84" height="2" rx="1" fill="#ffffff" opacity="0.20"/>
 
   ${svgBrand(data, P, 58, 52, 22, 11, true)}
-  ${svgGlassCard(cardX, cardY, cardW, cardH, 32, "bottom")}
 
-  ${svgCategoryPill(`${data.category} / ${spec.label}`, P, categoryY, 14, 420)}
-
+  ${svgCategoryKicker(`${data.category} / ${spec.label}`, P, kickerY, 14, 42)}
   ${svgTitle(titleLines, P, titleY, titleSize, titleGap, -1.35)}
   ${svgDescription(descLines, P, descY, 19, 30)}
-
   ${svgDomain(data, P, domainY, 26, 16, 230)}
 </svg>`;
 }
@@ -373,48 +370,42 @@ function renderSquare(data: ImageData, spec: CanvasSpec) {
 function renderStory(data: ImageData, spec: CanvasSpec) {
   const W = 1080;
   const H = 1920;
-  const P = 66;
+  const P = 48;
 
-  // Story now follows the same visual language as the 1:1 Instagram post:
-  // full-bleed cover, no large glass card, bottom-left editorial text stack.
-  const titleLines = wrapWords(data.title, cleanText(data.title).length > 76 ? 16 : 18, 4);
-  const titleSize = titleLines.length >= 4 ? 68 : 78;
-  const titleGap = Math.round(titleSize * 1.04);
+  // Match the same bottom typography system as the 1:1 Instagram post:
+  // kicker -> big title -> description -> domain, no pill, no glass card.
+  const titleLines = wrapWords(data.title, cleanText(data.title).length > 82 ? 16 : 18, 4);
+  const titleSize = titleLines.length >= 4 ? 66 : 76;
+  const titleGap = Math.round(titleSize * 1.02);
+  const descLines = wrapWords(data.description, 34, 3);
 
-  const descLines = wrapWords(data.description, 42, 3);
-  const descSize = 24;
-  const descGap = 38;
-
-  const categoryY = 1178;
-  const titleY = categoryY + 94;
+  const kickerY = 1290;
+  const titleY = 1368;
   const descY = titleY + Math.max(0, titleLines.length - 1) * titleGap + titleSize + 28;
-  const domainY = H - 122;
+  const domainY = H - 106;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
-  <!-- ${SOCIAL_IMAGE_VERSION} / instagram-story / square-inspired -->
+  <!-- ${SOCIAL_IMAGE_VERSION} / instagram-story / matched-to-square -->
   ${svgDefs(data.accent, "story")}
 
   ${svgBackground(data, W, H, "story")}
 
-  <!-- Strong bottom readability fade, same direction as Instagram post -->
-  <rect x="0" y="720" width="${W}" height="1200" fill="url(#storyReadability)"/>
+  <!-- Strong bottom readability fade, matching the same editorial composition -->
+  <rect x="0" y="860" width="${W}" height="1060" fill="url(#storyReadability)"/>
 
-  <!-- Minimal frame accents copied from the 1:1 direction -->
+  <!-- Top-left brand accents, same language as the square version -->
   <rect x="0" y="0" width="7" height="${H}" fill="url(#accentV)" filter="url(#accentGlow)"/>
   <rect x="${P}" y="92" width="220" height="5" rx="2.5" fill="url(#accentH)" opacity="0.90" filter="url(#accentGlow)"/>
   <rect x="${P}" y="248" width="3" height="150" rx="1.5" fill="#ffffff" opacity="0.14"/>
   <rect x="${P}" y="430" width="3" height="86" rx="1.5" fill="url(#accentV)" opacity="0.58"/>
 
-  <!-- Brand stays top-left, same as the square version -->
   ${svgBrand(data, P, 112, 56, 24, 12, true)}
 
-  <!-- Bottom-left editorial content, no glass card -->
-  ${svgCategoryPill(`${data.category} / ${spec.label}`, P, categoryY, 16, 470)}
-
-  ${svgTitle(titleLines, P, titleY, titleSize, titleGap, -1.55)}
-  ${svgDescription(descLines, P, descY, descSize, descGap)}
-
+  <!-- Same bottom text design as the 1:1 version -->
+  ${svgCategoryKicker(`${data.category} / ${spec.label}`, P, kickerY, 14, 44)}
+  ${svgTitle(titleLines, P, titleY, titleSize, titleGap, -1.45)}
+  ${svgDescription(descLines, P, descY, 22, 35)}
   ${svgDomain(data, P, domainY, 30, 18, 270)}
 </svg>`;
 }
