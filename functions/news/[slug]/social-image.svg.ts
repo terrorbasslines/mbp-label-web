@@ -26,7 +26,7 @@ type ImageData = {
 const FONT = `system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif`;
 const INK = "#050508";
 const CYAN = "#22f7ff";
-const SOCIAL_IMAGE_VERSION = "mbp-social-v8-2026-06-07";
+const SOCIAL_IMAGE_VERSION = "mbp-social-v9-2026-06-07";
 
 /* ─── Utilities ─── */
 
@@ -332,15 +332,20 @@ function renderSquare(data: ImageData, spec: CanvasSpec) {
   const H = 1080;
   const P = 48;
 
+  // Keep the same typography style as the liked 1:1 design, but anchor the
+  // whole bottom stack from the footer upward so description/domain never overlap.
   const titleLines = wrapWords(data.title, cleanText(data.title).length > 78 ? 16 : 18, 4);
   const titleSize = titleLines.length >= 4 ? 50 : 60;
   const titleGap = Math.round(titleSize * 1.02);
-  const descLines = wrapWords(data.description, 34, 3);
 
-  const kickerY = 720;
-  const titleY = 790;
-  const descY = titleY + Math.max(0, titleLines.length - 1) * titleGap + titleSize + 22;
+  const descLines = wrapWords(data.description, 36, 3);
+  const descSize = 19;
+  const descGap = 30;
+
   const domainY = H - 66;
+  const descY = domainY - 74 - Math.max(0, descLines.length - 1) * descGap;
+  const titleY = descY - 34 - titleSize - Math.max(0, titleLines.length - 1) * titleGap;
+  const kickerY = titleY - 34;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
@@ -357,7 +362,7 @@ function renderSquare(data: ImageData, spec: CanvasSpec) {
 
   ${svgCategoryKicker(`${data.category} / ${spec.label}`, P, kickerY, 14, 42)}
   ${svgTitle(titleLines, P, titleY, titleSize, titleGap, -1.35)}
-  ${svgDescription(descLines, P, descY, 19, 30)}
+  ${svgDescription(descLines, P, descY, descSize, descGap)}
   ${svgDomain(data, P, domainY, 26, 16, 230)}
 </svg>`;
 }
