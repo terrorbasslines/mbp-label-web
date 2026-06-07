@@ -504,6 +504,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   let newsArticles = [];
   let newsCategories = [];
   let newsAuthors = [{ name: "The MasterBeat Project" }];
+  let newsStats = { published: 0, draft: 0 };
   let newsEditor = null;
   let newsEditorPromise = null;
   let artistSearchTerm = "";
@@ -1016,8 +1017,12 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
   function renderStats() {
     if (!statsEl) return;
-    const publishedNews = newsArticles.filter((article) => article.status === "published").length;
-    const draftNews = newsArticles.filter((article) => article.status !== "published").length;
+    const publishedNews = Number.isFinite(newsStats.published)
+      ? newsStats.published
+      : newsArticles.filter((article) => article.status === "published").length;
+    const draftNews = Number.isFinite(newsStats.draft)
+      ? newsStats.draft
+      : newsArticles.filter((article) => article.status !== "published").length;
     const items = [
       { label: "Artists", value: artists.length },
       { label: "Releases", value: releases.length },
@@ -1247,6 +1252,10 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       newsArticles = newsResult.value.articles || [];
       newsCategories = newsResult.value.categories || [];
       newsAuthors = newsResult.value.authors && newsResult.value.authors.length ? newsResult.value.authors : [{ name: "The MasterBeat Project" }];
+      newsStats = {
+        published: Number(newsResult.value.stats?.published ?? newsArticles.filter((article) => article.status === "published").length),
+        draft: Number(newsResult.value.stats?.draft ?? newsArticles.filter((article) => article.status !== "published").length)
+      };
     } else {
       errors.push(`News: ${newsResult.reason?.message || "failed to load"}`);
     }

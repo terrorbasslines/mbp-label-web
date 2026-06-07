@@ -29,38 +29,46 @@ import {
 async function listNewsAuthors(db: D1Database) {
   const names = new Set<string>(["The MasterBeat Project"]);
 
-  const claimedAdmins = await db
-    .prepare(
-      `SELECT DISTINCT COALESCE(NULLIF(u.name, ''), NULLIF(a.name, ''), u.email) AS name, u.email
-       FROM users u
-       LEFT JOIN user_artists ua ON ua.user_id = u.id
-       LEFT JOIN artists a ON a.id = ua.artist_id
-       WHERE lower(u.role) = 'admin'
-       ORDER BY lower(name)`
-    )
-    .all<{ name: string | null; email: string | null }>();
-  for (const row of claimedAdmins.results ?? []) {
-    const name = optionalString(row.name, 160) || optionalString(row.email, 160);
-    if (name) names.add(name);
+  try {
+    const claimedAdmins = await db
+      .prepare(
+        `SELECT DISTINCT COALESCE(NULLIF(a.name, ''), NULLIF(u.email, '')) AS name, u.email
+         FROM users u
+         LEFT JOIN user_artists ua ON ua.user_id = u.id
+         LEFT JOIN artists a ON a.id = ua.artist_id
+         WHERE lower(u.role) = 'admin'
+         ORDER BY lower(COALESCE(NULLIF(a.name, ''), NULLIF(u.email, '')))`
+      )
+      .all<{ name: string | null; email: string | null }>();
+    for (const row of claimedAdmins.results ?? []) {
+      const name = optionalString(row.name, 160) || optionalString(row.email, 160);
+      if (name) names.add(name);
+    }
+  } catch (error) {
+    console.warn("Unable to load claimed admin authors.", error);
   }
 
-  const managementAuthors = await db
-    .prepare(
-      `SELECT name
-       FROM artists
-       WHERE lower(name) IN ('terror basslines', 'romee storm', 'alexair', 'rodrigo stadt')
-       ORDER BY CASE lower(name)
-         WHEN 'terror basslines' THEN 1
-         WHEN 'romee storm' THEN 2
-         WHEN 'alexair' THEN 3
-         WHEN 'rodrigo stadt' THEN 4
-         ELSE 99
-       END`
-    )
-    .all<{ name: string | null }>();
-  for (const row of managementAuthors.results ?? []) {
-    const name = optionalString(row.name, 160);
-    if (name) names.add(name);
+  try {
+    const managementAuthors = await db
+      .prepare(
+        `SELECT name
+         FROM artists
+         WHERE lower(name) IN ('terror basslines', 'romee storm', 'alexair', 'rodrigo stadt')
+         ORDER BY CASE lower(name)
+           WHEN 'terror basslines' THEN 1
+           WHEN 'romee storm' THEN 2
+           WHEN 'alexair' THEN 3
+           WHEN 'rodrigo stadt' THEN 4
+           ELSE 99
+         END`
+      )
+      .all<{ name: string | null }>();
+    for (const row of managementAuthors.results ?? []) {
+      const name = optionalString(row.name, 160);
+      if (name) names.add(name);
+    }
+  } catch (error) {
+    console.warn("Unable to load management news authors.", error);
   }
 
   return [...names].map((name) => ({ name }));
@@ -86,6 +94,23 @@ async function listNewsCategories(db: D1Database) {
   }));
 }
 
+async function countNewsByStatus(db: D1Database) {
+  const result = await db
+    .prepare(
+      `SELECT status, COUNT(*) AS count
+       FROM news_articles
+       GROUP BY status`
+    )
+    .all<{ status: string | null; count: number }>();
+  const counts = { published: 0, draft: 0 };
+  for (const row of result.results ?? []) {
+    const status = String(row.status ?? "");
+    if (status === "published") counts.published = Number(row.count ?? 0);
+    if (status !== "published") counts.draft += Number(row.count ?? 0);
+  }
+  return counts;
+}
+
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const admin = await requireAdmin(request, env);
   if (isResponse(admin)) return admin;
@@ -107,10 +132,35 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       )
       .all<NewsArticleRow & { comments_count?: number; reactions_count?: number }>();
 
+    let authors = [{ name: "The MasterBeat Project" }];
+    let categories: Awaited<ReturnType<typeof listNewsCategories>> = [];
+    let stats = { published: 0, draft: 0 };
+
+    try {
+      authors = await listNewsAuthors(db);
+    } catch (error) {
+      console.warn("Unable to load news authors.", error);
+    }
+
+    try {
+      categories = await listNewsCategories(db);
+    } catch (error) {
+      if (isNewsTableMissing(error)) return invalidNewsTableResponse();
+      console.warn("Unable to load news categories.", error);
+    }
+
+    try {
+      stats = await countNewsByStatus(db);
+    } catch (error) {
+      if (isNewsTableMissing(error)) return invalidNewsTableResponse();
+      console.warn("Unable to load news status counts.", error);
+    }
+
     return json({
       ok: true,
-      authors: await listNewsAuthors(db),
-      categories: await listNewsCategories(db),
+      authors,
+      categories,
+      stats,
       articles: (result.results ?? []).map((article) =>
         serializeArticle(article, {
           comments_count: Number(article.comments_count ?? 0),
