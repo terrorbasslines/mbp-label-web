@@ -12,7 +12,10 @@ async function reactionCounts(db: D1Database, articleId: string) {
     .all<ReactionCountRow>();
   const counts = emptyCounts();
   for (const row of rows.results ?? []) {
-    counts[row.reaction] = Number(row.count ?? 0);
+    const reaction = String(row.reaction ?? "").toLowerCase() as NewsReaction;
+    if (NEWS_REACTIONS.includes(reaction)) {
+      counts[reaction] = Number(row.count ?? 0);
+    }
   }
   return counts;
 }

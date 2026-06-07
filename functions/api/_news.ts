@@ -1,6 +1,6 @@
 import { id, json, optionalString, slugify, type AppSession } from "./_shared";
 
-export const NEWS_REACTIONS = ["energy", "massive", "support", "replay", "respect"] as const;
+export const NEWS_REACTIONS = ["energy", "massive", "support", "respect"] as const;
 
 export const DEFAULT_NEWS_CATEGORIES = [
   {

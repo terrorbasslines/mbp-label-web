@@ -9,6 +9,16 @@ type CanvasSpec = {
   kind: "og" | "square" | "story";
 };
 
+type ImageData = {
+  title: string;
+  description: string;
+  category: string;
+  cover: string;
+  accent: string;
+  logo: string;
+  domain: string;
+};
+
 function canvasSpec(platform: string | null): CanvasSpec {
   const key = String(platform || "").toLowerCase();
   if (["square", "instagram", "instagram-post", "insta-post", "post"].includes(key)) {
@@ -21,99 +31,176 @@ function canvasSpec(platform: string | null): CanvasSpec {
 }
 
 function truncate(value: string, max: number) {
-  return value.length > max ? `${value.slice(0, max - 1)}...` : value;
+  const clean = value.replace(/\s+/g, " ").trim();
+  return clean.length > max ? `${clean.slice(0, max - 1)}...` : clean;
 }
 
 function wrapWords(value: string, maxChars: number, maxLines: number) {
-  const words = value.replace(/\s+/g, " ").trim().split(" ");
+  const words = value.replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
   const lines: string[] = [];
   let current = "";
+
   for (const word of words) {
-    if (`${current} ${word}`.trim().length > maxChars) {
+    const candidate = `${current} ${word}`.trim();
+    if (candidate.length > maxChars) {
       if (current) lines.push(current);
       current = word;
     } else {
-      current = `${current} ${word}`.trim();
+      current = candidate;
     }
     if (lines.length === maxLines) break;
   }
+
   if (lines.length < maxLines && current) lines.push(current);
   return lines.slice(0, maxLines).map((line, index, list) => (index === list.length - 1 ? truncate(line, maxChars) : line));
 }
 
-function layoutFor(spec: CanvasSpec) {
-  if (spec.kind === "story") {
-    return {
-      safeX: 72,
-      panelRight: 566,
-      panelSlant: 130,
-      brandY: 90,
-      logoSize: 86,
-      categoryY: 335,
-      titleY: 500,
-      titleFont: 74,
-      titleMaxChars: 11,
-      titleMaxLines: 6,
-      bodyFont: 30,
-      bodyMaxChars: 26,
-      bodyMaxLines: 4,
-      domainY: 1734,
-      watermarkX: 430,
-      watermarkY: 455,
-      watermarkSize: 780
-    };
-  }
-
-  if (spec.kind === "square") {
-    return {
-      safeX: 72,
-      panelRight: 592,
-      panelSlant: 92,
-      brandY: 76,
-      logoSize: 82,
-      categoryY: 238,
-      titleY: 330,
-      titleFont: 68,
-      titleMaxChars: 13,
-      titleMaxLines: 5,
-      bodyFont: 29,
-      bodyMaxChars: 25,
-      bodyMaxLines: 4,
-      domainY: 960,
-      watermarkX: 505,
-      watermarkY: 270,
-      watermarkSize: 560
-    };
-  }
-
-  return {
-    safeX: 76,
-    panelRight: 702,
-    panelSlant: 88,
-    brandY: 52,
-    logoSize: 72,
-    categoryY: 160,
-    titleY: 240,
-    titleFont: 58,
-    titleMaxChars: 18,
-    titleMaxLines: 4,
-    bodyFont: 26,
-    bodyMaxChars: 38,
-    bodyMaxLines: 3,
-    domainY: 552,
-    watermarkX: 755,
-    watermarkY: 118,
-    watermarkSize: 370
-  };
-}
-
-function renderTextLines(lines: string[], x: number, y: number, fontSize: number, color: string, weight = "900") {
+function renderTextLines(
+  lines: string[],
+  x: number,
+  y: number,
+  fontSize: number,
+  lineGap: number,
+  color: string,
+  weight = "900",
+  family = "Arial Black, Arial, sans-serif"
+) {
   return lines
     .map(
       (line, index) =>
-        `<text x="${x}" y="${y + index * (fontSize * 1.08)}" fill="${color}" font-family="Arial Black, Arial, sans-serif" font-size="${fontSize}" font-weight="${weight}" letter-spacing="0">${escapeHtml(line.toUpperCase())}</text>`
+        `<text x="${x}" y="${y + index * lineGap}" fill="${color}" font-family="${family}" font-size="${fontSize}" font-weight="${weight}" letter-spacing="0">${escapeHtml(line.toUpperCase())}</text>`
     )
     .join("\n  ");
+}
+
+function renderBrand(data: ImageData, x: number, y: number, logoSize: number, titleSize: number, projectSize: number) {
+  return `
+  <image href="${escapeHtml(data.logo)}" x="${x}" y="${y}" width="${logoSize}" height="${logoSize}" preserveAspectRatio="xMidYMid meet"/>
+  <text x="${x + logoSize + 18}" y="${y + logoSize * 0.42}" fill="#ffffff" font-family="Arial Black, Arial, sans-serif" font-size="${titleSize}" font-weight="900" letter-spacing="0">THE MASTERBEAT</text>
+  <text x="${x + logoSize + 20}" y="${y + logoSize * 0.72}" fill="#d6dbef" font-family="Arial, sans-serif" font-size="${projectSize}" font-weight="900" letter-spacing="8">PROJECT</text>`;
+}
+
+function commonDefs(data: ImageData, spec: CanvasSpec) {
+  return `
+  <defs>
+    <linearGradient id="shade" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#030307" stop-opacity="0.92"/>
+      <stop offset="0.45" stop-color="#050508" stop-opacity="0.42"/>
+      <stop offset="1" stop-color="#050508" stop-opacity="0.94"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" x2="1">
+      <stop offset="0" stop-color="#040407" stop-opacity="0.98"/>
+      <stop offset="0.72" stop-color="#070711" stop-opacity="0.88"/>
+      <stop offset="1" stop-color="#0b0b13" stop-opacity="0.7"/>
+    </linearGradient>
+    <linearGradient id="rail" x1="0" x2="1">
+      <stop offset="0" stop-color="${escapeHtml(data.accent)}" stop-opacity="1"/>
+      <stop offset="1" stop-color="#22f7ff" stop-opacity="0.4"/>
+    </linearGradient>
+    <radialGradient id="accentGlow">
+      <stop offset="0" stop-color="${escapeHtml(data.accent)}" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="${escapeHtml(data.accent)}" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="${spec.kind === "story" ? 8 : 6}" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="soft">
+      <feGaussianBlur stdDeviation="24"/>
+    </filter>
+  </defs>`;
+}
+
+function renderBase(spec: CanvasSpec, data: ImageData) {
+  return `  <rect width="100%" height="100%" fill="#050508"/>
+  <image href="${escapeHtml(data.cover)}" x="0" y="0" width="${spec.width}" height="${spec.height}" preserveAspectRatio="xMidYMid slice" opacity="0.86"/>
+  <rect width="100%" height="100%" fill="url(#shade)"/>
+  <circle cx="${spec.width * 0.86}" cy="${spec.height * 0.18}" r="${spec.kind === "story" ? 430 : 290}" fill="url(#accentGlow)" filter="url(#soft)"/>
+  <path d="M0 ${spec.height * 0.78} C${spec.width * 0.28} ${spec.height * 0.7} ${spec.width * 0.68} ${spec.height * 0.92} ${spec.width} ${spec.height * 0.8}" fill="none" stroke="${escapeHtml(data.accent)}" stroke-width="${spec.kind === "story" ? 3 : 2}" opacity="0.28"/>`;
+}
+
+function renderOg(data: ImageData) {
+  const titleLines = wrapWords(data.title, 17, 3);
+  const titleFont = titleLines.length > 2 ? 52 : 58;
+  const titleGap = titleFont * 1.05;
+  const descriptionY = 264 + titleLines.length * titleGap + 34;
+  const descriptionLines = wrapWords(data.description, 34, 2);
+  const meta = truncate(`${data.category} / MBP News`, 42).toUpperCase();
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  ${commonDefs(data, { width: 1200, height: 630, label: "Open Graph", kind: "og" })}
+${renderBase({ width: 1200, height: 630, label: "Open Graph", kind: "og" }, data)}
+  <rect x="54" y="46" width="632" height="538" rx="28" fill="url(#glass)" stroke="rgba(255,255,255,.16)"/>
+  <rect x="54" y="46" width="5" height="538" rx="3" fill="${escapeHtml(data.accent)}" filter="url(#glow)"/>
+  <path d="M86 82 H430" stroke="url(#rail)" stroke-width="3" opacity="0.9"/>
+  <image href="${escapeHtml(data.logo)}" x="760" y="104" width="360" height="360" preserveAspectRatio="xMidYMid meet" opacity="0.28"/>
+  <rect x="732" y="88" width="388" height="388" rx="28" fill="#050508" opacity="0.24"/>
+  ${renderBrand(data, 88, 86, 72, 29, 14)}
+  <text x="88" y="206" fill="${escapeHtml(data.accent)}" font-family="Arial, sans-serif" font-size="18" font-weight="900" letter-spacing="7">${escapeHtml(meta)}</text>
+  ${renderTextLines(titleLines, 88, 264, titleFont, titleGap, "#ffffff")}
+  ${renderTextLines(descriptionLines, 88, descriptionY, 25, 38, "#e8ecff", "800", "Arial, sans-serif")}
+  <text x="88" y="542" fill="#ffffff" font-family="Arial Black, Arial, sans-serif" font-size="23" font-weight="900" letter-spacing="0">${escapeHtml(data.domain)}</text>
+  <rect x="88" y="559" width="262" height="5" fill="${escapeHtml(data.accent)}"/>
+</svg>`;
+}
+
+function renderSquare(data: ImageData) {
+  const titleLines = wrapWords(data.title, 12, 5);
+  const titleFont = titleLines.length > 4 ? 56 : 62;
+  const titleGap = titleFont * 1.03;
+  const descriptionY = Math.min(770, 332 + titleLines.length * titleGap + 72);
+  const descriptionLines = wrapWords(data.description, 26, 4);
+  const meta = truncate(`${data.category} / MBP News`, 34).toUpperCase();
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080">
+  ${commonDefs(data, { width: 1080, height: 1080, label: "Instagram Post", kind: "square" })}
+${renderBase({ width: 1080, height: 1080, label: "Instagram Post", kind: "square" }, data)}
+  <rect x="64" y="64" width="952" height="952" rx="30" fill="#050508" opacity="0.38" stroke="${escapeHtml(data.accent)}" stroke-width="2"/>
+  <rect x="64" y="64" width="548" height="952" rx="30" fill="url(#glass)" opacity="0.94"/>
+  <rect x="98" y="92" width="350" height="4" fill="url(#rail)"/>
+  <image href="${escapeHtml(data.logo)}" x="574" y="292" width="490" height="490" preserveAspectRatio="xMidYMid meet" opacity="0.28"/>
+  <rect x="574" y="278" width="432" height="520" rx="30" fill="#050508" opacity="0.18"/>
+  ${renderBrand(data, 98, 118, 82, 28, 13)}
+  <text x="98" y="252" fill="${escapeHtml(data.accent)}" font-family="Arial, sans-serif" font-size="19" font-weight="900" letter-spacing="8">${escapeHtml(meta)}</text>
+  ${renderTextLines(titleLines, 98, 332, titleFont, titleGap, "#ffffff")}
+  ${renderTextLines(descriptionLines, 98, descriptionY, 27, 40, "#e8ecff", "800", "Arial, sans-serif")}
+  <text x="98" y="940" fill="#ffffff" font-family="Arial Black, Arial, sans-serif" font-size="25" font-weight="900" letter-spacing="0">${escapeHtml(data.domain)}</text>
+  <rect x="98" y="960" width="250" height="6" fill="${escapeHtml(data.accent)}"/>
+</svg>`;
+}
+
+function renderStory(data: ImageData) {
+  const titleLines = wrapWords(data.title, 11, 6);
+  const titleFont = titleLines.length > 5 ? 62 : 68;
+  const titleGap = titleFont * 1.05;
+  const descriptionY = Math.min(1120, 424 + titleLines.length * titleGap + 92);
+  const descriptionLines = wrapWords(data.description, 25, 4);
+  const meta = truncate(`${data.category} / MBP News`, 32).toUpperCase();
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+  ${commonDefs(data, { width: 1080, height: 1920, label: "Instagram Story", kind: "story" })}
+${renderBase({ width: 1080, height: 1920, label: "Instagram Story", kind: "story" }, data)}
+  <rect x="56" y="72" width="620" height="1776" rx="34" fill="url(#glass)" stroke="${escapeHtml(data.accent)}" stroke-width="3"/>
+  <rect x="88" y="110" width="350" height="4" fill="url(#rail)"/>
+  <rect x="56" y="72" width="7" height="1776" rx="4" fill="${escapeHtml(data.accent)}" filter="url(#glow)"/>
+  <image href="${escapeHtml(data.logo)}" x="430" y="574" width="720" height="720" preserveAspectRatio="xMidYMid meet" opacity="0.3"/>
+  <rect x="404" y="560" width="600" height="736" rx="34" fill="#050508" opacity="0.18"/>
+  ${renderBrand(data, 98, 142, 86, 30, 13)}
+  <text x="98" y="330" fill="${escapeHtml(data.accent)}" font-family="Arial, sans-serif" font-size="19" font-weight="900" letter-spacing="8">${escapeHtml(meta)}</text>
+  ${renderTextLines(titleLines, 98, 424, titleFont, titleGap, "#ffffff")}
+  ${renderTextLines(descriptionLines, 98, descriptionY, 30, 44, "#e8ecff", "800", "Arial, sans-serif")}
+  <text x="98" y="1708" fill="#ffffff" font-family="Arial Black, Arial, sans-serif" font-size="28" font-weight="900" letter-spacing="0">${escapeHtml(data.domain)}</text>
+  <rect x="98" y="1732" width="285" height="7" fill="${escapeHtml(data.accent)}"/>
+</svg>`;
+}
+
+function renderSocialImage(spec: CanvasSpec, data: ImageData) {
+  if (spec.kind === "story") return renderStory(data);
+  if (spec.kind === "square") return renderSquare(data);
+  return renderOg(data);
 }
 
 export const onRequestGet: PagesFunction<Env> = async ({ params, request, env }) => {
@@ -142,73 +229,17 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
 
   if (!article) return new Response("News article not found.", { status: 404 });
 
-  const layout = layoutFor(spec);
-  const titleLines = wrapWords(article.social_title || article.title, layout.titleMaxChars, layout.titleMaxLines);
-  const descriptionStart = Math.min(
-    spec.height - (spec.kind === "story" ? 430 : 150),
-    layout.titleY + titleLines.length * (layout.titleFont * 1.08) + (spec.kind === "story" ? 86 : 54)
-  );
-  const descriptionLines = wrapWords(
-    article.social_description || articleExcerpt(article),
-    layout.bodyMaxChars,
-    layout.bodyMaxLines
-  );
-  const cover = absoluteUrl(article.cover_image_url || "/assets/brand/season4-banner.png");
-  const accent = /^#[0-9a-f]{6}$/i.test(article.accent_color || "") ? article.accent_color : "#bd00ff";
-  const logo = `${SITE_URL}/assets/brand/logo-official-purple.png`;
-  const domain = SITE_URL.replace("https://", "");
-  const metaLabel = truncate(`${article.category || "MBP News"} / ${spec.label}`, spec.kind === "story" ? 34 : 48).toUpperCase();
-  const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${spec.width}" height="${spec.height}" viewBox="0 0 ${spec.width} ${spec.height}">
-  <defs>
-    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0" stop-color="#050508"/>
-      <stop offset="0.48" stop-color="#130019"/>
-      <stop offset="1" stop-color="#050508"/>
-    </linearGradient>
-    <linearGradient id="vignette" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0" stop-color="#050508" stop-opacity="0.68"/>
-      <stop offset="0.52" stop-color="#050508" stop-opacity="0.22"/>
-      <stop offset="1" stop-color="#050508" stop-opacity="0.82"/>
-    </linearGradient>
-    <linearGradient id="panel" x1="0" x2="1">
-      <stop offset="0" stop-color="#040407" stop-opacity="0.98"/>
-      <stop offset="0.7" stop-color="#080810" stop-opacity="0.88"/>
-      <stop offset="1" stop-color="#050508" stop-opacity="0.18"/>
-    </linearGradient>
-    <filter id="glow">
-      <feGaussianBlur stdDeviation="9" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
-    <filter id="soft">
-      <feGaussianBlur stdDeviation="22"/>
-    </filter>
-  </defs>
-  <rect width="100%" height="100%" fill="url(#bg)"/>
-  <image href="${escapeHtml(cover)}" x="0" y="0" width="${spec.width}" height="${spec.height}" preserveAspectRatio="xMidYMid slice" opacity="0.82"/>
-  <rect width="100%" height="100%" fill="url(#vignette)"/>
-  <circle cx="${spec.width * 0.83}" cy="${spec.height * 0.12}" r="${spec.kind === "story" ? 360 : 260}" fill="${escapeHtml(accent)}" opacity="0.18" filter="url(#soft)"/>
-  <path d="M0 0 H${layout.panelRight} L${layout.panelRight - layout.panelSlant} ${spec.height} H0 Z" fill="url(#panel)"/>
-  <path d="M${layout.panelRight - 8} 0 L${layout.panelRight - layout.panelSlant - 8} ${spec.height}" stroke="${escapeHtml(accent)}" stroke-width="${spec.kind === "story" ? 6 : 4}" opacity="0.82" filter="url(#glow)"/>
-  <path d="M${layout.safeX} ${layout.safeX * 0.72} H${Math.min(layout.panelRight - 108, layout.safeX + 420)}" stroke="${escapeHtml(accent)}" stroke-width="2" opacity="0.75"/>
-  <path d="M${layout.safeX} ${spec.height - layout.safeX * 0.82} H${Math.min(layout.panelRight - 122, layout.safeX + 360)}" stroke="#ffffff" stroke-width="2" opacity="0.22"/>
-  <image href="${escapeHtml(logo)}" x="${layout.watermarkX}" y="${layout.watermarkY}" width="${layout.watermarkSize}" height="${layout.watermarkSize}" preserveAspectRatio="xMidYMid meet" opacity="${spec.kind === "story" ? 0.38 : 0.32}"/>
-  <image href="${escapeHtml(logo)}" x="${layout.safeX}" y="${layout.brandY}" width="${layout.logoSize}" height="${layout.logoSize}" preserveAspectRatio="xMidYMid meet"/>
-  <text x="${layout.safeX + layout.logoSize + 18}" y="${layout.brandY + layout.logoSize * 0.38}" fill="#ffffff" font-family="Arial Black, Arial, sans-serif" font-size="${spec.kind === "story" ? 32 : 34}" font-weight="900" letter-spacing="0">THE MASTERBEAT</text>
-  <text x="${layout.safeX + layout.logoSize + 20}" y="${layout.brandY + layout.logoSize * 0.72}" fill="#d6dbef" font-family="Arial, sans-serif" font-size="${spec.kind === "story" ? 15 : 16}" font-weight="900" letter-spacing="8">PROJECT</text>
-  <text x="${layout.safeX}" y="${layout.categoryY}" fill="${escapeHtml(accent)}" font-family="Arial, sans-serif" font-size="${spec.kind === "story" ? 20 : 21}" font-weight="900" letter-spacing="8">${escapeHtml(metaLabel)}</text>
-  ${renderTextLines(titleLines, layout.safeX, layout.titleY, layout.titleFont, "#ffffff")}
-  ${descriptionLines
-    .map(
-      (line, index) =>
-        `<text x="${layout.safeX}" y="${descriptionStart + index * (layout.bodyFont * 1.48)}" fill="#e7ecff" font-family="Arial, sans-serif" font-size="${layout.bodyFont}" font-weight="700">${escapeHtml(line)}</text>`
-    )
-    .join("\n  ")}
-  <text x="${layout.safeX}" y="${layout.domainY}" fill="#ffffff" font-family="Arial Black, Arial, sans-serif" font-size="${spec.kind === "story" ? 28 : 24}" font-weight="900">${escapeHtml(domain)}</text>
-  <rect x="${layout.safeX}" y="${layout.domainY + 18}" width="${spec.kind === "story" ? 270 : 245}" height="5" fill="${escapeHtml(accent)}" opacity="0.9"/>
-</svg>`;
+  const data: ImageData = {
+    title: article.social_title || article.title,
+    description: article.social_description || articleExcerpt(article),
+    category: article.category || "MBP News",
+    cover: absoluteUrl(article.cover_image_url || "/assets/brand/season4-banner.png"),
+    accent: /^#[0-9a-f]{6}$/i.test(article.accent_color || "") ? article.accent_color : "#bd00ff",
+    logo: `${SITE_URL}/assets/brand/logo-official-purple.png`,
+    domain: SITE_URL.replace("https://", "")
+  };
 
-  return new Response(svg, {
+  return new Response(renderSocialImage(spec, data), {
     headers: {
       "content-type": "image/svg+xml; charset=UTF-8",
       "cache-control": "public, max-age=3600"
