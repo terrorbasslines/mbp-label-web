@@ -26,7 +26,7 @@ type ImageData = {
 const FONT = `system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif`;
 const INK = "#050508";
 const CYAN = "#22f7ff";
-const SOCIAL_IMAGE_VERSION = "mbp-social-v12-domain-line-and-story-cleanup-2026-06-07";
+const SOCIAL_IMAGE_VERSION = "mbp-social-v13-open-graph-matched-2026-06-07";
 
 /* ─── Utilities ─── */
 
@@ -284,41 +284,38 @@ function svgDomain(data: ImageData, x: number, y: number, iconSize: number, font
 function renderOg(data: ImageData, spec: CanvasSpec) {
   const W = 1200;
   const H = 630;
+  const P = 54;
 
-  const titleLines = wrapWords(data.title, cleanText(data.title).length > 74 ? 22 : 25, 3);
-  const titleSize = titleLines.length >= 3 ? 48 : 58;
-  const titleGap = Math.round(titleSize * 1.06);
-  const descLines = wrapWords(data.description, 52, 2);
+  // Match the cleaner square / story style:
+  // brand top-left, kicker + title + description + domain bottom-left, no glass card.
+  const titleLines = wrapWords(data.title, cleanText(data.title).length > 72 ? 22 : 24, 3);
+  const titleSize = titleLines.length >= 3 ? 48 : 56;
+  const titleGap = Math.round(titleSize * 1.02);
 
-  const cardX = 44;
-  const cardY = 128;
-  const cardW = 720;
-  const cardH = 430;
-  const contentX = cardX + 38;
-  const categoryY = cardY + 38;
-  const titleY = categoryY + 92;
-  const descY = titleY + Math.max(0, titleLines.length - 1) * titleGap + titleSize + 20;
+  const descLines = wrapWords(data.description, 46, 2);
+  const descSize = 18;
+  const descGap = 28;
+
+  const domainY = H - 42;
+  const descY = domainY - 64 - Math.max(0, descLines.length - 1) * descGap;
+  const titleY = descY - 28 - titleSize - Math.max(0, titleLines.length - 1) * titleGap;
+  const kickerY = titleY - 34;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
-  <!-- ${SOCIAL_IMAGE_VERSION} / open-graph -->
+  <!-- ${SOCIAL_IMAGE_VERSION} / open-graph / matched-to-square -->
   ${svgDefs(data.accent, "og")}
 
   ${svgBackground(data, W, H, "og")}
 
   <rect x="0" y="0" width="6" height="${H}" fill="url(#accentV)" filter="url(#accentGlow)"/>
-  <rect x="986" y="0" width="214" height="${H}" fill="#000000" opacity="0.12"/>
-  <path d="M1014 0 H1200 V630 H1064 C1112 482 1118 214 1014 0Z" fill="#000000" opacity="0.18"/>
 
-  ${svgBrand(data, 58, 38, 50, 22, 11)}
-  ${svgGlassCard(cardX, cardY, cardW, cardH, 28, "left")}
+  ${svgBrand(data, P, 36, 48, 21, 10, true)}
 
-  ${svgCategoryPill(`${data.category} / ${spec.label}`, contentX, categoryY, 13, 390)}
-
-  ${svgTitle(titleLines, contentX, titleY, titleSize, titleGap, -1.35)}
-  ${svgDescription(descLines, contentX, descY, 20, 31)}
-
-  ${svgDomain(data, contentX, H - 44, 24, 15, 205)}
+  ${svgCategoryKicker(`${data.category} / ${spec.label}`, P, kickerY, 13, 42)}
+  ${svgTitle(titleLines, P, titleY, titleSize, titleGap, -1.35)}
+  ${svgDescription(descLines, P, descY, descSize, descGap)}
+  ${svgDomain(data, P, domainY, 24, 15, 215)}
 </svg>`;
 }
 
