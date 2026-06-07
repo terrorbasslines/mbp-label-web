@@ -169,7 +169,7 @@ Use the admin dashboard to:
 - import FFM smartlinks in batches, for example `1` to `25`
 - add artists and profiles
 - add releases and playable platform links
-- publish News articles with generated 1200x630, 1080x1080 and story thumbnails
+- publish News articles with generated Open Graph, Instagram post and Instagram story thumbnails
 - create artist claim links with artist or admin role
 - approve or reject demos with a reason
 

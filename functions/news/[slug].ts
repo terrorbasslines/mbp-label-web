@@ -57,6 +57,17 @@ function reactionLabel(reaction: string) {
   return labels[reaction] || reaction;
 }
 
+function reactionIcon(reaction: string) {
+  const icons: Record<string, string> = {
+    energy: `<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M18 2 6 18h10l-2 12 12-17H16l2-11Z"/></svg>`,
+    massive: `<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 20c4-9 8-9 12 0s8 9 12 0"/><path d="M4 12c4 9 8 9 12 0s8-9 12 0"/></svg>`,
+    support: `<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 27s-10-6.1-10-14a5.8 5.8 0 0 1 10-4.1A5.8 5.8 0 0 1 26 13c0 7.9-10 14-10 14Z"/><path d="M9 21h5m8 0h-5"/></svg>`,
+    replay: `<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M10 9h10a7 7 0 1 1-5.9 10.8"/><path d="M10 9h6M10 9v6"/></svg>`,
+    respect: `<svg viewBox="0 0 32 32" aria-hidden="true"><path d="m16 3 3.7 7.5 8.3 1.2-6 5.8 1.4 8.2L16 21.8 8.6 25.7l1.4-8.2-6-5.8 8.3-1.2L16 3Z"/></svg>`
+  };
+  return icons[reaction] || icons.energy;
+}
+
 export const onRequestGet: PagesFunction<Env> = async ({ params, request, env }) => {
   if (!env.DB) return notFoundPage("News not available");
 
@@ -129,7 +140,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
       noindex: isDraftPreview,
       content: `
         <style>
-          .news-article{padding-bottom:76px}.news-shell{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);gap:32px}.news-cover{width:100%;aspect-ratio:16/9;border:1px solid var(--line);border-radius:8px;background:#000;object-fit:cover}.article-body{margin-top:28px}.article-body p{font-size:17px;line-height:1.85}.article-body h2,.article-body h3{margin:34px 0 10px;font-size:clamp(24px,3vw,34px);text-transform:uppercase;letter-spacing:0;font-weight:1000}.article-body ul{margin:18px 0 0;padding-left:22px;color:var(--muted);line-height:1.8}.article-body img{max-width:100%;border:1px solid var(--line);border-radius:8px;background:#000}.article-body figure{margin:26px 0}.article-body .media-embed{overflow:hidden;border:1px solid var(--line);border-radius:8px;background:#000}.article-body .media-embed iframe,.article-body .media-embed video{display:block;width:100%;aspect-ratio:16/9;border:0;background:#000}.article-body .media-embed audio{display:block;width:100%;border:0}.share-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.reaction-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}.reaction-grid button{border:1px solid var(--line);border-radius:6px;background:rgba(255,255,255,.04);color:#fff;padding:10px 8px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;cursor:pointer}.reaction-grid button:hover{border-color:var(--cyan);color:var(--cyan)}.comment{border:1px solid var(--line);border-radius:6px;padding:14px;background:rgba(255,255,255,.035)}textarea{width:100%;min-height:120px;border:1px solid var(--line);border-radius:6px;background:#050508;color:#fff;padding:12px;font:inherit}button.submit{border:0;border-radius:6px;background:#fff;color:#000;padding:12px 16px;font-weight:1000;text-transform:uppercase;letter-spacing:.12em;cursor:pointer}.thumb-links{display:grid;gap:8px;margin-top:12px}.thumb-links a{display:block;border:1px solid var(--line);border-radius:6px;padding:10px 12px;text-decoration:none;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:#d6d8e2}.thumb-links a:hover{border-color:var(--cyan);color:var(--cyan)}@media (max-width:860px){.news-shell{display:block}.card{margin-top:20px}.reaction-grid,.share-grid{grid-template-columns:1fr 1fr}}
+          .news-article{padding-bottom:76px}.news-shell{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);gap:32px}.news-cover{width:100%;aspect-ratio:16/9;border:1px solid var(--line);border-radius:8px;background:#000;object-fit:cover}.article-body{margin-top:28px}.article-body p{font-size:17px;line-height:1.85}.article-body h2,.article-body h3{margin:34px 0 10px;font-size:clamp(24px,3vw,34px);text-transform:uppercase;letter-spacing:0;font-weight:1000}.article-body ul{margin:18px 0 0;padding-left:22px;color:var(--muted);line-height:1.8}.article-body img{max-width:100%;border:1px solid var(--line);border-radius:8px;background:#000}.article-body figure{margin:26px 0}.article-body .media-embed{overflow:hidden;border:1px solid var(--line);border-radius:8px;background:#000}.article-body .media-embed iframe,.article-body .media-embed video{display:block;width:100%;aspect-ratio:16/9;border:0;background:#000}.article-body .media-embed audio{display:block;width:100%;border:0}.share-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.reaction-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}.reaction-grid button{display:grid;min-height:104px;place-items:center;gap:5px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.025));color:#fff;padding:12px 8px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;cursor:pointer}.reaction-grid button:hover,.reaction-grid button:focus-visible{border-color:var(--cyan);color:var(--cyan);outline:none;box-shadow:0 0 0 1px rgba(34,247,255,.38),0 0 22px rgba(34,247,255,.14)}.reaction-icon{display:grid;width:34px;height:34px;place-items:center;color:var(--cyan);filter:drop-shadow(0 0 8px rgba(34,247,255,.34))}.reaction-icon svg{display:block;width:34px;height:34px;fill:none;stroke:currentColor;stroke-width:2.35;stroke-linecap:round;stroke-linejoin:round}.reaction-count{display:block;font-size:18px;line-height:1;color:#fff}.reaction-name{display:block;font-size:10px;line-height:1.1;color:#aeb5c8;letter-spacing:.11em}.comment{border:1px solid var(--line);border-radius:6px;padding:14px;background:rgba(255,255,255,.035)}textarea{width:100%;min-height:120px;border:1px solid var(--line);border-radius:6px;background:#050508;color:#fff;padding:12px;font:inherit}button.submit{border:0;border-radius:6px;background:#fff;color:#000;padding:12px 16px;font-weight:1000;text-transform:uppercase;letter-spacing:.12em;cursor:pointer}.thumb-links{display:grid;gap:8px;margin-top:12px}.thumb-links a{display:block;border:1px solid var(--line);border-radius:6px;padding:10px 12px;text-decoration:none;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:#d6d8e2}.thumb-links a:hover{border-color:var(--cyan);color:var(--cyan)}@media (max-width:860px){.news-shell{display:block}.card{margin-top:20px}.reaction-grid,.share-grid{grid-template-columns:1fr 1fr}.reaction-grid button{min-height:98px}}@media (max-width:520px){.reaction-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
         </style>
         <section class="hero">
           <p class="eyebrow">${escapeHtml(article.category || "MBP News")}</p>
@@ -161,14 +172,17 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
                   </div>`
             }
             <div class="thumb-links">
-              <a href="/news/${escapeHtml(article.slug)}/social-image.svg?platform=og${previewImageParam}" target="_blank" rel="noreferrer">Open 1200x630 thumbnail</a>
-              <a href="/news/${escapeHtml(article.slug)}/social-image.svg?platform=square${previewImageParam}" target="_blank" rel="noreferrer">Open 1080x1080 thumbnail</a>
-              <a href="/news/${escapeHtml(article.slug)}/social-image.svg?platform=story${previewImageParam}" target="_blank" rel="noreferrer">Open 1080x1920 story</a>
+              <a href="/news/${escapeHtml(article.slug)}/social-image.svg?platform=og${previewImageParam}" target="_blank" rel="noreferrer">Open Graph 1200x630</a>
+              <a href="/news/${escapeHtml(article.slug)}/social-image.svg?platform=instagram-post${previewImageParam}" target="_blank" rel="noreferrer">Instagram post 1080x1080</a>
+              <a href="/news/${escapeHtml(article.slug)}/social-image.svg?platform=instagram-story${previewImageParam}" target="_blank" rel="noreferrer">Instagram story 1080x1920</a>
             </div>
             <div class="card" style="margin-top:22px;padding:18px">
               <p class="eyebrow">Artist reactions</p>
               <div class="reaction-grid" data-news-reactions>
-                ${NEWS_REACTIONS.map((reaction) => `<button data-reaction="${reaction}" type="button">${reactionLabel(reaction)} <span data-reaction-count="${reaction}">0</span></button>`).join("")}
+                ${NEWS_REACTIONS.map(
+                  (reaction) =>
+                    `<button data-reaction="${reaction}" type="button" aria-label="${escapeHtml(reactionLabel(reaction))} reaction"><span class="reaction-icon">${reactionIcon(reaction)}</span><span class="reaction-count" data-reaction-count="${reaction}">0</span><span class="reaction-name">${escapeHtml(reactionLabel(reaction))}</span></button>`
+                ).join("")}
               </div>
               <p class="status" data-news-reaction-status style="font-size:13px;color:var(--muted)">Artists can react after login.</p>
             </div>

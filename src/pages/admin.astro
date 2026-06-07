@@ -1191,9 +1191,9 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                     <p class="mt-3 text-sm leading-6 text-haze">${escapeHtml(article.excerpt || "No excerpt yet.")}</p>
                     <div class="mt-4 flex flex-wrap gap-2">
                       <a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(previewPath)}" target="_blank" rel="noreferrer">${published ? "Open" : "Preview draft"}</a>
-                      <a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(`${publicPath}/social-image.svg?platform=og${thumbnailPreviewParam}`)}" target="_blank" rel="noreferrer">1200x630</a>
-                      <a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(`${publicPath}/social-image.svg?platform=square${thumbnailPreviewParam}`)}" target="_blank" rel="noreferrer">1080x1080</a>
-                      <a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(`${publicPath}/social-image.svg?platform=story${thumbnailPreviewParam}`)}" target="_blank" rel="noreferrer">Story</a>
+                      <a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(`${publicPath}/social-image.svg?platform=og${thumbnailPreviewParam}`)}" target="_blank" rel="noreferrer">Open Graph</a>
+                      <a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(`${publicPath}/social-image.svg?platform=instagram-post${thumbnailPreviewParam}`)}" target="_blank" rel="noreferrer">Instagram Post</a>
+                      <a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(`${publicPath}/social-image.svg?platform=instagram-story${thumbnailPreviewParam}`)}" target="_blank" rel="noreferrer">Instagram Story</a>
                     </div>
                   </div>
                   <div class="flex flex-wrap gap-2">
