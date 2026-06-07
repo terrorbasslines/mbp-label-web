@@ -26,7 +26,7 @@ type ImageData = {
 const FONT = `system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif`;
 const INK = "#050508";
 const CYAN = "#22f7ff";
-const SOCIAL_IMAGE_VERSION = "mbp-social-v11-square-kicker-higher-2026-06-07";
+const SOCIAL_IMAGE_VERSION = "mbp-social-v12-domain-line-and-story-cleanup-2026-06-07";
 
 /* ─── Utilities ─── */
 
@@ -361,7 +361,7 @@ function renderSquare(data: ImageData, spec: CanvasSpec) {
   ${svgCategoryKicker(`${data.category} / ${spec.label}`, P, kickerY, 14, 42)}
   ${svgTitle(titleLines, P, titleY, titleSize, titleGap, -1.35)}
   ${svgDescription(descLines, P, descY, descSize, descGap)}
-  ${svgDomain(data, P, domainY, 26, 16, 230)}
+  ${svgDomain(data, P, domainY, 26, 16, 262)}
 </svg>`;
 }
 
@@ -397,11 +397,8 @@ function renderStory(data: ImageData, spec: CanvasSpec) {
   <!-- Strong bottom readability fade, matching the same editorial composition -->
   <rect x="0" y="860" width="${W}" height="1060" fill="url(#storyReadability)"/>
 
-  <!-- Top-left brand accents, same language as the square version -->
+  <!-- Top-left brand -->
   <rect x="0" y="0" width="7" height="${H}" fill="url(#accentV)" filter="url(#accentGlow)"/>
-  <rect x="${P}" y="92" width="220" height="5" rx="2.5" fill="url(#accentH)" opacity="0.90" filter="url(#accentGlow)"/>
-  <rect x="${P}" y="248" width="3" height="150" rx="1.5" fill="#ffffff" opacity="0.14"/>
-  <rect x="${P}" y="430" width="3" height="86" rx="1.5" fill="url(#accentV)" opacity="0.58"/>
 
   ${svgBrand(data, P, 112, 56, 24, 12, true)}
 
@@ -409,7 +406,7 @@ function renderStory(data: ImageData, spec: CanvasSpec) {
   ${svgCategoryKicker(`${data.category} / ${spec.label}`, P, kickerY, 14, 44)}
   ${svgTitle(titleLines, P, titleY, titleSize, titleGap, -1.45)}
   ${svgDescription(descLines, P, descY, 22, 35)}
-  ${svgDomain(data, P, domainY, 30, 18, 270)}
+  ${svgDomain(data, P, domainY, 30, 18, 302)}
 </svg>`;
 }
 
