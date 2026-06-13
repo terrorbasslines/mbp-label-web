@@ -577,9 +577,11 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   async function api(path, options = {}) {
     const response = await fetch(path, {
       credentials: "same-origin",
+      cache: "no-store",
       ...options,
       headers: {
         "content-type": "application/json",
+        "cache-control": "no-cache",
         ...(options.headers ?? {})
       }
     });

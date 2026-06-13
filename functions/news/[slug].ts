@@ -66,6 +66,12 @@ function reactionIcon(reaction: string) {
   return icons[reaction] || icons.energy;
 }
 
+const NEWS_DETAIL_HEADERS = {
+  "cache-control": "no-store, no-cache, must-revalidate",
+  "CDN-Cache-Control": "no-store",
+  "Cloudflare-CDN-Cache-Control": "no-store"
+};
+
 export const onRequestGet: PagesFunction<Env> = async ({ params, request, env }) => {
   if (!env.DB) return notFoundPage("News not available");
 
@@ -138,7 +144,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
       noindex: isDraftPreview,
       content: `
         <style>
-          .news-article{padding-bottom:76px}.news-shell{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);gap:32px}.news-cover{width:100%;aspect-ratio:16/9;border:1px solid var(--line);border-radius:8px;background:#000;object-fit:cover}.article-body{margin-top:28px}.article-body p{font-size:17px;line-height:1.85}.article-body h2,.article-body h3{margin:34px 0 10px;font-size:clamp(24px,3vw,34px);text-transform:uppercase;letter-spacing:0;font-weight:1000}.article-body ul{margin:18px 0 0;padding-left:22px;color:var(--muted);line-height:1.8}.article-body img{max-width:100%;border:1px solid var(--line);border-radius:8px;background:#000}.article-body figure{margin:26px 0}.article-body .media-embed{overflow:hidden;border:1px solid var(--line);border-radius:8px;background:#000}.article-body .media-embed iframe,.article-body .media-embed video{display:block;width:100%;aspect-ratio:16/9;border:0;background:#000}.article-body .media-embed audio{display:block;width:100%;border:0}.share-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.reaction-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.reaction-grid button{display:grid;min-height:104px;place-items:center;gap:5px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.025));color:#fff;padding:12px 8px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;cursor:pointer}.reaction-grid button:hover,.reaction-grid button:focus-visible{border-color:var(--cyan);color:var(--cyan);outline:none;box-shadow:0 0 0 1px rgba(34,247,255,.38),0 0 22px rgba(34,247,255,.14)}.reaction-icon{display:grid;width:34px;height:34px;place-items:center;color:var(--cyan);filter:drop-shadow(0 0 8px rgba(34,247,255,.34))}.reaction-icon svg{display:block;width:34px;height:34px;fill:none;stroke:currentColor;stroke-width:2.35;stroke-linecap:round;stroke-linejoin:round}.reaction-count{display:block;font-size:18px;line-height:1;color:#fff}.reaction-name{display:block;font-size:10px;line-height:1.1;color:#aeb5c8;letter-spacing:.11em}.comment{border:1px solid var(--line);border-radius:6px;padding:14px;background:rgba(255,255,255,.035)}textarea{width:100%;min-height:120px;border:1px solid var(--line);border-radius:6px;background:#050508;color:#fff;padding:12px;font:inherit}button.submit{border:0;border-radius:6px;background:#fff;color:#000;padding:12px 16px;font-weight:1000;text-transform:uppercase;letter-spacing:.12em;cursor:pointer}.thumb-links{display:grid;gap:8px;margin-top:12px}.thumb-links a{display:block;border:1px solid var(--line);border-radius:6px;padding:10px 12px;text-decoration:none;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:#d6d8e2}.thumb-links a:hover{border-color:var(--cyan);color:var(--cyan)}@media (max-width:860px){.news-shell{display:block}.card{margin-top:20px}.reaction-grid,.share-grid{grid-template-columns:1fr 1fr}.reaction-grid button{min-height:98px}}@media (max-width:520px){.reaction-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+          .news-article{width:min(1040px,100%);margin:0 auto;padding-bottom:76px}.news-cover{width:100%;aspect-ratio:16/9;border:1px solid var(--line);border-radius:8px;background:#000;object-fit:cover}.article-body{margin-top:32px}.article-body p{font-size:17px;line-height:1.85}.article-body h2,.article-body h3{margin:34px 0 10px;font-size:clamp(24px,3vw,34px);text-transform:uppercase;letter-spacing:0;font-weight:1000}.article-body ul{margin:18px 0 0;padding-left:22px;color:var(--muted);line-height:1.8}.article-body img{max-width:100%;border:1px solid var(--line);border-radius:8px;background:#000}.article-body figure{margin:26px 0}.article-body .media-embed{overflow:hidden;border:1px solid var(--line);border-radius:8px;background:#000}.article-body .media-embed iframe,.article-body .media-embed video{display:block;width:100%;aspect-ratio:16/9;border:0;background:#000}.article-body .media-embed audio{display:block;width:100%;border:0}.share-panel{margin-top:44px}.share-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.reaction-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.reaction-grid button{display:grid;min-height:104px;place-items:center;gap:5px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.025));color:#fff;padding:12px 8px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;cursor:pointer}.reaction-grid button:hover,.reaction-grid button:focus-visible{border-color:var(--cyan);color:var(--cyan);outline:none;box-shadow:0 0 0 1px rgba(34,247,255,.38),0 0 22px rgba(34,247,255,.14)}.reaction-icon{display:grid;width:34px;height:34px;place-items:center;color:var(--cyan);filter:drop-shadow(0 0 8px rgba(34,247,255,.34))}.reaction-icon svg{display:block;width:34px;height:34px;fill:none;stroke:currentColor;stroke-width:2.35;stroke-linecap:round;stroke-linejoin:round}.reaction-count{display:block;font-size:18px;line-height:1;color:#fff}.reaction-name{display:block;font-size:10px;line-height:1.1;color:#aeb5c8;letter-spacing:.11em}.comment{border:1px solid var(--line);border-radius:6px;padding:14px;background:rgba(255,255,255,.035)}textarea{width:100%;min-height:120px;border:1px solid var(--line);border-radius:6px;background:#050508;color:#fff;padding:12px;font:inherit}button.submit{border:0;border-radius:6px;background:#fff;color:#000;padding:12px 16px;font-weight:1000;text-transform:uppercase;letter-spacing:.12em;cursor:pointer}.thumb-links{display:grid;gap:8px;margin-top:12px}.thumb-links a{display:block;border:1px solid var(--line);border-radius:6px;padding:10px 12px;text-decoration:none;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:#d6d8e2}.thumb-links a:hover{border-color:var(--cyan);color:var(--cyan)}@media (max-width:860px){.share-grid{grid-template-columns:1fr 1fr}.reaction-grid{grid-template-columns:1fr 1fr}.reaction-grid button{min-height:98px}}@media (max-width:520px){.reaction-grid,.share-grid{grid-template-columns:1fr}}
         </style>
         <section class="hero">
           <p class="eyebrow">${escapeHtml(article.category || "MBP News")}</p>
@@ -150,12 +156,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
             <span class="pill">${escapeHtml(article.author_name || SITE_NAME)}</span>
           </div>
         </section>
-        <section class="news-article news-shell">
-          <div>
-            <img class="news-cover" src="${escapeHtml(absoluteUrl(article.cover_image_url || "/assets/brand/season4-banner.png"))}" alt="${escapeHtml(article.title)} news artwork" />
-            <article class="article-body">${renderArticleBody(article.content)}</article>
-          </div>
-          <aside class="card">
+        <section class="news-article">
+          <img class="news-cover" src="${escapeHtml(absoluteUrl(article.cover_image_url || "/assets/brand/season4-banner.png"))}" alt="${escapeHtml(article.title)} news artwork" />
+          <article class="article-body">${renderArticleBody(article.content)}</article>
+          <section class="card share-panel">
             <p class="eyebrow">Share article</p>
             <h2>Social-ready story</h2>
             <p>Share this MBP news update directly, or open generated thumbnails prepared for common social formats.</p>
@@ -193,7 +197,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
               <p data-news-comment-login style="font-size:13px;color:var(--muted)">Login with a claimed artist profile to comment.</p>
               <div class="list" data-news-comments></div>
             </div>
-          </aside>
+          </section>
         </section>
         <script>
           (function () {
@@ -285,6 +289,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
           })();
         </script>
       `
-    })
+    }),
+    { headers: NEWS_DETAIL_HEADERS }
   );
 };

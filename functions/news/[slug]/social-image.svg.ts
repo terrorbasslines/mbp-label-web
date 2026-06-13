@@ -453,12 +453,12 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
     domain: SITE_URL.replace("https://", "")
   };
 
-  const debugRender = url.searchParams.has("debug") || url.searchParams.has("v");
-
   return new Response(renderSocialImage(spec, data), {
     headers: {
       "content-type": "image/svg+xml; charset=UTF-8",
-      "cache-control": debugRender ? "no-store, max-age=0" : "public, max-age=3600",
+      "cache-control": "no-store, no-cache, must-revalidate",
+      "CDN-Cache-Control": "no-store",
+      "Cloudflare-CDN-Cache-Control": "no-store",
       "x-social-image-version": SOCIAL_IMAGE_VERSION,
       "x-social-image-kind": spec.kind
     }
