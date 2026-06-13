@@ -181,7 +181,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
               </form>
               <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3" data-news-category-list></div>
             </div>
-            <form data-news-form class="mt-5 grid gap-4 md:grid-cols-2">
+            <form data-news-form class="mt-5 grid gap-4 md:grid-cols-2" novalidate>
               <input name="id" type="hidden" data-news-edit-id />
               <label>
                 <span class="field-label">Title</span>
@@ -252,13 +252,14 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                   <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-haze hover:border-neon-cyan hover:text-white" data-news-upload-media type="button">Upload media</button>
                   <input data-news-media-input type="file" accept="image/*,video/*,audio/*" hidden />
                 </div>
-                <textarea class="field-control min-h-52" name="content" data-news-editor required placeholder="Write the article body here. The rich editor loads automatically when available."></textarea>
+                <textarea class="field-control min-h-52" name="content" data-news-editor placeholder="Write the article body here. The rich editor loads automatically when available."></textarea>
                 <p class="mt-2 text-xs leading-5 text-steel" data-news-media-status>Use YouTube, SoundCloud, Spotify or Vimeo links for embeds. Upload images, audio or short video files when the article needs hosted media.</p>
               </div>
               <div class="flex flex-wrap gap-2 md:col-span-2">
                 <button class="rounded-md bg-white px-4 py-3 text-sm font-black uppercase text-black hover:bg-neon-cyan" data-news-submit type="submit">Save article</button>
                 <button class="rounded-md border border-white/10 px-4 py-3 text-sm font-bold uppercase text-haze hover:border-neon-cyan hover:text-white" data-news-cancel hidden type="button">Cancel edit</button>
               </div>
+              <p class="text-sm text-steel md:col-span-2" data-news-form-status></p>
             </form>
             <div class="mt-6 space-y-3" data-news-list></div>
           </section>
@@ -479,6 +480,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   const newsFormTitle = document.querySelector("[data-news-form-title]");
   const newsSubmit = document.querySelector("[data-news-submit]");
   const newsCancel = document.querySelector("[data-news-cancel]");
+  const newsFormStatus = document.querySelector("[data-news-form-status]");
   const newsCategoryForm = document.querySelector("[data-news-category-form]");
   const newsCategoryFormTitle = document.querySelector("[data-news-category-form-title]");
   const newsCategorySubmit = document.querySelector("[data-news-category-submit]");
@@ -660,6 +662,29 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   function getNewsContent() {
     if (newsEditor) return newsEditor.getData();
     return newsEditorTextarea?.value || "";
+  }
+
+  function getNewsPlainText(html) {
+    const holder = document.createElement("div");
+    holder.innerHTML = String(html || "");
+    return (holder.textContent || "").replace(/\s+/g, " ").trim();
+  }
+
+  function setNewsBusy(isBusy, message = "") {
+    if (newsSubmit instanceof HTMLButtonElement) newsSubmit.disabled = isBusy;
+    if (newsFormStatus) {
+      newsFormStatus.textContent = message;
+      newsFormStatus.classList.toggle("text-neon-cyan", isBusy);
+      newsFormStatus.classList.toggle("text-neon-red", false);
+    }
+  }
+
+  function setNewsError(message) {
+    if (newsFormStatus) {
+      newsFormStatus.textContent = message;
+      newsFormStatus.classList.remove("text-neon-cyan");
+      newsFormStatus.classList.add("text-neon-red");
+    }
   }
 
   function setNewsContent(value) {
@@ -986,8 +1011,13 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     if (newsForm.elements.category) newsForm.elements.category.value = "";
     setNewsContent("");
     if (newsUploadStatus) newsUploadStatus.textContent = "Optional. Uploaded covers are stored privately in Cloudflare R2 and served through the site.";
+    if (newsFormStatus) {
+      newsFormStatus.textContent = "";
+      newsFormStatus.classList.remove("text-neon-cyan", "text-neon-red");
+    }
     if (newsFormTitle) newsFormTitle.textContent = "Publish News article";
     if (newsSubmit) newsSubmit.textContent = "Save article";
+    if (newsSubmit instanceof HTMLButtonElement) newsSubmit.disabled = false;
     newsCancel?.setAttribute("hidden", "");
   }
 
@@ -1009,8 +1039,13 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     newsForm.elements.excerpt.value = article.excerpt || "";
     setNewsContent(article.content || "");
     if (newsUploadStatus) newsUploadStatus.textContent = article.cover_image_url ? "Current cover is kept unless you upload a new image." : "Optional. Uploaded covers are stored privately in Cloudflare R2 and served through the site.";
+    if (newsFormStatus) {
+      newsFormStatus.textContent = "";
+      newsFormStatus.classList.remove("text-neon-cyan", "text-neon-red");
+    }
     if (newsFormTitle) newsFormTitle.textContent = `Edit ${article.title}`;
     if (newsSubmit) newsSubmit.textContent = "Update article";
+    if (newsSubmit instanceof HTMLButtonElement) newsSubmit.disabled = false;
     newsCancel?.removeAttribute("hidden");
     newsForm.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -1389,39 +1424,63 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   newsForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
+    if (!(form instanceof HTMLFormElement)) return;
     const formData = new FormData(form);
     const editingNewsId = form.getAttribute("data-editing-news");
-    const upload = formData.get("cover_image_upload");
-    let coverImageUrl = formData.get("cover_image_url");
-    if (upload instanceof File && upload.size > 0) {
-      if (newsUploadStatus) newsUploadStatus.textContent = "Uploading cover image...";
-      coverImageUrl = await uploadNewsCover(upload, editingNewsId || undefined);
-      form.elements.cover_image_url.value = coverImageUrl;
-      if (newsUploadStatus) newsUploadStatus.textContent = "Cover image uploaded.";
+    const contentHtml = getNewsContent();
+    const title = String(formData.get("title") || "").trim();
+    if (newsEditorTextarea) newsEditorTextarea.value = contentHtml;
+
+    if (title.length < 2) {
+      setNewsError("Article title is required.");
+      form.elements.title?.focus();
+      return;
     }
-    syncNewsCategoryHidden();
-    await api(editingNewsId ? `/api/admin/news/${editingNewsId}` : "/api/admin/news", {
-      method: editingNewsId ? "PUT" : "POST",
-      body: JSON.stringify({
-        title: formData.get("title"),
-        slug: formData.get("slug"),
-        status: formData.get("status"),
-        category_id: form.elements.category_id?.value,
-        category: form.elements.category?.value,
-        author_name: formData.get("author_name"),
-        accent_color: formData.get("accent_color"),
-        seo_title: formData.get("seo_title"),
-        seo_description: formData.get("seo_description"),
-        cover_image_url: coverImageUrl,
-        social_title: formData.get("social_title"),
-        social_description: formData.get("social_description"),
-        excerpt: formData.get("excerpt"),
-        content: getNewsContent()
-      })
-    });
-    resetNewsEditor();
-    pages.news = 1;
-    await loadDashboard();
+    if (getNewsPlainText(contentHtml).length < 10) {
+      setNewsError("Article content is required before saving or publishing.");
+      if (newsEditor) newsEditor.editing.view.focus();
+      else newsEditorTextarea?.focus();
+      return;
+    }
+
+    setNewsBusy(true, editingNewsId ? "Updating article..." : "Saving article...");
+    try {
+      const upload = formData.get("cover_image_upload");
+      let coverImageUrl = formData.get("cover_image_url");
+      if (upload instanceof File && upload.size > 0) {
+        if (newsUploadStatus) newsUploadStatus.textContent = "Uploading cover image...";
+        coverImageUrl = await uploadNewsCover(upload, editingNewsId || undefined);
+        form.elements.cover_image_url.value = coverImageUrl;
+        if (newsUploadStatus) newsUploadStatus.textContent = "Cover image uploaded.";
+      }
+      syncNewsCategoryHidden();
+      await api(editingNewsId ? `/api/admin/news/${editingNewsId}` : "/api/admin/news", {
+        method: editingNewsId ? "PUT" : "POST",
+        body: JSON.stringify({
+          title,
+          slug: formData.get("slug"),
+          status: formData.get("status"),
+          category_id: form.elements.category_id?.value,
+          category: form.elements.category?.value,
+          author_name: formData.get("author_name"),
+          accent_color: formData.get("accent_color"),
+          seo_title: formData.get("seo_title"),
+          seo_description: formData.get("seo_description"),
+          cover_image_url: coverImageUrl,
+          social_title: formData.get("social_title"),
+          social_description: formData.get("social_description"),
+          excerpt: formData.get("excerpt"),
+          content: contentHtml
+        })
+      });
+      setNewsBusy(false, editingNewsId ? "Article updated." : "Article saved.");
+      resetNewsEditor();
+      pages.news = 1;
+      await loadDashboard();
+    } catch (error) {
+      if (newsSubmit instanceof HTMLButtonElement) newsSubmit.disabled = false;
+      setNewsError(error.message || "Article could not be saved.");
+    }
   });
 
   newsCancel?.addEventListener("click", resetNewsEditor);
@@ -1566,26 +1625,31 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       const article = newsArticles.find((item) => item.id === newsStatusId);
       const nextStatus = target.getAttribute("data-next-status") || "draft";
       if (!article) return;
-      await api(`/api/admin/news/${newsStatusId}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          title: article.title,
-          slug: article.slug,
-          status: nextStatus,
-          category_id: article.category_id,
-          category: article.category,
-          author_name: article.author_name,
-          accent_color: article.accent_color,
-          seo_title: article.seo_title,
-          seo_description: article.seo_description,
-          cover_image_url: article.cover_image_url,
-          social_title: article.social_title,
-          social_description: article.social_description,
-          excerpt: article.excerpt,
-          content: article.content
-        })
-      });
-      await loadDashboard();
+      if (dashboardStatus) dashboardStatus.textContent = nextStatus === "published" ? "Publishing article..." : "Moving article to draft...";
+      try {
+        await api(`/api/admin/news/${newsStatusId}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            title: article.title,
+            slug: article.slug,
+            status: nextStatus,
+            category_id: article.category_id,
+            category: article.category,
+            author_name: article.author_name,
+            accent_color: article.accent_color,
+            seo_title: article.seo_title,
+            seo_description: article.seo_description,
+            cover_image_url: article.cover_image_url,
+            social_title: article.social_title,
+            social_description: article.social_description,
+            excerpt: article.excerpt,
+            content: article.content
+          })
+        });
+        await loadDashboard();
+      } catch (error) {
+        if (dashboardStatus) dashboardStatus.textContent = error.message || "Article status could not be changed.";
+      }
       return;
     }
     if (newsId) {
