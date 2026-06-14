@@ -135,6 +135,25 @@ import BaseLayout from "../layouts/BaseLayout.astro";
             </div>
             <p class="text-sm text-steel" data-profile-status></p>
           </form>
+
+          <section class="mt-8 border-t border-white/10 pt-6">
+            <div>
+              <p class="eyebrow">Release calendar</p>
+              <h3 class="mt-2 font-display text-2xl font-black uppercase text-white">Open label slots</h3>
+              <p class="mt-2 text-sm leading-6 text-steel">Available MBP, MBH and S7 release windows with agreement, artwork and distributor delivery deadlines.</p>
+            </div>
+            <div class="mt-4 grid gap-3 sm:grid-cols-2" data-artist-calendar-list></div>
+          </section>
+
+          <section class="mt-8 border-t border-white/10 pt-6">
+            <div>
+              <p class="eyebrow">Release agreements</p>
+              <h3 class="mt-2 font-display text-2xl font-black uppercase text-white">Agreement review</h3>
+              <p class="mt-2 text-sm leading-6 text-steel">Complete legal details, rights checklist, collaborator splits and typed signature for approved releases.</p>
+            </div>
+            <div class="mt-4 grid gap-3" data-artist-agreement-list></div>
+            <div class="mt-5" data-artist-agreement-detail></div>
+          </section>
         </div>
       </div>
     </div>
@@ -154,7 +173,12 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   const profileStatus = document.querySelector("[data-profile-status]");
   const profileTitle = document.querySelector("[data-profile-title]");
   const publicProfile = document.querySelector("[data-public-profile]");
+  const artistCalendarList = document.querySelector("[data-artist-calendar-list]");
+  const artistAgreementList = document.querySelector("[data-artist-agreement-list]");
+  const artistAgreementDetail = document.querySelector("[data-artist-agreement-detail]");
   const resetToken = new URL(location.href).searchParams.get("reset");
+  let artistCalendarSlots = [];
+  let artistAgreements = [];
 
   const socialFields = [
     { key: "spotify", label: "Spotify", aliases: ["spotify"] },
@@ -237,6 +261,214 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     return data;
   }
 
+  const portalBrandColors = { MBP: "#bd00ff", MBH: "#00e5ff", S7: "#ffd000" };
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function formatPortalDate(value) {
+    if (!value) return "No date";
+    const date = new Date(`${String(value).slice(0, 10)}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  }
+
+  function agreementLabel(agreement) {
+    const catalog = agreement.slot_catalog_number || agreement.calendar_catalog_number || agreement.id;
+    return `${catalog} - ${agreement.release_title || agreement.track_title || "Release agreement"}`;
+  }
+
+  function renderArtistCalendar() {
+    if (!artistCalendarList) return;
+    const slots = artistCalendarSlots
+      .filter((slot) => ["available", "reserved"].includes(String(slot.status || "").toLowerCase()))
+      .slice(0, 8);
+    artistCalendarList.innerHTML = slots.length
+      ? slots
+          .map((slot) => {
+            const color = portalBrandColors[slot.brand] || "#bd00ff";
+            return `
+              <article class="rounded-md border bg-black/30 p-4" style="border-color:${color}66">
+                <div class="flex items-center justify-between gap-3">
+                  <p class="font-display text-xl font-black uppercase text-white">${escapeHtml(slot.brand)}</p>
+                  <span class="rounded border px-2 py-1 text-[0.7rem] font-black uppercase tracking-[0.16em]" style="border-color:${color};color:${color}">
+                    ${escapeHtml(slot.status)}
+                  </span>
+                </div>
+                <p class="mt-2 text-sm text-haze">${formatPortalDate(slot.release_date)}</p>
+                <div class="mt-4 grid gap-1 text-xs leading-5 text-steel">
+                  <span>Agreement: ${formatPortalDate(slot.agreement_deadline)}</span>
+                  <span>Assets: ${formatPortalDate(slot.asset_deadline)}</span>
+                  <span>Distributor: ${formatPortalDate(slot.distributor_delivery_deadline)}</span>
+                  <span>Promo: ${formatPortalDate(slot.promo_start_date)}</span>
+                </div>
+              </article>`;
+          })
+          .join("")
+      : `<p class="text-sm text-steel">No open release slots are listed right now.</p>`;
+  }
+
+  function renderArtistAgreements() {
+    if (!artistAgreementList) return;
+    artistAgreementList.innerHTML = artistAgreements.length
+      ? artistAgreements
+          .map(
+            (agreement) => `
+              <article class="rounded-md border border-white/10 bg-black/30 p-4">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p class="eyebrow">${escapeHtml(agreement.brand || "MBP")} agreement</p>
+                    <h4 class="mt-2 font-display text-xl font-black uppercase text-white">${escapeHtml(agreementLabel(agreement))}</h4>
+                    <p class="mt-1 text-sm text-steel">${escapeHtml(agreement.status || "waiting_artist_details")} | ${formatPortalDate(agreement.planned_release_date)}</p>
+                  </div>
+                  <button class="rounded-md border border-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-haze hover:border-neon-cyan hover:text-white" type="button" data-open-agreement="${escapeHtml(agreement.id)}">
+                    Open agreement
+                  </button>
+                </div>
+              </article>`
+          )
+          .join("")
+      : `<p class="text-sm text-steel">No release agreements are assigned to this artist account yet.</p>`;
+  }
+
+  async function loadPortalData() {
+    const [calendarResult, agreementResult] = await Promise.allSettled([
+      api("/api/calendar?from=2026-01-01", { method: "GET", headers: {} }),
+      api("/api/artist/agreements", { method: "GET", headers: {} })
+    ]);
+    if (calendarResult.status === "fulfilled") artistCalendarSlots = calendarResult.value.slots || [];
+    if (agreementResult.status === "fulfilled") artistAgreements = agreementResult.value.agreements || [];
+    renderArtistCalendar();
+    renderArtistAgreements();
+  }
+
+  async function loadAgreementDetail(agreementId) {
+    if (!artistAgreementDetail) return;
+    artistAgreementDetail.innerHTML = `<p class="text-sm text-steel">Loading agreement...</p>`;
+    try {
+      const detail = await api(`/api/artist/agreements/${agreementId}`, { method: "GET", headers: {} });
+      renderAgreementDetail(detail);
+    } catch (error) {
+      artistAgreementDetail.innerHTML = `<p class="text-sm text-red-300">${escapeHtml(error.message)}</p>`;
+    }
+  }
+
+  function renderAgreementDetail(detail) {
+    if (!artistAgreementDetail) return;
+    const agreement = detail.agreement || {};
+    const parties = detail.parties || [];
+    const splits = detail.splits || [];
+    const checklist = detail.checklist || [];
+    const signatures = detail.signatures || [];
+    const artistParty = parties.find((party) => party.role === "artist") || {};
+    const splitsText =
+      splits.length > 0
+        ? splits.map((split) => `${split.payee_name || ""}|${split.role || "artist"}|${split.email || ""}|${split.share_of_artist_pool ?? 0}`).join("\n")
+        : `${agreement.artist_name || ""}|artist|${agreement.artist_email || ""}|100`;
+    const canSign = !["completed", "cancelled"].includes(String(agreement.status || "").toLowerCase());
+    artistAgreementDetail.innerHTML = `
+      <div class="rounded-md border border-white/10 bg-black/30 p-5">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p class="eyebrow">${escapeHtml(agreement.brand || "MBP")} release agreement</p>
+            <h4 class="mt-2 font-display text-2xl font-black uppercase text-white">${escapeHtml(agreement.release_title || "Agreement")}</h4>
+            <p class="mt-1 text-sm text-steel">${escapeHtml(agreement.status || "waiting_artist_details")} | ${formatPortalDate(agreement.planned_release_date)}</p>
+          </div>
+        </div>
+        <form class="mt-5 grid gap-4" data-agreement-detail-form="${escapeHtml(agreement.id)}">
+          <div class="grid gap-4 md:grid-cols-2">
+            <label>
+              <span class="field-label">Release title</span>
+              <input class="field-control" name="release_title" value="${escapeHtml(agreement.release_title || "")}" required />
+            </label>
+            <label>
+              <span class="field-label">Genre</span>
+              <input class="field-control" name="genre" value="${escapeHtml(agreement.genre || "")}" />
+            </label>
+            <label>
+              <span class="field-label">Legal name</span>
+              <input class="field-control" name="legal_name" value="${escapeHtml(artistParty.legal_name || "")}" required />
+            </label>
+            <label>
+              <span class="field-label">Payment email</span>
+              <input class="field-control" name="payment_email" type="email" value="${escapeHtml(artistParty.payment_email || artistParty.email || "")}" />
+            </label>
+            <label>
+              <span class="field-label">SplitShare email</span>
+              <input class="field-control" name="splitshare_email" type="email" value="${escapeHtml(artistParty.splitshare_email || artistParty.email || "")}" />
+            </label>
+            <label>
+              <span class="field-label">Country</span>
+              <input class="field-control" name="country" value="${escapeHtml(artistParty.country || "")}" required />
+            </label>
+          </div>
+          <div class="grid gap-4 md:grid-cols-2">
+            <label>
+              <span class="field-label">Street address</span>
+              <input class="field-control" name="street_address" value="${escapeHtml(artistParty.street_address || "")}" />
+            </label>
+            <label>
+              <span class="field-label">City</span>
+              <input class="field-control" name="city" value="${escapeHtml(artistParty.city || "")}" />
+            </label>
+            <label>
+              <span class="field-label">State / province</span>
+              <input class="field-control" name="state_province" value="${escapeHtml(artistParty.state_province || "")}" />
+            </label>
+            <label>
+              <span class="field-label">Postal code</span>
+              <input class="field-control" name="postal_code" value="${escapeHtml(artistParty.postal_code || "")}" />
+            </label>
+          </div>
+          <label>
+            <span class="field-label">Collaborators and splits, one per line: name|role|email|share of artist pool</span>
+            <textarea class="field-control min-h-32" name="splits_text">${escapeHtml(splitsText)}</textarea>
+          </label>
+          <fieldset class="rounded-md border border-white/10 p-4">
+            <legend class="field-label px-2">Rights checklist</legend>
+            <div class="grid gap-3">
+              ${checklist
+                .map(
+                  (item) => `
+                    <label class="flex gap-3 text-sm leading-6 text-haze">
+                      <input class="mt-1 h-4 w-4 accent-neon-cyan" type="checkbox" name="checklist" value="${escapeHtml(item.item_key)}" ${item.status === "confirmed" ? "checked" : ""} />
+                      <span>${escapeHtml(item.label)}</span>
+                    </label>`
+                )
+                .join("")}
+            </div>
+          </fieldset>
+          <div class="flex flex-wrap items-center gap-3">
+            <button class="rounded-md bg-white px-5 py-3 text-sm font-black uppercase tracking-[0.14em] text-black hover:bg-neon-cyan" type="submit">Save agreement details</button>
+            <span class="text-sm text-steel" data-agreement-save-status></span>
+          </div>
+        </form>
+        ${
+          canSign
+            ? `<form class="mt-6 grid gap-3 border-t border-white/10 pt-5" data-agreement-sign-form="${escapeHtml(agreement.id)}">
+                <label>
+                  <span class="field-label">Typed artist signature</span>
+                  <input class="field-control" name="signature_text" placeholder="Type your legal name to sign" required />
+                </label>
+                <div class="flex flex-wrap items-center gap-3">
+                  <button class="rounded-md border border-neon-cyan px-5 py-3 text-sm font-black uppercase tracking-[0.14em] text-neon-cyan hover:bg-neon-cyan hover:text-black" type="submit">Sign agreement</button>
+                  <span class="text-sm text-steel" data-agreement-sign-status></span>
+                </div>
+              </form>`
+            : ""
+        }
+        <div class="mt-5 text-xs leading-6 text-steel">
+          ${signatures.length ? `Signatures: ${signatures.map((signature) => escapeHtml(signature.signer_name || signature.signer_email)).join(", ")}` : "No signatures yet."}
+        </div>
+      </div>`;
+  }
+
   async function loadProfile() {
     const data = await api("/api/artist/profile", { method: "GET", headers: {} });
     if (!data.artist) throw new Error("No artist profile is linked to this account yet.");
@@ -254,6 +486,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     profileForm.image_upload.value = "";
     setSocialLinks(artist.links);
     publicProfile.href = `/artist/${artist.slug}`;
+    await loadPortalData();
   }
 
   loginForm?.addEventListener("submit", async (event) => {
@@ -358,6 +591,77 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       await loadProfile();
     } catch (error) {
       resetStatus.textContent = error.message;
+    }
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!(event.target instanceof Element)) return;
+    const openAgreement = event.target.closest("[data-open-agreement]");
+    if (openAgreement) {
+      loadAgreementDetail(openAgreement.getAttribute("data-open-agreement"));
+    }
+  });
+
+  document.addEventListener("submit", async (event) => {
+    if (!(event.target instanceof HTMLFormElement)) return;
+
+    const detailsForm = event.target.closest("[data-agreement-detail-form]");
+    if (detailsForm instanceof HTMLFormElement) {
+      event.preventDefault();
+      const agreementId = detailsForm.getAttribute("data-agreement-detail-form");
+      const status = detailsForm.querySelector("[data-agreement-save-status]");
+      const formData = new FormData(detailsForm);
+      const checklist = Array.from(detailsForm.querySelectorAll('input[name="checklist"]:checked')).map((input) => input.value);
+      if (status) status.textContent = "Saving agreement...";
+      try {
+        const result = await api(`/api/artist/agreements/${agreementId}`, {
+          method: "POST",
+          body: JSON.stringify({
+            action: "save_details",
+            release_title: formData.get("release_title"),
+            genre: formData.get("genre"),
+            legal_name: formData.get("legal_name"),
+            payment_email: formData.get("payment_email"),
+            splitshare_email: formData.get("splitshare_email"),
+            street_address: formData.get("street_address"),
+            city: formData.get("city"),
+            state_province: formData.get("state_province"),
+            postal_code: formData.get("postal_code"),
+            country: formData.get("country"),
+            splits_text: formData.get("splits_text"),
+            checklist
+          })
+        });
+        if (status) status.textContent = "Agreement details saved.";
+        if (result.detail) renderAgreementDetail(result.detail);
+        await loadPortalData();
+      } catch (error) {
+        if (status) status.textContent = error.message;
+      }
+      return;
+    }
+
+    const signForm = event.target.closest("[data-agreement-sign-form]");
+    if (signForm instanceof HTMLFormElement) {
+      event.preventDefault();
+      const agreementId = signForm.getAttribute("data-agreement-sign-form");
+      const status = signForm.querySelector("[data-agreement-sign-status]");
+      const formData = new FormData(signForm);
+      if (status) status.textContent = "Signing agreement...";
+      try {
+        const result = await api(`/api/artist/agreements/${agreementId}`, {
+          method: "POST",
+          body: JSON.stringify({
+            action: "sign_artist",
+            signature_text: formData.get("signature_text")
+          })
+        });
+        if (status) status.textContent = "Agreement signed. Label signature is next.";
+        if (result.detail) renderAgreementDetail(result.detail);
+        await loadPortalData();
+      } catch (error) {
+        if (status) status.textContent = error.message;
+      }
     }
   });
 

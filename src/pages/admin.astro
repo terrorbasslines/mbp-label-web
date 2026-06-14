@@ -127,6 +127,126 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           <section class="surface rounded-lg p-5">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
+                <p class="eyebrow">Release calendar</p>
+                <h3 class="mt-2 font-display text-2xl font-black uppercase text-white">Label calendar</h3>
+                <p class="mt-2 text-sm leading-6 text-steel">Plan MBP, MBH and S7 release windows with agreement, artwork, delivery and promo deadlines.</p>
+              </div>
+            </div>
+            <form data-calendar-generate class="mt-5 grid gap-3 md:grid-cols-[1fr_1fr_1fr_1fr_auto]">
+              <label>
+                <span class="field-label">Brand</span>
+                <select class="field-control" name="brand">
+                  <option>MBP</option>
+                  <option>MBH</option>
+                  <option>S7</option>
+                </select>
+              </label>
+              <label>
+                <span class="field-label">From</span>
+                <input class="field-control" name="from" type="date" required />
+              </label>
+              <label>
+                <span class="field-label">To</span>
+                <input class="field-control" name="to" type="date" required />
+              </label>
+              <label>
+                <span class="field-label">Weekdays</span>
+                <input class="field-control" name="weekdays" value="1,4" placeholder="1,4 = Monday, Thursday" />
+              </label>
+              <button class="self-end rounded-md bg-white px-4 py-3 text-sm font-black uppercase text-black hover:bg-neon-cyan" type="submit">
+                Generate slots
+              </button>
+            </form>
+            <form data-calendar-form class="mt-5 grid gap-3 md:grid-cols-4">
+              <input name="id" type="hidden" />
+              <label>
+                <span class="field-label">Brand</span>
+                <select class="field-control" name="brand">
+                  <option>MBP</option>
+                  <option>MBH</option>
+                  <option>S7</option>
+                </select>
+              </label>
+              <label>
+                <span class="field-label">Release date</span>
+                <input class="field-control" name="release_date" type="date" required />
+              </label>
+              <label>
+                <span class="field-label">Status</span>
+                <select class="field-control" name="status">
+                  <option value="available">Available</option>
+                  <option value="reserved">Reserved</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="locked">Locked</option>
+                  <option value="released">Released</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </label>
+              <label>
+                <span class="field-label">Max releases</span>
+                <input class="field-control" name="max_releases" type="number" min="1" max="10" value="1" />
+              </label>
+              <label>
+                <span class="field-label">Catalog number</span>
+                <input class="field-control" name="catalog_number" placeholder="MBP250" />
+              </label>
+              <label>
+                <span class="field-label">Artist</span>
+                <input class="field-control" name="artist_name" placeholder="Artist name" />
+              </label>
+              <label>
+                <span class="field-label">Track title</span>
+                <input class="field-control" name="track_title" placeholder="Track title" />
+              </label>
+              <label>
+                <span class="field-label">Internal notes</span>
+                <input class="field-control" name="internal_notes" placeholder="Deadline notes or reserved context" />
+              </label>
+              <div class="flex flex-wrap gap-2 md:col-span-4">
+                <button class="rounded-md bg-white px-4 py-3 text-sm font-black uppercase text-black hover:bg-neon-cyan" type="submit">
+                  Save slot
+                </button>
+                <button class="rounded-md border border-white/10 px-4 py-3 text-sm font-bold uppercase text-haze hover:border-neon-cyan hover:text-white" data-calendar-cancel hidden type="button">
+                  Cancel edit
+                </button>
+              </div>
+              <p class="text-sm text-steel md:col-span-4" data-calendar-status></p>
+            </form>
+            <div class="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3" data-calendar-list></div>
+          </section>
+
+          <section class="surface rounded-lg p-5">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p class="eyebrow">Release agreements</p>
+                <h3 class="mt-2 font-display text-2xl font-black uppercase text-white">Agreement portal</h3>
+                <p class="mt-2 text-sm leading-6 text-steel">Turn approved demos into artist review, typed signature and label countersignature workflows.</p>
+              </div>
+            </div>
+            <form data-agreement-form class="mt-5 grid gap-3 lg:grid-cols-[1fr_1fr_auto]">
+              <label>
+                <span class="field-label">Approved demo</span>
+                <select class="field-control" name="demo_submission_id" data-agreement-demo-select required>
+                  <option value="">Choose approved demo</option>
+                </select>
+              </label>
+              <label>
+                <span class="field-label">Calendar slot</span>
+                <select class="field-control" name="calendar_slot_id" data-agreement-slot-select required>
+                  <option value="">Choose calendar slot</option>
+                </select>
+              </label>
+              <button class="self-end rounded-md bg-white px-4 py-3 text-sm font-black uppercase text-black hover:bg-neon-cyan" type="submit">
+                Create agreement
+              </button>
+            </form>
+            <p class="mt-3 text-sm text-steel" data-agreement-status></p>
+            <div class="mt-5 grid gap-3 lg:grid-cols-2" data-agreement-list></div>
+          </section>
+
+          <section class="surface rounded-lg p-5">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
                 <p class="eyebrow">Demo inbox</p>
                 <h3 class="mt-2 font-display text-2xl font-black uppercase text-white">Pending submissions</h3>
               </div>
@@ -500,6 +620,16 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   const adminReleaseSearch = document.querySelector("[data-admin-release-search]");
   const adminArtistRegion = document.querySelector("[data-admin-artist-region]");
   const adminReleaseRegion = document.querySelector("[data-admin-release-region]");
+  const calendarForm = document.querySelector("[data-calendar-form]");
+  const calendarGenerateForm = document.querySelector("[data-calendar-generate]");
+  const calendarStatus = document.querySelector("[data-calendar-status]");
+  const calendarList = document.querySelector("[data-calendar-list]");
+  const calendarCancel = document.querySelector("[data-calendar-cancel]");
+  const agreementForm = document.querySelector("[data-agreement-form]");
+  const agreementStatus = document.querySelector("[data-agreement-status]");
+  const agreementDemoSelect = document.querySelector("[data-agreement-demo-select]");
+  const agreementSlotSelect = document.querySelector("[data-agreement-slot-select]");
+  const agreementList = document.querySelector("[data-agreement-list]");
   let artists = [];
   let releases = [];
   let submissions = [];
@@ -507,6 +637,10 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   let newsCategories = [];
   let newsAuthors = [{ name: "The MasterBeat Project" }];
   let newsStats = { published: 0, draft: 0 };
+  let calendarSlots = [];
+  let agreements = [];
+  let approvedDemos = [];
+  let agreementSlots = [];
   let newsEditor = null;
   let newsEditorPromise = null;
   let artistSearchTerm = "";
@@ -1246,6 +1380,107 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       : `<p class="text-sm text-steel">No News articles yet. Create the first MBP update above.</p>`;
   }
 
+  const calendarBrandColors = { MBP: "#bd00ff", MBH: "#00e5ff", S7: "#ffd000" };
+
+  function formatCalendarDate(value) {
+    if (!value) return "No date";
+    const date = new Date(`${value}T00:00:00`);
+    return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  }
+
+  function slotLabel(slot) {
+    return `${slot.brand || "MBP"} ${formatCalendarDate(slot.release_date)}${slot.catalog_number ? ` | ${slot.catalog_number}` : ""}`;
+  }
+
+  function resetCalendarEditor() {
+    if (!(calendarForm instanceof HTMLFormElement)) return;
+    calendarForm.reset();
+    calendarForm.elements.id.value = "";
+    calendarForm.elements.max_releases.value = "1";
+    calendarCancel?.setAttribute("hidden", "");
+  }
+
+  function startCalendarEditor(slot) {
+    if (!(calendarForm instanceof HTMLFormElement)) return;
+    calendarForm.elements.id.value = slot.id || "";
+    calendarForm.elements.brand.value = slot.brand || "MBP";
+    calendarForm.elements.release_date.value = slot.release_date || "";
+    calendarForm.elements.status.value = slot.status || "available";
+    calendarForm.elements.max_releases.value = slot.max_releases || 1;
+    calendarForm.elements.catalog_number.value = slot.catalog_number || "";
+    calendarForm.elements.artist_name.value = slot.artist_name || "";
+    calendarForm.elements.track_title.value = slot.track_title || "";
+    calendarForm.elements.internal_notes.value = slot.internal_notes || "";
+    calendarCancel?.removeAttribute("hidden");
+    calendarForm.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  function renderCalendar() {
+    if (!calendarList) return;
+    const slots = calendarSlots.slice(0, 18);
+    calendarList.innerHTML = slots.length
+      ? slots
+          .map((slot) => {
+            const color = calendarBrandColors[slot.brand] || calendarBrandColors.MBP;
+            return `
+              <article class="rounded-md border bg-black/35 p-4" style="border-color:${escapeHtml(color)}66;">
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <p class="font-mono text-xs font-bold uppercase tracking-[0.16em]" style="color:${escapeHtml(color)};">${escapeHtml(slot.brand || "MBP")} | ${escapeHtml(slot.status || "available")}</p>
+                    <h4 class="mt-2 font-display text-xl font-black uppercase text-white">${escapeHtml(formatCalendarDate(slot.release_date))}</h4>
+                    <p class="mt-1 text-sm text-steel">${escapeHtml(slot.catalog_number || "No catalog")} ${slot.artist_name ? `| ${escapeHtml(slot.artist_name)}` : ""}</p>
+                    <p class="mt-3 text-sm leading-6 text-haze">${escapeHtml(slot.track_title || slot.internal_notes || "Open release slot.")}</p>
+                    <p class="mt-3 text-xs leading-5 text-steel">Agreement ${escapeHtml(formatCalendarDate(slot.agreement_deadline))} | Assets ${escapeHtml(formatCalendarDate(slot.asset_deadline))} | Distributor ${escapeHtml(formatCalendarDate(slot.distributor_delivery_deadline))}</p>
+                  </div>
+                  <div class="flex shrink-0 gap-2">
+                    <button class="text-xs font-bold uppercase text-neon-cyan hover:text-white" data-calendar-edit="${escapeHtml(slot.id)}" type="button">Edit</button>
+                    <button class="text-xs font-bold uppercase text-neon-red hover:text-white" data-calendar-delete="${escapeHtml(slot.id)}" type="button">Delete</button>
+                  </div>
+                </div>
+              </article>
+            `;
+          })
+          .join("")
+      : `<p class="text-sm text-steel">No release calendar slots yet. Generate slots or add one manually.</p>`;
+  }
+
+  function renderAgreements() {
+    if (agreementDemoSelect) {
+      agreementDemoSelect.innerHTML =
+        `<option value="">Choose approved demo</option>` +
+        approvedDemos
+          .map((demo) => `<option value="${escapeHtml(demo.id)}">${escapeHtml(demo.track_title || "Untitled")} | ${escapeHtml(demo.artist_name || "Unknown artist")}</option>`)
+          .join("");
+    }
+    if (agreementSlotSelect) {
+      agreementSlotSelect.innerHTML =
+        `<option value="">Choose calendar slot</option>` +
+        agreementSlots
+          .map((slot) => `<option value="${escapeHtml(slot.id)}">${escapeHtml(slotLabel(slot))}</option>`)
+          .join("");
+    }
+    if (!agreementList) return;
+    agreementList.innerHTML = agreements.length
+      ? agreements
+          .map((agreement) => {
+            const color = calendarBrandColors[agreement.brand] || calendarBrandColors.MBP;
+            const canSign = agreement.status === "waiting_label_signature";
+            return `
+              <article class="rounded-md border bg-black/35 p-4" style="border-color:${escapeHtml(color)}66;">
+                <p class="font-mono text-xs font-bold uppercase tracking-[0.16em]" style="color:${escapeHtml(color)};">${escapeHtml(agreement.brand || "MBP")} | ${escapeHtml(agreement.status || "draft")}</p>
+                <h4 class="mt-2 font-display text-xl font-black uppercase text-white">${escapeHtml(agreement.release_title || "Untitled release")}</h4>
+                <p class="mt-1 text-sm text-steel">${escapeHtml(agreement.artist_name || "Unknown artist")} | ${escapeHtml(agreement.catalog_number || "No catalog")} | ${escapeHtml(formatCalendarDate(agreement.release_date))}</p>
+                <div class="mt-4 flex flex-wrap gap-2">
+                  ${canSign ? `<button class="rounded border border-neon-green/50 px-3 py-2 text-xs font-black uppercase text-neon-green hover:bg-neon-green hover:text-black" data-agreement-sign-label="${escapeHtml(agreement.id)}" type="button">Label sign</button>` : ""}
+                  <button class="rounded border border-white/10 px-3 py-2 text-xs font-black uppercase text-haze hover:border-neon-red hover:text-white" data-agreement-cancel="${escapeHtml(agreement.id)}" type="button">Cancel</button>
+                </div>
+              </article>
+            `;
+          })
+          .join("")
+      : `<p class="text-sm text-steel">No release agreements yet. Create one from an approved demo and a calendar slot.</p>`;
+  }
+
   function render() {
     renderStats();
     renderNewsControls();
@@ -1254,16 +1489,20 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     renderReleases();
     renderSubmissions();
     renderNewsArticles();
+    renderCalendar();
+    renderAgreements();
   }
 
   async function loadDashboard() {
     if (dashboardStatus) dashboardStatus.textContent = "Loading dashboard data...";
     const errors = [];
-    const [artistResult, releaseResult, submissionResult, newsResult] = await Promise.allSettled([
+    const [artistResult, releaseResult, submissionResult, newsResult, calendarResult, agreementResult] = await Promise.allSettled([
       api("/api/admin/artists"),
       api("/api/admin/releases"),
       api("/api/admin/demo-submissions?scope=pending"),
-      api("/api/admin/news")
+      api("/api/admin/news"),
+      api("/api/admin/calendar"),
+      api("/api/admin/agreements")
     ]);
 
     if (artistResult.status === "fulfilled") {
@@ -1295,6 +1534,20 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       };
     } else {
       errors.push(`News: ${newsResult.reason?.message || "failed to load"}`);
+    }
+
+    if (calendarResult.status === "fulfilled") {
+      calendarSlots = calendarResult.value.slots || [];
+    } else {
+      errors.push(`Calendar: ${calendarResult.reason?.message || "failed to load"}`);
+    }
+
+    if (agreementResult.status === "fulfilled") {
+      agreements = agreementResult.value.agreements || [];
+      approvedDemos = agreementResult.value.approved_demos || [];
+      agreementSlots = agreementResult.value.slots || [];
+    } else {
+      errors.push(`Agreements: ${agreementResult.reason?.message || "failed to load"}`);
     }
 
     render();
@@ -1344,6 +1597,83 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   });
 
   document.querySelector("[data-refresh]")?.addEventListener("click", loadDashboard);
+
+  calendarGenerateForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!(calendarGenerateForm instanceof HTMLFormElement)) return;
+    const formData = new FormData(calendarGenerateForm);
+    if (calendarStatus) calendarStatus.textContent = "Generating release slots...";
+    try {
+      const result = await api("/api/admin/calendar", {
+        method: "POST",
+        body: JSON.stringify({
+          action: "generate_slots",
+          brand: formData.get("brand"),
+          from: formData.get("from"),
+          to: formData.get("to"),
+          weekdays: String(formData.get("weekdays") || "")
+            .split(",")
+            .map((day) => Number(day.trim()))
+            .filter((day) => Number.isInteger(day) && day >= 0 && day <= 6)
+        })
+      });
+      if (calendarStatus) calendarStatus.textContent = `Generated ${result.created || 0} slots.`;
+      await loadDashboard();
+    } catch (error) {
+      if (calendarStatus) calendarStatus.textContent = error.message;
+    }
+  });
+
+  calendarForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!(calendarForm instanceof HTMLFormElement)) return;
+    const formData = new FormData(calendarForm);
+    if (calendarStatus) calendarStatus.textContent = "Saving release slot...";
+    try {
+      await api("/api/admin/calendar", {
+        method: "POST",
+        body: JSON.stringify({
+          id: formData.get("id"),
+          brand: formData.get("brand"),
+          release_date: formData.get("release_date"),
+          status: formData.get("status"),
+          max_releases: Number(formData.get("max_releases") || 1),
+          catalog_number: formData.get("catalog_number"),
+          artist_name: formData.get("artist_name"),
+          track_title: formData.get("track_title"),
+          internal_notes: formData.get("internal_notes")
+        })
+      });
+      resetCalendarEditor();
+      if (calendarStatus) calendarStatus.textContent = "Release slot saved.";
+      await loadDashboard();
+    } catch (error) {
+      if (calendarStatus) calendarStatus.textContent = error.message;
+    }
+  });
+
+  calendarCancel?.addEventListener("click", resetCalendarEditor);
+
+  agreementForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!(agreementForm instanceof HTMLFormElement)) return;
+    const formData = new FormData(agreementForm);
+    if (agreementStatus) agreementStatus.textContent = "Creating agreement...";
+    try {
+      await api("/api/admin/agreements", {
+        method: "POST",
+        body: JSON.stringify({
+          demo_submission_id: formData.get("demo_submission_id"),
+          calendar_slot_id: formData.get("calendar_slot_id")
+        })
+      });
+      agreementForm.reset();
+      if (agreementStatus) agreementStatus.textContent = "Agreement created for artist review.";
+      await loadDashboard();
+    } catch (error) {
+      if (agreementStatus) agreementStatus.textContent = error.message;
+    }
+  });
 
   artistForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -1598,6 +1928,44 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     const editNewsCategoryId = target.getAttribute("data-edit-news-category");
     const deleteNewsCategoryId = target.getAttribute("data-delete-news-category");
     const newsStatusId = target.getAttribute("data-news-status");
+    const editCalendarId = target.getAttribute("data-calendar-edit");
+    const deleteCalendarId = target.getAttribute("data-calendar-delete");
+    const signLabelAgreementId = target.getAttribute("data-agreement-sign-label");
+    const cancelAgreementId = target.getAttribute("data-agreement-cancel");
+    if (editCalendarId) {
+      const slot = calendarSlots.find((item) => item.id === editCalendarId);
+      if (slot) startCalendarEditor(slot);
+      return;
+    }
+    if (deleteCalendarId) {
+      if (!window.confirm("Delete this release calendar slot?")) return;
+      await api("/api/admin/calendar", {
+        method: "POST",
+        body: JSON.stringify({ action: "delete_slot", id: deleteCalendarId })
+      });
+      resetCalendarEditor();
+      await loadDashboard();
+      return;
+    }
+    if (signLabelAgreementId) {
+      const signatureText = window.prompt("Type the label signer name to countersign this agreement:");
+      if (!signatureText) return;
+      await api(`/api/admin/agreements/${signLabelAgreementId}`, {
+        method: "POST",
+        body: JSON.stringify({ action: "sign_label", signature_text: signatureText })
+      });
+      await loadDashboard();
+      return;
+    }
+    if (cancelAgreementId) {
+      if (!window.confirm("Cancel this release agreement?")) return;
+      await api(`/api/admin/agreements/${cancelAgreementId}`, {
+        method: "POST",
+        body: JSON.stringify({ action: "cancel" })
+      });
+      await loadDashboard();
+      return;
+    }
     if (editArtistId) {
       const artist = artists.find((item) => item.id === editArtistId);
       if (artist) startArtistEditor(artist);
