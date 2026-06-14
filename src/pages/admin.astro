@@ -212,6 +212,31 @@ import BaseLayout from "../layouts/BaseLayout.astro";
               </div>
               <p class="text-sm text-steel md:col-span-4" data-calendar-status></p>
             </form>
+            <div class="mt-5 flex flex-col gap-3 rounded-md border border-white/10 bg-black/25 p-3 lg:flex-row lg:items-center lg:justify-between">
+              <div class="flex flex-wrap gap-2" data-calendar-filter>
+                <button class="rounded-md border border-white/10 bg-white px-3 py-2 text-xs font-bold uppercase text-black" data-calendar-brand="all" type="button">
+                  All labels
+                </button>
+                <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-bold uppercase text-haze hover:border-neon-cyan hover:text-white" data-calendar-brand="MBP" type="button">
+                  MBP
+                </button>
+                <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-bold uppercase text-haze hover:border-neon-cyan hover:text-white" data-calendar-brand="MBH" type="button">
+                  MBH
+                </button>
+                <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-bold uppercase text-haze hover:border-neon-cyan hover:text-white" data-calendar-brand="S7" type="button">
+                  S7
+                </button>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-bold uppercase text-haze hover:border-neon-cyan hover:text-white disabled:cursor-not-allowed disabled:opacity-40" data-calendar-prev type="button">
+                  Previous
+                </button>
+                <span class="min-w-36 text-center font-mono text-xs uppercase tracking-[0.16em] text-steel" data-calendar-page-label>Page 1 / 1</span>
+                <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-bold uppercase text-haze hover:border-neon-cyan hover:text-white disabled:cursor-not-allowed disabled:opacity-40" data-calendar-next type="button">
+                  Next
+                </button>
+              </div>
+            </div>
             <div class="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3" data-calendar-list></div>
           </section>
 
@@ -405,7 +430,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
             <p class="mt-3 text-sm text-steel" data-import-status>Imports https://ffm.to/mbp001 to https://ffm.to/mbp1000 style links in batches of 25 max.</p>
           </section>
 
-          <div class="grid gap-8 xl:grid-cols-[0.9fr_1.1fr]">
+          <div class="grid gap-8">
             <section class="surface rounded-lg p-5">
               <p class="eyebrow">Artists</p>
               <h3 class="mt-2 font-display text-2xl font-black uppercase text-white" data-artist-form-title>Add artist profile</h3>
@@ -625,6 +650,10 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   const calendarStatus = document.querySelector("[data-calendar-status]");
   const calendarList = document.querySelector("[data-calendar-list]");
   const calendarCancel = document.querySelector("[data-calendar-cancel]");
+  const calendarFilter = document.querySelector("[data-calendar-filter]");
+  const calendarPageLabel = document.querySelector("[data-calendar-page-label]");
+  const calendarPrev = document.querySelector("[data-calendar-prev]");
+  const calendarNext = document.querySelector("[data-calendar-next]");
   const agreementForm = document.querySelector("[data-agreement-form]");
   const agreementStatus = document.querySelector("[data-agreement-status]");
   const agreementDemoSelect = document.querySelector("[data-agreement-demo-select]");
@@ -638,6 +667,9 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   let newsAuthors = [{ name: "The MasterBeat Project" }];
   let newsStats = { published: 0, draft: 0 };
   let calendarSlots = [];
+  let calendarBrandFilter = "all";
+  let calendarPage = 1;
+  const calendarPageSize = 12;
   let agreements = [];
   let approvedDemos = [];
   let agreementSlots = [];
@@ -1417,7 +1449,28 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
   function renderCalendar() {
     if (!calendarList) return;
-    const slots = calendarSlots.slice(0, 18);
+    const filteredSlots =
+      calendarBrandFilter === "all"
+        ? calendarSlots
+        : calendarSlots.filter((slot) => String(slot.brand || "MBP").toUpperCase() === calendarBrandFilter);
+    const totalPages = Math.max(1, Math.ceil(filteredSlots.length / calendarPageSize));
+    calendarPage = Math.min(Math.max(1, calendarPage), totalPages);
+    const start = (calendarPage - 1) * calendarPageSize;
+    const slots = filteredSlots.slice(start, start + calendarPageSize);
+
+    calendarFilter?.querySelectorAll("[data-calendar-brand]").forEach((button) => {
+      const active = button.getAttribute("data-calendar-brand") === calendarBrandFilter;
+      button.classList.toggle("bg-white", active);
+      button.classList.toggle("text-black", active);
+      button.classList.toggle("text-haze", !active);
+    });
+    if (calendarPageLabel) {
+      const label = calendarBrandFilter === "all" ? "All labels" : calendarBrandFilter;
+      calendarPageLabel.textContent = `${label} | ${filteredSlots.length} slots | Page ${calendarPage} / ${totalPages}`;
+    }
+    if (calendarPrev instanceof HTMLButtonElement) calendarPrev.disabled = calendarPage <= 1;
+    if (calendarNext instanceof HTMLButtonElement) calendarNext.disabled = calendarPage >= totalPages;
+
     calendarList.innerHTML = slots.length
       ? slots
           .map((slot) => {
@@ -1441,7 +1494,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
             `;
           })
           .join("")
-      : `<p class="text-sm text-steel">No release calendar slots yet. Generate slots or add one manually.</p>`;
+      : `<p class="text-sm text-steel">No release calendar slots for this label.</p>`;
   }
 
   function renderAgreements() {
@@ -1604,6 +1657,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     const formData = new FormData(calendarGenerateForm);
     if (calendarStatus) calendarStatus.textContent = "Generating release slots...";
     try {
+      const generatedBrand = String(formData.get("brand") || "all").toUpperCase();
       const result = await api("/api/admin/calendar", {
         method: "POST",
         body: JSON.stringify({
@@ -1617,7 +1671,12 @@ import BaseLayout from "../layouts/BaseLayout.astro";
             .filter((day) => Number.isInteger(day) && day >= 0 && day <= 6)
         })
       });
-      if (calendarStatus) calendarStatus.textContent = `Generated ${result.created || 0} slots.`;
+      calendarBrandFilter = generatedBrand;
+      calendarPage = 1;
+      const source = result.source === "official_2026_calendar" ? "official calendar" : "weekday pattern";
+      if (calendarStatus) {
+        calendarStatus.textContent = `Generated ${result.created || 0} slots from ${source}. Removed ${result.removed || 0} empty non-release slots.`;
+      }
       await loadDashboard();
     } catch (error) {
       if (calendarStatus) calendarStatus.textContent = error.message;
@@ -1645,6 +1704,8 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         })
       });
       resetCalendarEditor();
+      calendarBrandFilter = String(formData.get("brand") || "all").toUpperCase();
+      calendarPage = 1;
       if (calendarStatus) calendarStatus.textContent = "Release slot saved.";
       await loadDashboard();
     } catch (error) {
@@ -1654,13 +1715,33 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
   calendarCancel?.addEventListener("click", resetCalendarEditor);
 
+  calendarFilter?.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const button = target.closest("[data-calendar-brand]");
+    if (!button) return;
+    calendarBrandFilter = button.getAttribute("data-calendar-brand") || "all";
+    calendarPage = 1;
+    renderCalendar();
+  });
+
+  calendarPrev?.addEventListener("click", () => {
+    calendarPage = Math.max(1, calendarPage - 1);
+    renderCalendar();
+  });
+
+  calendarNext?.addEventListener("click", () => {
+    calendarPage += 1;
+    renderCalendar();
+  });
+
   agreementForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!(agreementForm instanceof HTMLFormElement)) return;
     const formData = new FormData(agreementForm);
     if (agreementStatus) agreementStatus.textContent = "Creating agreement...";
     try {
-      await api("/api/admin/agreements", {
+      const result = await api("/api/admin/agreements", {
         method: "POST",
         body: JSON.stringify({
           demo_submission_id: formData.get("demo_submission_id"),
@@ -1668,7 +1749,8 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         })
       });
       agreementForm.reset();
-      if (agreementStatus) agreementStatus.textContent = "Agreement created for artist review.";
+      const emailStatus = result.email?.status ? ` Email: ${result.email.status}.` : "";
+      if (agreementStatus) agreementStatus.textContent = `Agreement created for artist review.${emailStatus}`;
       await loadDashboard();
     } catch (error) {
       if (agreementStatus) agreementStatus.textContent = error.message;

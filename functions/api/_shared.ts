@@ -684,6 +684,52 @@ export async function sendDemoNotificationEmail(env: Env, input: { artistName: s
   return { sent: true, status: "demo_notify_email_sent" };
 }
 
+export async function sendAgreementReviewEmail(
+  env: Env,
+  input: { to: string; artistName: string; trackTitle: string; brand: string; releaseDate: string; agreementUrl: string }
+) {
+  const config = emailConfig(env);
+  if (!config.ok) {
+    return { sent: false, status: config.status };
+  }
+
+  const text = [
+    `Hi ${input.artistName},`,
+    "",
+    `Your demo "${input.trackTitle}" has been approved for the release agreement step with The MasterBeat Project.`,
+    "",
+    `Label: ${input.brand}`,
+    `Planned release date: ${input.releaseDate || "to be confirmed"}`,
+    "",
+    `Review and complete the agreement here: ${input.agreementUrl}`,
+    "",
+    "Please check the release details, legal name, royalty split and signature fields before submitting.",
+    "",
+    "The MasterBeat Project"
+  ].join("\n");
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${config.apiKey}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      from: config.from,
+      to: input.to,
+      reply_to: config.replyTo,
+      subject: `MBP release agreement: ${input.trackTitle}`,
+      text
+    })
+  });
+
+  if (!response.ok) {
+    return { sent: false, status: emailFailureStatus(response.status) };
+  }
+
+  return { sent: true, status: "agreement_email_sent" };
+}
+
 export async function sendArtistInviteEmail(env: Env, input: { to: string; artistName: string; claimUrl: string; role: string }) {
   const config = emailConfig(env);
   if (!config.ok) {

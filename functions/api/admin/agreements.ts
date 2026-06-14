@@ -7,6 +7,7 @@ import {
   readJson,
   requireAdmin,
   requireDb,
+  sendAgreementReviewEmail,
   type Env
 } from "../_shared";
 import {
@@ -223,7 +224,17 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       });
     }
 
-    return json({ ok: true, agreement_id: agreementId, agreements: await listAgreements(db) });
+    const agreementUrl = new URL(`/artist-dashboard/?agreement=${encodeURIComponent(agreementId)}`, request.url).toString();
+    const email = await sendAgreementReviewEmail(env, {
+      to: demo.email,
+      artistName: demo.artist_name,
+      trackTitle: demo.track_title,
+      brand,
+      releaseDate: slot.release_date,
+      agreementUrl
+    });
+
+    return json({ ok: true, agreement_id: agreementId, email, agreements: await listAgreements(db) });
   } catch (error) {
     if (migrationMissing(error)) {
       return json({ ok: false, error: "Run D1 migration 0014_release_calendar_agreements.sql first." }, { status: 409 });
