@@ -30,6 +30,6 @@ export async function sendPublishedNewsNotification(db: D1Database, env: Env, ar
     category: String(serialized.category || "MBP News"),
     authorName: serialized.author_name,
     articleUrl: `/news/${serialized.slug}`,
-    imageUrl: `/news/${serialized.slug}/social-image.svg?platform=og`
+    accentColor: String(serialized.accent_color || "#bd00ff")
   });
 }

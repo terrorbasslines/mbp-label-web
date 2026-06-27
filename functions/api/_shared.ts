@@ -747,6 +747,11 @@ function absoluteSiteUrl(value: string) {
   }
 }
 
+function normalizeEmailAccentColor(value: unknown) {
+  const color = String(value ?? "").trim();
+  return /^#[0-9a-f]{6}$/i.test(color) ? color : "#bd00ff";
+}
+
 function uniqueEmailRecipients(recipients: string[]) {
   const seen = new Set<string>();
   return recipients
@@ -772,7 +777,8 @@ export async function sendNewsPublishedEmail(
     excerpt: string;
     category: string;
     articleUrl: string;
-    imageUrl: string;
+    imageUrl?: string;
+    accentColor?: string | null;
     authorName?: string | null;
   }
 ) {
@@ -787,7 +793,7 @@ export async function sendNewsPublishedEmail(
   }
 
   const articleUrl = absoluteSiteUrl(input.articleUrl);
-  const imageUrl = absoluteSiteUrl(input.imageUrl);
+  const accentColor = normalizeEmailAccentColor(input.accentColor);
   const title = String(input.title || "New MBP article").trim();
   const excerpt = String(input.excerpt || "A new article has been published on The MasterBeat Project.").trim();
   const category = String(input.category || "MBP News").trim();
@@ -814,7 +820,7 @@ export async function sendNewsPublishedEmail(
         <td align="center">
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:680px;border:1px solid rgba(255,255,255,.14);border-radius:12px;overflow:hidden;background:#101119;">
             <tr>
-              <td background="${emailHtmlEscape(imageUrl)}" style="background-image:linear-gradient(90deg,rgba(5,5,8,.94),rgba(5,5,8,.76)),url('${emailHtmlEscape(imageUrl)}');background-size:cover;background-position:center;padding:40px 34px;">
+              <td style="background:${emailHtmlEscape(accentColor)};background-image:radial-gradient(circle at 82% 12%,${emailHtmlEscape(accentColor)}66 0,rgba(5,5,8,0) 34%),linear-gradient(135deg,rgba(5,5,8,.98) 0%,rgba(5,5,8,.88) 54%,${emailHtmlEscape(accentColor)}33 100%);padding:40px 34px;">
                 <p style="margin:0 0 14px;color:#22f7ff;font-size:12px;font-weight:900;letter-spacing:3px;text-transform:uppercase;">New article published</p>
                 <h1 style="margin:0;color:#ffffff;font-size:36px;line-height:1.02;text-transform:uppercase;">${emailHtmlEscape(title)}</h1>
                 <p style="margin:18px 0 0;color:#d6d8e2;font-size:16px;line-height:1.65;">${emailHtmlEscape(excerpt)}</p>
