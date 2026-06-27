@@ -34,7 +34,6 @@ interface Props {
   demoCopy: string;
   aboutTitle: string;
   aboutCopy: string[];
-  catalogRules: string[];
 }
 
 const {
@@ -60,8 +59,7 @@ const {
   demoTitle,
   demoCopy,
   aboutTitle,
-  aboutCopy,
-  catalogRules
+  aboutCopy
 } = Astro.props;
 ---
 
@@ -102,14 +100,15 @@ const {
         ))
       }
     </div>
-    <div class="mt-4 grid gap-3 md:grid-cols-3">
-      {
-        catalogRules.map((rule) => (
-          <div class="rounded-lg border border-white/10 bg-black/35 p-4">
-            <p class="font-mono text-xs font-black uppercase tracking-[0.16em]" style={`color:${secondaryAccent};`}>{rule}</p>
-          </div>
-        ))
-      }
+    <div class="mt-4 grid gap-4 md:grid-cols-2">
+      <div class="hidden rounded-lg border bg-black/35 p-5" style={`border-color:${accent}55; box-shadow:0 0 24px ${accent}12;`} data-home-count-card>
+        <p class="font-display text-4xl font-black uppercase leading-none text-white" data-home-artist-count>0</p>
+        <p class="mt-2 text-sm uppercase tracking-[0.14em] text-steel">current artists</p>
+      </div>
+      <div class="hidden rounded-lg border bg-black/35 p-5" style={`border-color:${secondaryAccent}55; box-shadow:0 0 24px ${secondaryAccent}10;`} data-home-count-card>
+        <p class="font-display text-4xl font-black uppercase leading-none text-white" data-home-release-count>0</p>
+        <p class="mt-2 text-sm uppercase tracking-[0.14em] text-steel">catalogue releases</p>
+      </div>
     </div>
   </div>
 </section>

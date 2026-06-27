@@ -110,6 +110,19 @@ const catalogEndpoint = `/api/catalog?label=${encodeURIComponent(label)}`;
     const artistPath = `/artist/${encodeURIComponent(String(artist.slug || artist.name || "").toLowerCase())}`;
     const regionColor = (!showArtistRegionFilters && artist.release_label_color) || artist.mbp_region_color || "#bd00ff";
     const regionLabel = showArtistRegionFilters ? artist.mbp_region_label || "MBP World" : artist.release_label_name || artistLabelName;
+    const artistLabels = Array.isArray(artist.labels) && artist.labels.length
+      ? artist.labels
+      : [{ name: artist.release_label_name || artistLabelName, shortName: artist.release_label_short_name || "", color: artist.release_label_color || regionColor }];
+    const labelBadges = artistLabels
+      .map((label) => {
+        const labelColor = label.color || "#bd00ff";
+        const labelText = label.shortName || label.name || artistLabelName;
+        return `<span class="inline-flex rounded border px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.14em]" style="border-color:${escapeArtistHtml(labelColor)}66; color:${escapeArtistHtml(labelColor)}">${escapeArtistHtml(labelText)}</span>`;
+      })
+      .join("");
+    const regionBadge = showArtistRegionFilters
+      ? `<p class="mt-2 inline-flex rounded border px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.14em]" style="border-color:${escapeArtistHtml(regionColor)}66; color:${escapeArtistHtml(regionColor)}">${escapeArtistHtml(regionLabel)}</p>`
+      : "";
     return `
       <article class="rounded-lg border bg-carbon/80 p-5" style="border-color:${escapeArtistHtml(regionColor)}66; box-shadow:0 0 22px ${escapeArtistHtml(regionColor)}14;">
         <div class="flex items-center gap-4">
@@ -120,7 +133,8 @@ const catalogEndpoint = `/api/catalog?label=${encodeURIComponent(label)}`;
             <p class="text-xs font-bold uppercase tracking-[0.18em] text-neon-cyan">Artist</p>
             <h3 class="mt-2 font-display text-3xl font-black uppercase leading-none text-white"><a class="hover:text-neon-cyan" href="${escapeArtistHtml(artistPath)}">${escapeArtistHtml(artist.name)}</a></h3>
             <p class="mt-1 text-sm text-steel">${escapeArtistHtml(artist.country || "The MasterBeat Project")}</p>
-            <p class="mt-2 inline-flex rounded border px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.14em]" style="border-color:${escapeArtistHtml(regionColor)}66; color:${escapeArtistHtml(regionColor)}">${escapeArtistHtml(regionLabel)}</p>
+            ${regionBadge}
+            ${labelBadges ? `<div class="mt-2 flex flex-wrap gap-1.5">${labelBadges}</div>` : ""}
           </div>
         </div>
         <p class="mt-5 text-sm leading-6 text-haze">${escapeArtistHtml(artist.profile || "Artist profile coming soon.")}</p>

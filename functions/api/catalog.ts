@@ -42,6 +42,16 @@ function artistSortRank(artist: { name?: unknown }) {
   return ARTIST_PRIORITY.get(String(artist.name ?? "").toLowerCase()) ?? 1000;
 }
 
+function isReleaseTitleArtistName(value: string) {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return true;
+  if (/(?:^|[#&])x[0-9a-f]+;/.test(normalized)) return true;
+  if (normalized === "close to heaven (remixes)") return true;
+  if (/\((?:[^)]*\s)?remixes?\)?$/.test(normalized)) return true;
+  if (/\b(?:remix|remixes|compilation|compilations)\b/.test(normalized) && !/^(dj|mc)\b/.test(normalized)) return true;
+  return false;
+}
+
 async function updateReleaseRegionFromCredits(db: D1Database, releaseId: string) {
   try {
     const current = await db.prepare("SELECT mbp_region FROM releases WHERE id = ?").bind(releaseId).first<{ mbp_region?: string | null }>();
@@ -197,6 +207,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, waitUntil
 
   const publicArtists = artistRows
     .filter((artist) => !isCollabArtistName(String(artist.name ?? "")))
+    .filter((artist) => !isReleaseTitleArtistName(String(artist.name ?? "")))
     .map((artist) => {
       const artistLabelKeys = Array.from(artistLabelsByArtist.get(artist.id) ?? new Set<LabelKey>(["mbp"]));
       const displayLabel = selectedLabel ?? artistLabelKeys[0] ?? "mbp";

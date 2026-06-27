@@ -1,5 +1,6 @@
 import type { Env } from "../api/_shared";
 import { mbpRegionDetails, normalizeMbpRegion } from "../api/_shared";
+import { labelDetails, labelFromCatalogNumber } from "../api/_labels";
 import { absoluteUrl, escapeHtml, htmlResponse, notFoundPage, pageShell, SITE_NAME, SITE_URL } from "../_seo";
 
 type ArtistRow = {
@@ -86,13 +87,17 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
   const artistLinks = parseLinks(artist.links_json);
   const region = normalizeMbpRegion(artist.mbp_region);
   const regionInfo = mbpRegionDetails(region);
+  const releaseRows = releases.results ?? [];
+  const artistLabelDetails = Array.from(new Set(releaseRows.map((release) => labelFromCatalogNumber(release.catalog_number))))
+    .map((label) => labelDetails(label));
+  const showRegionPill = artistLabelDetails.length === 0 || artistLabelDetails.some((label) => label.key === "mbp");
+  const accentColor = artistLabelDetails[0]?.color ?? regionInfo.color;
   const canonicalPath = `/artist/${artist.slug}`;
   const description =
     publicProfile(artist) ||
     `${artist.name} is an artist connected to ${SITE_NAME}, a hardstyle, hard dance and electronic music label.`;
   const image = artist.image_url || "/assets/brand/logo-official-purple.png";
   const title = `${artist.name} - ${SITE_NAME} artist`;
-  const releaseRows = releases.results ?? [];
   const jsonLd = [
     {
       "@context": "https://schema.org",
@@ -133,14 +138,20 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
           <h1>${escapeHtml(artist.name)}</h1>
           <p>${escapeHtml(artist.country || SITE_NAME)}</p>
           <div class="meta">
-            <span class="pill" style="border-color:${escapeHtml(regionInfo.color)}66;color:${escapeHtml(regionInfo.color)}">${escapeHtml(regionInfo.label)}</span>
+            ${showRegionPill ? `<span class="pill" style="border-color:${escapeHtml(regionInfo.color)}66;color:${escapeHtml(regionInfo.color)}">${escapeHtml(regionInfo.label)}</span>` : ""}
+            ${artistLabelDetails
+              .map(
+                (label) =>
+                  `<span class="pill" style="border-color:${escapeHtml(label.color)}66;color:${escapeHtml(label.color)}">${escapeHtml(label.name)}</span>`
+              )
+              .join("")}
           </div>
         </section>
         <section class="grid">
           <div>
-            <img class="art" style="border-color:${escapeHtml(regionInfo.color)}66;box-shadow:0 0 34px ${escapeHtml(regionInfo.color)}24" src="${escapeHtml(absoluteUrl(image))}" alt="${escapeHtml(artist.name)} artist profile image" />
+            <img class="art" style="border-color:${escapeHtml(accentColor)}66;box-shadow:0 0 34px ${escapeHtml(accentColor)}24" src="${escapeHtml(absoluteUrl(image))}" alt="${escapeHtml(artist.name)} artist profile image" />
           </div>
-          <article class="card" style="border-color:${escapeHtml(regionInfo.color)}55;box-shadow:0 0 28px ${escapeHtml(regionInfo.color)}14">
+          <article class="card" style="border-color:${escapeHtml(accentColor)}55;box-shadow:0 0 28px ${escapeHtml(accentColor)}14">
             <p>${escapeHtml(description)}</p>
             <div class="links">
               ${artistLinks

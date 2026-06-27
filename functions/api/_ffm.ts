@@ -22,10 +22,53 @@ function decodeHtml(value: string | null) {
   return value
     .replace(/&amp;/g, "&")
     .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
     .replace(/&#39;/g, "'")
+    .replace(/&#x([0-9a-f]+);/gi, (_, code) => {
+      try {
+        return String.fromCodePoint(parseInt(code, 16));
+      } catch {
+        return "";
+      }
+    })
+    .replace(/&#(\d+);/g, (_, code) => {
+      try {
+        return String.fromCodePoint(Number(code));
+      } catch {
+        return "";
+      }
+    })
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .trim();
+}
+
+function decodeJsString(value: string | null) {
+  if (!value) return null;
+  return decodeHtml(
+    value
+      .replace(/\\u002F/g, "/")
+      .replace(/\\"/g, '"')
+      .replace(/\\'/g, "'")
+      .replace(/\\\\/g, "\\")
+  );
+}
+
+function quotedListValues(value: string) {
+  return Array.from(value.matchAll(/"((?:\\.|[^"\\])*)"/g))
+    .map((match) => decodeJsString(match[1]))
+    .filter((item): item is string => Boolean(item && item.trim()));
+}
+
+function metadataArtistsFromHtml(html: string) {
+  const normalized = html.replace(/\\u002F/g, "/").replace(/&amp;/g, "&");
+  const match =
+    normalized.match(/metadata:\{[\s\S]*?artists:\[([^\]]*)\]/i) ??
+    normalized.match(/["']artists["']\s*:\s*\[([^\]]*)\]/i);
+  if (!match) return null;
+
+  const artists = quotedListValues(match[1]);
+  return artists.length ? artists.join(", ") : null;
 }
 
 function meta(html: string, key: string) {
@@ -88,7 +131,8 @@ export function parseFfmRelease(catalogNumber: string, ffmUrl: string, html: str
   const description = meta(html, "og:description") ?? meta(html, "description");
   const artworkUrl = coverImageFromHtml(html) ?? meta(html, "og:image");
   const [artistPart, ...trackParts] = title.split(" - ");
-  const artist = artistPart?.trim() || "Unknown Artist";
+  const metadataArtist = metadataArtistsFromHtml(normalized);
+  const artist = metadataArtist || (trackParts.length > 0 ? artistPart?.trim() : "") || "Unknown Artist";
   const trackTitle = trackParts.join(" - ").trim() || title;
   const linkCandidates: ParsedFfmRelease["platformLinks"] = [];
   const seenFfmUrls = new Set<string>();
