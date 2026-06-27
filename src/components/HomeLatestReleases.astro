@@ -86,7 +86,7 @@
       homeRegionLabels.forEach((element) => {
         const key = element.getAttribute("data-home-region-label");
         const count = Number(regionMap.get(key) ?? 0);
-        const baseLabel = element.textContent.replace(/\s+releases?$/i, "").trim();
+        const baseLabel = element.getAttribute("data-home-region-name") || element.textContent.replace(/\s+releases?$/gi, "").trim();
         element.textContent = `${baseLabel} ${count === 1 ? "release" : "releases"}`;
       });
       homeRegionCounts?.classList.remove("hidden");
