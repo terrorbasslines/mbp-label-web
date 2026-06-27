@@ -730,6 +730,144 @@ export async function sendAgreementReviewEmail(
   return { sent: true, status: "agreement_email_sent" };
 }
 
+function emailHtmlEscape(value: unknown) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function absoluteSiteUrl(value: string) {
+  try {
+    return new URL(value, "https://themasterbeatproject.com").toString();
+  } catch {
+    return "https://themasterbeatproject.com";
+  }
+}
+
+function uniqueEmailRecipients(recipients: string[]) {
+  const seen = new Set<string>();
+  return recipients
+    .map((email) => String(email || "").trim().toLowerCase())
+    .filter((email) => {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || seen.has(email)) return false;
+      seen.add(email);
+      return true;
+    });
+}
+
+function chunkArray<T>(items: T[], size: number) {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) chunks.push(items.slice(index, index + size));
+  return chunks;
+}
+
+export async function sendNewsPublishedEmail(
+  env: Env,
+  input: {
+    recipients: string[];
+    title: string;
+    excerpt: string;
+    category: string;
+    articleUrl: string;
+    imageUrl: string;
+    authorName?: string | null;
+  }
+) {
+  const config = emailConfig(env);
+  if (!config.ok) {
+    return { sent: false, status: config.status, recipient_count: 0 };
+  }
+
+  const recipients = uniqueEmailRecipients(input.recipients);
+  if (!recipients.length) {
+    return { sent: false, status: "news_email_no_recipients", recipient_count: 0 };
+  }
+
+  const articleUrl = absoluteSiteUrl(input.articleUrl);
+  const imageUrl = absoluteSiteUrl(input.imageUrl);
+  const title = String(input.title || "New MBP article").trim();
+  const excerpt = String(input.excerpt || "A new article has been published on The MasterBeat Project.").trim();
+  const category = String(input.category || "MBP News").trim();
+  const authorName = String(input.authorName || "The MasterBeat Project").trim();
+  const text = [
+    "New article published on The MasterBeat Project.",
+    "",
+    title,
+    "",
+    excerpt,
+    "",
+    `Category: ${category}`,
+    `Author: ${authorName}`,
+    "",
+    `Read it here: ${articleUrl}`,
+    "",
+    "The MasterBeat Project"
+  ].join("\n");
+  const html = `<!doctype html>
+<html>
+  <body style="margin:0;background:#050508;color:#ffffff;font-family:Arial,sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#050508;padding:28px 12px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:680px;border:1px solid rgba(255,255,255,.14);border-radius:12px;overflow:hidden;background:#101119;">
+            <tr>
+              <td background="${emailHtmlEscape(imageUrl)}" style="background-image:linear-gradient(90deg,rgba(5,5,8,.94),rgba(5,5,8,.76)),url('${emailHtmlEscape(imageUrl)}');background-size:cover;background-position:center;padding:40px 34px;">
+                <p style="margin:0 0 14px;color:#22f7ff;font-size:12px;font-weight:900;letter-spacing:3px;text-transform:uppercase;">New article published</p>
+                <h1 style="margin:0;color:#ffffff;font-size:36px;line-height:1.02;text-transform:uppercase;">${emailHtmlEscape(title)}</h1>
+                <p style="margin:18px 0 0;color:#d6d8e2;font-size:16px;line-height:1.65;">${emailHtmlEscape(excerpt)}</p>
+                <p style="margin:18px 0 0;color:#aeb5c8;font-size:12px;letter-spacing:2px;text-transform:uppercase;">${emailHtmlEscape(category)} | ${emailHtmlEscape(authorName)}</p>
+                <p style="margin:28px 0 0;">
+                  <a href="${emailHtmlEscape(articleUrl)}" style="display:inline-block;background:#ffffff;color:#000000;border-radius:8px;padding:13px 18px;font-size:13px;font-weight:900;letter-spacing:2px;text-decoration:none;text-transform:uppercase;">Read article</a>
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:18px 34px;color:#8f94a8;font-size:12px;line-height:1.6;">
+                You are receiving this because this email has a The MasterBeat Project account.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+
+  let sentCount = 0;
+  for (const chunk of chunkArray(recipients, 90)) {
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${config.apiKey}`,
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          from: config.from,
+          to: config.from,
+          bcc: chunk,
+          reply_to: config.replyTo,
+          subject: `New MBP article: ${title}`,
+          text,
+          html
+        })
+      });
+
+      if (!response.ok) {
+        return { sent: false, status: emailFailureStatus(response.status), recipient_count: sentCount };
+      }
+      sentCount += chunk.length;
+    } catch {
+      return { sent: false, status: "email_failed_network", recipient_count: sentCount };
+    }
+  }
+
+  return { sent: true, status: "news_email_sent", recipient_count: sentCount };
+}
+
 export async function sendArtistInviteEmail(env: Env, input: { to: string; artistName: string; claimUrl: string; role: string }) {
   const config = emailConfig(env);
   if (!config.ok) {

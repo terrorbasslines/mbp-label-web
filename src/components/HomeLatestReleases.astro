@@ -26,6 +26,7 @@
   const homeReleaseCount = document.querySelector("[data-home-release-count]");
   const homeRegionCounts = document.querySelector("[data-home-region-counts]");
   const homeRegionCountValues = [...document.querySelectorAll("[data-home-region-count]")];
+  const homeRegionLabels = [...document.querySelectorAll("[data-home-region-label]")];
 
   const escapeLatestHtml = (value) =>
     String(value ?? "")
@@ -81,6 +82,12 @@
       homeRegionCountValues.forEach((element) => {
         const key = element.getAttribute("data-home-region-count");
         element.textContent = String(regionMap.get(key) ?? 0);
+      });
+      homeRegionLabels.forEach((element) => {
+        const key = element.getAttribute("data-home-region-label");
+        const count = Number(regionMap.get(key) ?? 0);
+        const baseLabel = element.textContent.replace(/\s+releases?$/i, "").trim();
+        element.textContent = `${baseLabel} ${count === 1 ? "release" : "releases"}`;
       });
       homeRegionCounts?.classList.remove("hidden");
     }

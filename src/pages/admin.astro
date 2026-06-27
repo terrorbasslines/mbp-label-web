@@ -1921,7 +1921,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         if (newsUploadStatus) newsUploadStatus.textContent = "Cover image uploaded.";
       }
       syncNewsCategoryHidden();
-      await api(editingNewsId ? `/api/admin/news/${editingNewsId}` : "/api/admin/news", {
+      const result = await api(editingNewsId ? `/api/admin/news/${editingNewsId}` : "/api/admin/news", {
         method: editingNewsId ? "PUT" : "POST",
         body: JSON.stringify({
           title,
@@ -1940,7 +1940,10 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           content: contentHtml
         })
       });
-      setNewsBusy(false, editingNewsId ? "Article updated." : "Article saved.");
+      const emailStatus = result.email?.status && !String(result.email.status).startsWith("news_email_not_")
+        ? ` Email: ${result.email.status}${Number.isFinite(result.email.recipient_count) ? ` (${result.email.recipient_count})` : ""}.`
+        : "";
+      setNewsBusy(false, `${editingNewsId ? "Article updated." : "Article saved."}${emailStatus}`);
       resetNewsEditor();
       pages.news = 1;
       await loadDashboard();
@@ -2145,7 +2148,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       if (!article) return;
       if (dashboardStatus) dashboardStatus.textContent = nextStatus === "published" ? "Publishing article..." : "Moving article to draft...";
       try {
-        await api(`/api/admin/news/${newsStatusId}`, {
+        const result = await api(`/api/admin/news/${newsStatusId}`, {
           method: "PUT",
           body: JSON.stringify({
             title: article.title,
@@ -2165,6 +2168,12 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           })
         });
         await loadDashboard();
+        if (dashboardStatus) {
+          const emailStatus = result.email?.status && !String(result.email.status).startsWith("news_email_not_")
+            ? ` Email: ${result.email.status}${Number.isFinite(result.email.recipient_count) ? ` (${result.email.recipient_count})` : ""}.`
+            : "";
+          dashboardStatus.textContent = `Article ${nextStatus === "published" ? "published" : "moved to draft"}.${emailStatus}`;
+        }
       } catch (error) {
         if (dashboardStatus) dashboardStatus.textContent = error.message || "Article status could not be changed.";
       }

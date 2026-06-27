@@ -49,6 +49,18 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
           <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-bold uppercase text-haze hover:border-neon-cyan hover:text-white" data-brand-tab="S7" type="button">S7</button>
         </div>
 
+        <div class="mt-5 flex flex-col gap-3 rounded-md border border-white/10 bg-black/25 p-3 sm:flex-row sm:items-center sm:justify-between" data-calendar-pagination hidden>
+          <p class="text-xs font-bold uppercase tracking-[0.14em] text-steel" data-calendar-page-info></p>
+          <div class="flex flex-wrap gap-2">
+            <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-haze hover:border-neon-cyan hover:text-white disabled:cursor-not-allowed disabled:opacity-40" data-calendar-page-prev type="button">
+              Previous
+            </button>
+            <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-haze hover:border-neon-cyan hover:text-white disabled:cursor-not-allowed disabled:opacity-40" data-calendar-page-next type="button">
+              Next
+            </button>
+          </div>
+        </div>
+
         <div class="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3" data-preview-list></div>
       </div>
     </div>
@@ -66,11 +78,17 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
   const summaryEl = document.querySelector("[data-import-summary]");
   const previewList = document.querySelector("[data-preview-list]");
   const brandTabs = document.querySelector("[data-brand-tabs]");
+  const paginationEl = document.querySelector("[data-calendar-pagination]");
+  const pageInfoEl = document.querySelector("[data-calendar-page-info]");
+  const prevPageButton = document.querySelector("[data-calendar-page-prev]");
+  const nextPageButton = document.querySelector("[data-calendar-page-next]");
   const decoder = new TextDecoder("utf-8");
   let parsedRows = [];
   let calendarRows = [];
   let activeBrand = "MBP";
   let activeFileName = "";
+  let activePage = 1;
+  const pageSize = 24;
 
   const brandColors = { MBP: "#bd00ff", MBH: "#00e5ff", S7: "#ffd000" };
 
@@ -310,11 +328,28 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
       .join("");
   }
 
+  function renderPagination(totalRows, totalPages) {
+    if (!paginationEl || !pageInfoEl) return;
+    const shouldShow = totalRows > pageSize;
+    paginationEl.hidden = !shouldShow;
+    if (!shouldShow) return;
+
+    const start = (activePage - 1) * pageSize + 1;
+    const end = Math.min(totalRows, activePage * pageSize);
+    pageInfoEl.textContent = `${activeBrand} | ${totalRows} rows | Page ${activePage} / ${totalPages} | Showing ${start}-${end}`;
+    if (prevPageButton instanceof HTMLButtonElement) prevPageButton.disabled = activePage <= 1;
+    if (nextPageButton instanceof HTMLButtonElement) nextPageButton.disabled = activePage >= totalPages;
+  }
+
   function renderRows(rows) {
     if (!previewList) return;
-    const filtered = rows.filter((row) => row.brand === activeBrand).slice(0, 120);
+    const filtered = rows.filter((row) => row.brand === activeBrand);
+    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    activePage = Math.min(Math.max(1, activePage), totalPages);
+    const pageRows = filtered.slice((activePage - 1) * pageSize, activePage * pageSize);
+    renderPagination(filtered.length, totalPages);
     previewList.innerHTML = filtered.length
-      ? filtered
+      ? pageRows
           .map((row) => {
             const color = brandColors[row.brand] || "#bd00ff";
             return `<article class="rounded-md border bg-black/35 p-4" style="border-color:${color}66;">
@@ -374,6 +409,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
     if (statusEl) statusEl.textContent = "Parsing Excel calendar...";
     try {
       parsedRows = await parseWorkbook(file);
+      activePage = 1;
       activeFileName = file.name;
       if (importButton instanceof HTMLButtonElement) importButton.disabled = parsedRows.length === 0;
       if (statusEl) statusEl.textContent = `Preview ready: ${parsedRows.length} importable rows from ${file.name}.`;
@@ -399,6 +435,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
       });
       if (statusEl) statusEl.textContent = `Imported ${result.imported} rows. Reloading calendar...`;
       parsedRows = [];
+      activePage = 1;
       await loadCalendar();
       if (statusEl) statusEl.textContent = `Import complete. MBP ${result.summary?.MBP?.imported || 0}, MBH ${result.summary?.MBH?.imported || 0}, S7 ${result.summary?.S7?.imported || 0}.`;
     } catch (error) {
@@ -411,6 +448,17 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
     const button = event.target instanceof Element ? event.target.closest("[data-brand-tab]") : null;
     if (!button) return;
     activeBrand = button.getAttribute("data-brand-tab") || "MBP";
+    activePage = 1;
+    render();
+  });
+
+  prevPageButton?.addEventListener("click", () => {
+    activePage = Math.max(1, activePage - 1);
+    render();
+  });
+
+  nextPageButton?.addEventListener("click", () => {
+    activePage += 1;
     render();
   });
 

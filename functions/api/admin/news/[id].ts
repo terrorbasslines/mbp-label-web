@@ -21,6 +21,7 @@ import {
   stripHtml,
   uniqueArticleSlug
 } from "../../_news";
+import { sendPublishedNewsNotification } from "../_news_publish_email";
 
 export const onRequestPut: PagesFunction<Env> = async ({ params, request, env }) => {
   const admin = await requireAdmin(request, env);
@@ -85,7 +86,11 @@ export const onRequestPut: PagesFunction<Env> = async ({ params, request, env })
       .run();
 
     const article = await findArticleById(db, articleId);
-    return json({ ok: true, article: article ? serializeArticle(article) : { id: articleId, slug, title } });
+    const email =
+      article && existing.status !== "published" && status === "published"
+        ? await sendPublishedNewsNotification(db, env, article)
+        : { sent: false, status: "news_email_not_newly_published", recipient_count: 0 };
+    return json({ ok: true, article: article ? serializeArticle(article) : { id: articleId, slug, title }, email });
   } catch (error) {
     if (isNewsTableMissing(error)) {
       return json(

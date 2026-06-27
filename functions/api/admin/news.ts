@@ -25,6 +25,7 @@ import {
   type NewsCategoryRow,
   type NewsArticleRow
 } from "../_news";
+import { sendPublishedNewsNotification } from "./_news_publish_email";
 
 async function listNewsAuthors(db: D1Database) {
   const names = new Set<string>(["The MasterBeat Project"]);
@@ -229,7 +230,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       .run();
 
     const article = await findArticleById(db, articleId);
-    return json({ ok: true, article: article ? serializeArticle(article) : { id: articleId, slug, title } }, { status: 201 });
+    const email = article && status === "published" ? await sendPublishedNewsNotification(db, env, article) : { sent: false, status: "news_email_not_published", recipient_count: 0 };
+    return json({ ok: true, article: article ? serializeArticle(article) : { id: articleId, slug, title }, email }, { status: 201 });
   } catch (error) {
     if (isNewsTableMissing(error)) {
       return json(

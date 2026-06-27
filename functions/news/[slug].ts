@@ -98,7 +98,12 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
   const title = String(articleSeoTitle(article));
   const description = String(articleSeoDescription(article));
   const previewImageParam = isDraftPreview ? "&preview=admin" : "";
-  const image = article.cover_image_url || `/news/${article.slug}/social-image.svg?platform=og${previewImageParam}`;
+  const ogAsset = `/news/${article.slug}/social-image.svg?platform=og${previewImageParam}`;
+  const instagramPostAsset = `/news/${article.slug}/social-image.svg?platform=instagram-post${previewImageParam}`;
+  const instagramStoryAsset = `/news/${article.slug}/social-image.svg?platform=instagram-story${previewImageParam}`;
+  const articleCoverImage = article.cover_image_url || "/assets/brand/season4-banner.png";
+  const image = ogAsset;
+  const socialFileSlug = article.slug.replace(/[^a-z0-9-]+/gi, "-").replace(/^-+|-+$/g, "") || "mbp-news";
   const publishedDate = formatDate(article.published_at || article.created_at);
   const shareText = `${article.title} | ${SITE_NAME}`;
   const shareUrl = encodeURIComponent(canonicalUrl);
@@ -144,7 +149,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
       noindex: isDraftPreview,
       content: `
         <style>
-          .news-article{width:min(1040px,100%);margin:0 auto;padding-bottom:76px}.news-cover{width:100%;aspect-ratio:16/9;border:1px solid var(--line);border-radius:8px;background:#000;object-fit:cover}.article-body{margin-top:32px}.article-body p{font-size:17px;line-height:1.85}.article-body h2,.article-body h3{margin:34px 0 10px;font-size:clamp(24px,3vw,34px);text-transform:uppercase;letter-spacing:0;font-weight:1000}.article-body ul{margin:18px 0 0;padding-left:22px;color:var(--muted);line-height:1.8}.article-body img{max-width:100%;border:1px solid var(--line);border-radius:8px;background:#000}.article-body figure{margin:26px 0}.article-body .media-embed{overflow:hidden;border:1px solid var(--line);border-radius:8px;background:#000}.article-body .media-embed iframe,.article-body .media-embed video{display:block;width:100%;aspect-ratio:16/9;border:0;background:#000}.article-body .media-embed audio{display:block;width:100%;border:0}.share-panel{margin-top:44px}.share-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.reaction-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.reaction-grid button{display:grid;min-height:104px;place-items:center;gap:5px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.025));color:#fff;padding:12px 8px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;cursor:pointer}.reaction-grid button:hover,.reaction-grid button:focus-visible{border-color:var(--cyan);color:var(--cyan);outline:none;box-shadow:0 0 0 1px rgba(34,247,255,.38),0 0 22px rgba(34,247,255,.14)}.reaction-icon{display:grid;width:34px;height:34px;place-items:center;color:var(--cyan);filter:drop-shadow(0 0 8px rgba(34,247,255,.34))}.reaction-icon svg{display:block;width:34px;height:34px;fill:none;stroke:currentColor;stroke-width:2.35;stroke-linecap:round;stroke-linejoin:round}.reaction-count{display:block;font-size:18px;line-height:1;color:#fff}.reaction-name{display:block;font-size:10px;line-height:1.1;color:#aeb5c8;letter-spacing:.11em}.comment{border:1px solid var(--line);border-radius:6px;padding:14px;background:rgba(255,255,255,.035)}textarea{width:100%;min-height:120px;border:1px solid var(--line);border-radius:6px;background:#050508;color:#fff;padding:12px;font:inherit}button.submit{border:0;border-radius:6px;background:#fff;color:#000;padding:12px 16px;font-weight:1000;text-transform:uppercase;letter-spacing:.12em;cursor:pointer}.thumb-links{display:grid;gap:8px;margin-top:12px}.thumb-links a{display:block;border:1px solid var(--line);border-radius:6px;padding:10px 12px;text-decoration:none;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:#d6d8e2}.thumb-links a:hover{border-color:var(--cyan);color:var(--cyan)}@media (max-width:860px){.share-grid{grid-template-columns:1fr 1fr}.reaction-grid{grid-template-columns:1fr 1fr}.reaction-grid button{min-height:98px}}@media (max-width:520px){.reaction-grid,.share-grid{grid-template-columns:1fr}}
+          .news-article{width:min(1040px,100%);margin:0 auto;padding-bottom:76px}.news-cover{width:100%;aspect-ratio:16/9;border:1px solid var(--line);border-radius:8px;background:#000;object-fit:cover}.article-body{margin-top:32px}.article-body p{font-size:17px;line-height:1.85}.article-body h2,.article-body h3{margin:34px 0 10px;font-size:clamp(24px,3vw,34px);text-transform:uppercase;letter-spacing:0;font-weight:1000}.article-body ul{margin:18px 0 0;padding-left:22px;color:var(--muted);line-height:1.8}.article-body img{max-width:100%;border:1px solid var(--line);border-radius:8px;background:#000}.article-body figure{margin:26px 0}.article-body .media-embed{overflow:hidden;border:1px solid var(--line);border-radius:8px;background:#000}.article-body .media-embed iframe,.article-body .media-embed video{display:block;width:100%;aspect-ratio:16/9;border:0;background:#000}.article-body .media-embed audio{display:block;width:100%;border:0}.share-panel{margin-top:44px}.share-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.reaction-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.reaction-grid button{display:grid;min-height:104px;place-items:center;gap:5px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.025));color:#fff;padding:12px 8px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;cursor:pointer}.reaction-grid button:hover,.reaction-grid button:focus-visible{border-color:var(--cyan);color:var(--cyan);outline:none;box-shadow:0 0 0 1px rgba(34,247,255,.38),0 0 22px rgba(34,247,255,.14)}.reaction-icon{display:grid;width:34px;height:34px;place-items:center;color:var(--cyan);filter:drop-shadow(0 0 8px rgba(34,247,255,.34))}.reaction-icon svg{display:block;width:34px;height:34px;fill:none;stroke:currentColor;stroke-width:2.35;stroke-linecap:round;stroke-linejoin:round}.reaction-count{display:block;font-size:18px;line-height:1;color:#fff}.reaction-name{display:block;font-size:10px;line-height:1.1;color:#aeb5c8;letter-spacing:.11em}.comment{border:1px solid var(--line);border-radius:6px;padding:14px;background:rgba(255,255,255,.035)}textarea{width:100%;min-height:120px;border:1px solid var(--line);border-radius:6px;background:#050508;color:#fff;padding:12px;font:inherit}button.submit{border:0;border-radius:6px;background:#fff;color:#000;padding:12px 16px;font-weight:1000;text-transform:uppercase;letter-spacing:.12em;cursor:pointer}.thumb-links{display:grid;gap:8px;margin-top:12px}.thumb-links a,.thumb-links button{display:block;width:100%;border:1px solid var(--line);border-radius:6px;background:transparent;padding:10px 12px;text-align:left;text-decoration:none;font:inherit;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:#d6d8e2;cursor:pointer}.thumb-links a:hover,.thumb-links button:hover,.thumb-links button:focus-visible{border-color:var(--cyan);color:var(--cyan);outline:none}.thumb-links button:disabled{cursor:wait;opacity:.58}.share-status{margin-top:10px;font-size:13px;color:var(--muted)}@media (max-width:860px){.share-grid{grid-template-columns:1fr 1fr}.reaction-grid{grid-template-columns:1fr 1fr}.reaction-grid button{min-height:98px}}@media (max-width:520px){.reaction-grid,.share-grid{grid-template-columns:1fr}}
         </style>
         <section class="hero">
           <p class="eyebrow">${escapeHtml(article.category || "MBP News")}</p>
@@ -157,12 +162,12 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
           </div>
         </section>
         <section class="news-article">
-          <img class="news-cover" src="${escapeHtml(absoluteUrl(article.cover_image_url || "/assets/brand/season4-banner.png"))}" alt="${escapeHtml(article.title)} news artwork" />
+          <img class="news-cover" src="${escapeHtml(absoluteUrl(articleCoverImage))}" alt="${escapeHtml(article.title)} news artwork" />
           <article class="article-body">${renderArticleBody(article.content)}</article>
           <section class="card share-panel">
             <p class="eyebrow">Share article</p>
             <h2>Social-ready story</h2>
-            <p>Share this MBP news update directly, or open generated thumbnails prepared for common social formats.</p>
+            <p>Share this MBP news update directly. On mobile, Instagram post and story assets open the system share sheet as PNG files; on desktop they download as PNG.</p>
             ${
               isDraftPreview
                 ? `<p class="status" style="font-size:13px;color:var(--muted)">Draft previews are private. Publish this article before using public social share links.</p>`
@@ -174,10 +179,11 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
                   </div>`
             }
             <div class="thumb-links">
-              <a href="/news/${escapeHtml(article.slug)}/social-image.svg?platform=og${previewImageParam}" target="_blank" rel="noreferrer">Open Graph 1200x630</a>
-              <a href="/news/${escapeHtml(article.slug)}/social-image.svg?platform=instagram-post${previewImageParam}" target="_blank" rel="noreferrer">Instagram post 1080x1080</a>
-              <a href="/news/${escapeHtml(article.slug)}/social-image.svg?platform=instagram-story${previewImageParam}" target="_blank" rel="noreferrer">Instagram story 1080x1920</a>
+              <a href="${escapeHtml(ogAsset)}" target="_blank" rel="noreferrer">Open Graph 1200x630</a>
+              <button data-social-asset data-social-url="${escapeHtml(instagramPostAsset)}" data-social-width="1080" data-social-height="1080" data-social-name="${escapeHtml(`${socialFileSlug}-instagram-post.png`)}" type="button">Instagram post 1080x1080</button>
+              <button data-social-asset data-social-url="${escapeHtml(instagramStoryAsset)}" data-social-width="1080" data-social-height="1920" data-social-name="${escapeHtml(`${socialFileSlug}-instagram-story.png`)}" type="button">Instagram story 1080x1920</button>
             </div>
+            <p class="share-status" data-social-share-status></p>
             <div class="card" style="margin-top:22px;padding:18px">
               <p class="eyebrow">Artist reactions</p>
               <div class="reaction-grid" data-news-reactions>
@@ -207,12 +213,98 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
             var commentsEl = document.querySelector("[data-news-comments]");
             var commentForm = document.querySelector("[data-news-comment-form]");
             var commentLogin = document.querySelector("[data-news-comment-login]");
+            var socialShareStatus = document.querySelector("[data-social-share-status]");
             var authenticated = false;
             var canEngage = false;
+            var shareTitle = ${JSON.stringify(shareText)};
             function esc(value) {
               return String(value == null ? "" : value).replace(/[&<>"']/g, function (char) {
                 return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char];
               });
+            }
+            function setSocialStatus(message) {
+              if (socialShareStatus) socialShareStatus.textContent = message || "";
+            }
+            function isLikelyMobile() {
+              return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+            }
+            function loadImage(src) {
+              return new Promise(function (resolve, reject) {
+                var image = new Image();
+                image.onload = function () { resolve(image); };
+                image.onerror = function () { reject(new Error("Social artwork could not be rendered.")); };
+                image.src = src;
+              });
+            }
+            function blobFromCanvas(canvas) {
+              return new Promise(function (resolve, reject) {
+                canvas.toBlob(function (blob) {
+                  if (blob) resolve(blob);
+                  else reject(new Error("PNG export is not available in this browser."));
+                }, "image/png", 0.96);
+              });
+            }
+            function downloadBlob(blob, filename) {
+              var url = URL.createObjectURL(blob);
+              var link = document.createElement("a");
+              link.href = url;
+              link.download = filename || "mbp-news.png";
+              document.body.appendChild(link);
+              link.click();
+              link.remove();
+              window.setTimeout(function () { URL.revokeObjectURL(url); }, 1200);
+            }
+            async function renderSocialPng(assetUrl, width, height) {
+              var response = await fetch(assetUrl, { credentials: "same-origin", cache: "no-store" });
+              if (!response.ok) throw new Error("Social artwork is not available.");
+              var svg = await response.text();
+              var svgUrl = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
+              try {
+                var image = await loadImage(svgUrl);
+                var canvas = document.createElement("canvas");
+                canvas.width = width;
+                canvas.height = height;
+                var context = canvas.getContext("2d");
+                if (!context) throw new Error("Canvas is not available in this browser.");
+                context.drawImage(image, 0, 0, width, height);
+                return await blobFromCanvas(canvas);
+              } finally {
+                URL.revokeObjectURL(svgUrl);
+              }
+            }
+            async function handleSocialAsset(button) {
+              var assetUrl = button.getAttribute("data-social-url") || "";
+              var width = Number(button.getAttribute("data-social-width") || 1080);
+              var height = Number(button.getAttribute("data-social-height") || 1080);
+              var filename = button.getAttribute("data-social-name") || "mbp-news.png";
+              var originalText = button.textContent;
+              button.disabled = true;
+              button.textContent = "Preparing PNG...";
+              setSocialStatus("");
+              try {
+                var blob = await renderSocialPng(assetUrl, width, height);
+                var file = typeof File !== "undefined" ? new File([blob], filename, { type: "image/png" }) : null;
+                var shareData = file
+                  ? {
+                    files: [file],
+                    title: shareTitle,
+                    text: shareTitle
+                  }
+                  : null;
+                if (isLikelyMobile() && shareData && navigator.canShare && navigator.canShare(shareData)) {
+                  await navigator.share(shareData);
+                  setSocialStatus("Share sheet opened. Choose Instagram post or story from the app list.");
+                } else {
+                  downloadBlob(blob, filename);
+                  setSocialStatus("PNG downloaded. Upload it to Instagram from the downloaded file.");
+                }
+              } catch (error) {
+                setSocialStatus(error && error.message ? error.message : "Social artwork export failed. Opening the source image instead.");
+                if (assetUrl) window.open(assetUrl, "_blank", "noopener,noreferrer");
+              } finally {
+                button.disabled = false;
+                button.textContent = originalText;
+              }
             }
             function request(path, options) {
               return fetch(path, Object.assign({ credentials: "same-origin" }, options || {}, {
@@ -250,6 +342,11 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
             document.addEventListener("click", function (event) {
               var target = event.target;
               if (!(target instanceof HTMLElement)) return;
+              var socialButton = target.closest("[data-social-asset]");
+              if (socialButton) {
+                handleSocialAsset(socialButton);
+                return;
+              }
               var button = target.closest("[data-reaction]");
               if (!button) return;
               if (!canEngage) {

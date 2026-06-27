@@ -127,11 +127,15 @@ export function pageShell(input: {
     <meta property="og:title" content="${escapeHtml(title)}" />
     <meta property="og:description" content="${escapeHtml(input.description)}" />
     <meta property="og:image" content="${escapeHtml(image)}" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="${escapeHtml(input.title)}" />
     <meta property="og:url" content="${escapeHtml(canonical)}" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${escapeHtml(title)}" />
     <meta name="twitter:description" content="${escapeHtml(input.description)}" />
     <meta name="twitter:image" content="${escapeHtml(image)}" />
+    <meta name="twitter:image:alt" content="${escapeHtml(input.title)}" />
     ${jsonLd.map((item) => `<script type="application/ld+json">${safeJsonLd(item)}</script>`).join("\n    ")}
     <style>
       :root{color-scheme:dark;--bg:#050508;--panel:#11121a;--line:rgba(255,255,255,.12);--text:#fff;--muted:#b8bdd1;--cyan:#22f7ff;--violet:#8f35ff}
