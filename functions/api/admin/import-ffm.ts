@@ -1,4 +1,4 @@
-import { catalogNumberFromIndex, parseFfmRelease } from "../_ffm";
+import { catalogNumberFromIndex, parseFfmRelease, remixCatalogNumberFromIndex } from "../_ffm";
 import { id, inferReleaseRegion, isResponse, json, methodNotAllowed, readJson, requireAdmin, requireDb, slugify, syncReleaseArtistCredits, type Env } from "../_shared";
 
 async function releaseRegionFromCredits(db: D1Database, releaseId: string) {
@@ -18,25 +18,26 @@ async function upsertParsedRelease(db: D1Database, parsed: NonNullable<ReturnTyp
   let release = await db.prepare("SELECT id FROM releases WHERE catalog_number = ?").bind(parsed.catalogNumber).first<{ id: string }>();
   const releaseId = release?.id ?? id("rel");
   const slug = slugify(`${parsed.catalogNumber}-${parsed.artist}-${parsed.trackTitle}`);
+  const releaseType = parsed.catalogNumber.endsWith("R") ? "remix" : "single";
 
   if (release) {
     await db
       .prepare(
         `UPDATE releases
-         SET slug = ?, title = ?, artist_display = ?, primary_artist_id = ?, release_type = 'single', artwork_url = ?,
+         SET slug = ?, title = ?, artist_display = ?, primary_artist_id = ?, release_type = ?, artwork_url = ?,
              ffm_url = ?, presave_url = ?, status = ?, mbp_region = 'world', description = ?, updated_at = CURRENT_TIMESTAMP
          WHERE id = ?`
       )
-      .bind(slug, parsed.trackTitle, parsed.artist, null, parsed.artworkUrl, parsed.ffmUrl, parsed.ffmUrl, parsed.status, parsed.description, releaseId)
+      .bind(slug, parsed.trackTitle, parsed.artist, null, releaseType, parsed.artworkUrl, parsed.ffmUrl, parsed.ffmUrl, parsed.status, parsed.description, releaseId)
       .run();
   } else {
     await db
       .prepare(
         `INSERT INTO releases
          (id, catalog_number, slug, title, artist_display, primary_artist_id, release_type, artwork_url, ffm_url, presave_url, status, mbp_region, description, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, 'single', ?, ?, ?, ?, 'world', ?, CURRENT_TIMESTAMP)`
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'world', ?, CURRENT_TIMESTAMP)`
       )
-      .bind(releaseId, parsed.catalogNumber, slug, parsed.trackTitle, parsed.artist, null, parsed.artworkUrl, parsed.ffmUrl, parsed.ffmUrl, parsed.status, parsed.description)
+      .bind(releaseId, parsed.catalogNumber, slug, parsed.trackTitle, parsed.artist, null, releaseType, parsed.artworkUrl, parsed.ffmUrl, parsed.ffmUrl, parsed.status, parsed.description)
       .run();
   }
 
@@ -85,23 +86,26 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const skipped = [];
 
   for (let index = from; index <= to; index += 1) {
-    const catalogNumber = catalogNumberFromIndex(index);
-    const ffmUrl = `https://ffm.to/${catalogNumber.toLowerCase()}`;
-    const response = await fetch(ffmUrl, { headers: { "user-agent": "The MasterBeat Project catalog importer" } });
-    if (!response.ok) {
-      skipped.push({ catalogNumber, status: response.status });
-      continue;
-    }
+    const catalogNumbers = [catalogNumberFromIndex(index), remixCatalogNumberFromIndex(index)];
+    for (const catalogNumber of catalogNumbers) {
+      const isRemix = catalogNumber.endsWith("R");
+      const ffmUrl = `https://ffm.to/${catalogNumber.toLowerCase()}`;
+      const response = await fetch(ffmUrl, { headers: { "user-agent": "The MasterBeat Project catalog importer" } });
+      if (!response.ok) {
+        skipped.push({ catalogNumber, remix: isRemix, status: response.status });
+        continue;
+      }
 
-    const html = await response.text();
-    const parsed = parseFfmRelease(catalogNumber, ffmUrl, html);
-    if (!parsed) {
-      skipped.push({ catalogNumber, status: "not_found" });
-      continue;
-    }
+      const html = await response.text();
+      const parsed = parseFfmRelease(catalogNumber, ffmUrl, html);
+      if (!parsed) {
+        skipped.push({ catalogNumber, remix: isRemix, status: "not_found" });
+        continue;
+      }
 
-    const saved = await upsertParsedRelease(db, parsed);
-    imported.push({ catalogNumber, title: parsed.title, artist: parsed.artist, trackTitle: parsed.trackTitle, ...saved });
+      const saved = await upsertParsedRelease(db, parsed);
+      imported.push({ catalogNumber, remix: isRemix, title: parsed.title, artist: parsed.artist, trackTitle: parsed.trackTitle, ...saved });
+    }
   }
 
   return json({ ok: true, imported, skipped });

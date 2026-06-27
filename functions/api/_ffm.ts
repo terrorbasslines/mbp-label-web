@@ -142,3 +142,7 @@ export function parseFfmRelease(catalogNumber: string, ffmUrl: string, html: str
 export function catalogNumberFromIndex(index: number) {
   return `MBP${String(index).padStart(3, "0")}`;
 }
+
+export function remixCatalogNumberFromIndex(index: number) {
+  return `${catalogNumberFromIndex(index)}R`;
+}
