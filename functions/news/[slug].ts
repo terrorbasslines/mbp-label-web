@@ -254,10 +254,65 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
               link.remove();
               window.setTimeout(function () { URL.revokeObjectURL(url); }, 1200);
             }
+            function decodeSvgAttribute(value) {
+              return String(value || "")
+                .replace(/&amp;/g, "&")
+                .replace(/&quot;/g, '"')
+                .replace(/&#39;/g, "'")
+                .replace(/&lt;/g, "<")
+                .replace(/&gt;/g, ">");
+            }
+            function blobToDataUrl(blob) {
+              return new Promise(function (resolve, reject) {
+                var reader = new FileReader();
+                reader.onload = function () { resolve(String(reader.result || "")); };
+                reader.onerror = function () { reject(new Error("Image asset could not be embedded.")); };
+                reader.readAsDataURL(blob);
+              });
+            }
+            function fallbackImageFor(href) {
+              return /logo/i.test(href) ? "/assets/brand/logo-official-purple.png" : "/assets/brand/season4-banner.png";
+            }
+            async function fetchImageDataUrl(href) {
+              var decodedHref = decodeSvgAttribute(href);
+              var candidates = [decodedHref, fallbackImageFor(decodedHref)]
+                .filter(Boolean)
+                .map(function (candidate) { return new URL(candidate, window.location.href).toString(); });
+              var seen = {};
+              for (var index = 0; index < candidates.length; index += 1) {
+                var candidateUrl = candidates[index];
+                if (seen[candidateUrl]) continue;
+                seen[candidateUrl] = true;
+                try {
+                  var response = await fetch(candidateUrl, { credentials: "same-origin", cache: "force-cache" });
+                  if (!response.ok) continue;
+                  return await blobToDataUrl(await response.blob());
+                } catch (error) {
+                  // Try the fallback. Some cross-origin artwork can display in SVG but cannot be fetched for canvas export.
+                }
+              }
+              return "";
+            }
+            async function inlineSvgImageAssets(svg) {
+              var imagePattern = /<image\\b[^>]*\\s(?:href|xlink:href)=(["'])(.*?)\\1/gi;
+              var hrefs = [];
+              var match;
+              while ((match = imagePattern.exec(svg))) {
+                var rawHref = match[2];
+                if (rawHref && !/^data:/i.test(rawHref) && hrefs.indexOf(rawHref) === -1) hrefs.push(rawHref);
+              }
+              var output = svg;
+              for (var index = 0; index < hrefs.length; index += 1) {
+                var href = hrefs[index];
+                var dataUrl = await fetchImageDataUrl(href);
+                if (dataUrl) output = output.split(href).join(dataUrl);
+              }
+              return output;
+            }
             async function renderSocialPng(assetUrl, width, height) {
               var response = await fetch(assetUrl, { credentials: "same-origin", cache: "no-store" });
               if (!response.ok) throw new Error("Social artwork is not available.");
-              var svg = await response.text();
+              var svg = await inlineSvgImageAssets(await response.text());
               var svgUrl = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
               try {
                 var image = await loadImage(svgUrl);
@@ -277,6 +332,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
               var width = Number(button.getAttribute("data-social-width") || 1080);
               var height = Number(button.getAttribute("data-social-height") || 1080);
               var filename = button.getAttribute("data-social-name") || "mbp-news.png";
+              var isStoryAsset = height > width;
               var originalText = button.textContent;
               button.disabled = true;
               button.textContent = "Preparing PNG...";
@@ -292,11 +348,16 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
                   }
                   : null;
                 if (isLikelyMobile() && shareData && navigator.canShare && navigator.canShare(shareData)) {
-                  await navigator.share(shareData);
-                  setSocialStatus("Share sheet opened. Choose Instagram post or story from the app list.");
+                  try {
+                    await navigator.share(shareData);
+                    setSocialStatus(isStoryAsset ? "Story PNG shared. If Instagram only shows Feed, save this file and choose Story manually inside Instagram." : "Instagram post PNG shared through the system share sheet.");
+                  } catch (shareError) {
+                    downloadBlob(blob, filename);
+                    setSocialStatus(isStoryAsset ? "Story share was cancelled. The 1080x1920 PNG was downloaded so you can add it manually as an Instagram Story." : "Share was cancelled. The PNG was downloaded instead.");
+                  }
                 } else {
                   downloadBlob(blob, filename);
-                  setSocialStatus("PNG downloaded. Upload it to Instagram from the downloaded file.");
+                  setSocialStatus(isStoryAsset ? "Story PNG downloaded. Open Instagram and add it manually as a Story." : "PNG downloaded. Upload it to Instagram from the downloaded file.");
                 }
               } catch (error) {
                 setSocialStatus(error && error.message ? error.message : "Social artwork export failed. Opening the source image instead.");
