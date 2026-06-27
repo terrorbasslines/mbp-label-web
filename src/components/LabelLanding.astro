@@ -1,0 +1,176 @@
+---
+import ButtonLink from "./ButtonLink.astro";
+import HomeLatestReleases from "./HomeLatestReleases.astro";
+import LiveArtists from "./LiveArtists.astro";
+import LiveCatalog from "./LiveCatalog.astro";
+import SectionHeader from "./SectionHeader.astro";
+
+interface LabelPillar {
+  value: string;
+  label: string;
+}
+
+interface Props {
+  labelKey: string;
+  labelName: string;
+  shortName: string;
+  path: string;
+  heroImage: string;
+  logoImage: string;
+  accent: string;
+  secondaryAccent: string;
+  eyebrow: string;
+  headline: string;
+  copy: string;
+  pillars: LabelPillar[];
+  latestTitle: string;
+  latestCopy: string;
+  catalogTitle: string;
+  catalogCopy: string;
+  catalogSearchPlaceholder: string;
+  artistTitle: string;
+  artistSearchPlaceholder: string;
+  demoTitle: string;
+  demoCopy: string;
+  aboutTitle: string;
+  aboutCopy: string[];
+  catalogRules: string[];
+}
+
+const {
+  labelKey,
+  labelName,
+  shortName,
+  path,
+  heroImage,
+  logoImage,
+  accent,
+  secondaryAccent,
+  eyebrow,
+  headline,
+  copy,
+  pillars,
+  latestTitle,
+  latestCopy,
+  catalogTitle,
+  catalogCopy,
+  catalogSearchPlaceholder,
+  artistTitle,
+  artistSearchPlaceholder,
+  demoTitle,
+  demoCopy,
+  aboutTitle,
+  aboutCopy,
+  catalogRules
+} = Astro.props;
+---
+
+<section class="stage-rail relative min-h-[92svh] overflow-hidden border-b border-white/10">
+  <img src={heroImage} alt="" class="absolute inset-0 h-full w-full object-cover" fetchpriority="high" />
+  <div class="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-black/25"></div>
+  <div class="absolute inset-0 bg-gradient-to-t from-obsidian via-transparent to-black/35"></div>
+  <div class="absolute inset-x-0 bottom-0 h-28" style={`background:linear-gradient(0deg, ${accent}24, transparent);`}></div>
+  <div class="section-shell relative flex min-h-[92svh] items-center py-20">
+    <div class="max-w-5xl">
+      <div class="mb-8 flex max-w-xl items-center gap-4 rounded-lg border border-white/10 bg-black/45 p-4 backdrop-blur">
+        <img src={logoImage} alt="" class="h-16 w-16 rounded-md border border-white/10 object-cover" />
+        <div>
+          <p class="font-mono text-xs font-black uppercase tracking-[0.22em]" style={`color:${accent};`}>{shortName}</p>
+          <p class="mt-1 font-display text-2xl font-black uppercase leading-none text-white">{labelName}</p>
+        </div>
+      </div>
+      <p class="font-mono text-xs font-black uppercase tracking-[0.2em]" style={`color:${accent};`}>{eyebrow}</p>
+      <h1 class="display-title mt-5">{headline}</h1>
+      <p class="mt-6 max-w-2xl text-pretty text-lg leading-8 text-haze sm:text-xl">{copy}</p>
+      <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+        <ButtonLink href="/demo-submission/">Submit Demo</ButtonLink>
+        <ButtonLink href={`${path}#catalogue`} variant="secondary">Explore Catalogue</ButtonLink>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="border-b border-white/10 bg-obsidian py-14">
+  <div class="section-shell">
+    <div class="grid gap-4 md:grid-cols-3">
+      {
+        pillars.map((pillar) => (
+          <div class="rounded-lg border bg-white/[0.035] p-5" style={`border-color:${accent}3f; box-shadow:0 0 24px ${accent}10;`}>
+            <p class="font-display text-4xl font-black uppercase leading-none text-white">{pillar.value}</p>
+            <p class="mt-2 text-sm uppercase tracking-[0.14em] text-steel">{pillar.label}</p>
+          </div>
+        ))
+      }
+    </div>
+    <div class="mt-4 grid gap-3 md:grid-cols-3">
+      {
+        catalogRules.map((rule) => (
+          <div class="rounded-lg border border-white/10 bg-black/35 p-4">
+            <p class="font-mono text-xs font-black uppercase tracking-[0.16em]" style={`color:${secondaryAccent};`}>{rule}</p>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<section class="py-20">
+  <div class="section-shell">
+    <div class="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+      <SectionHeader eyebrow="Latest releases" title={latestTitle} copy={latestCopy} />
+      <ButtonLink href={`${path}#catalogue`} variant="ghost">View All</ButtonLink>
+    </div>
+    <HomeLatestReleases
+      label={labelKey}
+      catalogueHref={`${path}#catalogue`}
+      presaveHeading={`Open ${shortName} pre-saves`}
+      fallbackMark={shortName}
+      releaseCopy={`Choose your preferred streaming service or open the full ${shortName} release page.`}
+    />
+  </div>
+</section>
+
+<div id="catalogue">
+  <LiveCatalog
+    label={labelKey}
+    labelName={labelName}
+    title={catalogTitle}
+    copy={catalogCopy}
+    searchPlaceholder={catalogSearchPlaceholder}
+    showRegionFilters={false}
+  />
+</div>
+
+<section class="border-y border-white/10 bg-black/40">
+  <LiveArtists
+    label={labelKey}
+    labelName={labelName}
+    title={artistTitle}
+    searchPlaceholder={artistSearchPlaceholder}
+    showRegionFilters={false}
+  />
+</section>
+
+<section class="py-20">
+  <div class="section-shell grid gap-10 lg:grid-cols-[0.92fr_1.08fr] lg:items-center">
+    <div>
+      <SectionHeader eyebrow="Demo submission" title={demoTitle} copy={demoCopy} />
+      <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+        <ButtonLink href="/demo-submission/">Open Demo Form</ButtonLink>
+        <ButtonLink href="/contact/" variant="secondary">Contact Label</ButtonLink>
+      </div>
+    </div>
+    <div class="clip-diagonal overflow-hidden border bg-black" style={`border-color:${accent}55;`}>
+      <img src={heroImage} alt="" class="h-full min-h-72 w-full object-cover" loading="lazy" />
+    </div>
+  </div>
+</section>
+
+<section class="border-t border-white/10 bg-rail-grid bg-[length:100%_100%,44px_44px] py-20">
+  <div class="section-shell grid gap-8 lg:grid-cols-[0.7fr_1fr]">
+    <SectionHeader eyebrow="About the label" title={aboutTitle} />
+    <div class="max-w-3xl text-pretty text-lg leading-8 text-haze">
+      {aboutCopy.map((paragraph, index) => <p class={index > 0 ? "mt-5" : ""}>{paragraph}</p>)}
+    </div>
+  </div>
+</section>

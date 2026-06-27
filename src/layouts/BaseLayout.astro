@@ -29,7 +29,16 @@ const ogImageUrl = new URL(image, siteUrl).toString();
 const logoUrl = new URL(siteConfig.logo, siteUrl).toString();
 const robots = noindex ? "noindex, nofollow" : "index, follow, max-image-preview:large";
 const normalizedPath = Astro.url.pathname.replace(/\/$/, "") || "/";
-const catalogPreloadHref = normalizedPath === "/" ? "/api/catalog?view=home" : ["/releases", "/artists"].includes(normalizedPath) ? "/api/catalog" : null;
+const labelCatalogPreloads: Record<string, string> = {
+  "/horizon": "/api/catalog?view=home&label=mbh",
+  "/section7": "/api/catalog?view=home&label=s7"
+};
+const catalogPreloadHref =
+  normalizedPath === "/"
+    ? "/api/catalog?view=home&label=mbp"
+    : ["/releases", "/artists"].includes(normalizedPath)
+      ? "/api/catalog?label=mbp"
+      : labelCatalogPreloads[normalizedPath] ?? null;
 const newsPreloadHref = normalizedPath === "/" ? "/api/news?limit=3" : normalizedPath === "/news" ? "/api/news?limit=48" : null;
 const sameAs = siteConfig.socials.filter((social) => social.href.startsWith("http")).map((social) => social.href);
 const pageJsonLd = Array.isArray(jsonLd) ? jsonLd : [jsonLd];

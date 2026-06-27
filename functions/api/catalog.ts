@@ -1,5 +1,6 @@
 import { inferReleaseRegion, isCollabArtistName, isResponse, json, MBP_REGION_KEYS, mbpRegionDetails, normalizeMbpRegion, requireDb, syncReleaseArtistCredits, type Env } from "./_shared";
 import { parseFfmRelease } from "./_ffm";
+import { labelDetails, labelFromCatalogNumber, normalizeLabelKey, type LabelKey } from "./_labels";
 import { isPlayableReleaseLink, normalizeReleasePlatformLinks } from "./_release_links";
 
 type ReleaseRow = Record<string, unknown> & { id: string };
@@ -167,34 +168,58 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, waitUntil
   ]);
   const url = new URL(request.url);
   const view = url.searchParams.get("view");
+  const requestedLabel = normalizeLabelKey(url.searchParams.get("label"));
+  const selectedLabel = requestedLabel === "all" ? null : requestedLabel;
   const cacheHeaders = {
     "cache-control": "no-store"
   };
   const artistRows = artists.results ?? [];
+  const releaseRows = releases.results ?? [];
   const artistsById = new Map(artistRows.map((artist) => [artist.id, artist]));
+  const releaseLabelsById = new Map<string, LabelKey>();
+  for (const release of releaseRows) {
+    releaseLabelsById.set(release.id, labelFromCatalogNumber(release.catalog_number));
+  }
   const artistRegionsByRelease = new Map<string, string[]>();
+  const artistLabelsByArtist = new Map<string, Set<LabelKey>>();
   for (const credit of releaseArtists.results ?? []) {
     const artist = artistsById.get(credit.artist_id);
     if (!artist) continue;
     const list = artistRegionsByRelease.get(credit.release_id) ?? [];
     list.push(normalizeMbpRegion(artist.mbp_region));
     artistRegionsByRelease.set(credit.release_id, list);
+    const releaseLabel = releaseLabelsById.get(credit.release_id);
+    if (!releaseLabel) continue;
+    const labels = artistLabelsByArtist.get(credit.artist_id) ?? new Set<LabelKey>();
+    labels.add(releaseLabel);
+    artistLabelsByArtist.set(credit.artist_id, labels);
   }
 
   const publicArtists = artistRows
     .filter((artist) => !isCollabArtistName(String(artist.name ?? "")))
-    .map((artist) => ({
-      ...artist,
-      name: String(artist.name ?? ""),
-      mbp_region: normalizeMbpRegion(artist.mbp_region),
-      mbp_region_label: mbpRegionDetails(artist.mbp_region).label,
-      mbp_region_color: mbpRegionDetails(artist.mbp_region).color,
-      profile: publicArtistProfile(artist),
-      links: JSON.parse(String(artist.links_json ?? "[]")),
-      is_featured: Boolean(artist.is_featured)
-    }))
+    .map((artist) => {
+      const artistLabelKeys = Array.from(artistLabelsByArtist.get(artist.id) ?? new Set<LabelKey>(["mbp"]));
+      const displayLabel = selectedLabel ?? artistLabelKeys[0] ?? "mbp";
+      const displayDetails = labelDetails(displayLabel);
+      return {
+        ...artist,
+        name: String(artist.name ?? ""),
+        mbp_region: normalizeMbpRegion(artist.mbp_region),
+        mbp_region_label: mbpRegionDetails(artist.mbp_region).label,
+        mbp_region_color: mbpRegionDetails(artist.mbp_region).color,
+        release_label: displayDetails.key,
+        release_label_name: displayDetails.name,
+        release_label_short_name: displayDetails.shortName,
+        release_label_color: displayDetails.color,
+        labels: artistLabelKeys.map((key) => labelDetails(key)),
+        profile: publicArtistProfile(artist),
+        links: JSON.parse(String(artist.links_json ?? "[]")),
+        is_featured: Boolean(artist.is_featured)
+      };
+    })
+    .filter((artist) => !selectedLabel || (artist.labels ?? []).some((label) => label.key === selectedLabel))
     .sort((left, right) => artistSortRank(left) - artistSortRank(right) || String(left.name ?? "").localeCompare(String(right.name ?? "")));
-  const publicReleases = (releases.results ?? []).map((release) => {
+  const publicReleases = releaseRows.map((release) => {
     const rawPlatformLinks = (links.results ?? []).filter((link) => link.release_id === release.id);
     const rawPlayableLinks = rawPlatformLinks.filter((link) => !/email|subscribe/i.test(`${link.platform ?? ""} ${link.label ?? ""}`));
     const platform_links = normalizeReleasePlatformLinks(rawPlatformLinks, {
@@ -206,15 +231,21 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, waitUntil
     const storedRegion = normalizeMbpRegion(release.mbp_region);
     const linkedRegion = inferReleaseRegion(artistRegionsByRelease.get(release.id) ?? [], storedRegion);
     const releaseRegion = storedRegion !== "world" ? storedRegion : linkedRegion;
+    const releaseLabel = labelFromCatalogNumber(release.catalog_number);
+    const releaseLabelDetails = labelDetails(releaseLabel);
     return {
       ...release,
       mbp_region: releaseRegion,
       mbp_region_label: mbpRegionDetails(releaseRegion).label,
       mbp_region_color: mbpRegionDetails(releaseRegion).color,
+      release_label: releaseLabelDetails.key,
+      release_label_name: releaseLabelDetails.name,
+      release_label_short_name: releaseLabelDetails.shortName,
+      release_label_color: releaseLabelDetails.color,
       status: playableLinks.length > 0 ? "published" : "presave",
       platform_links
     };
-  });
+  }).filter((release) => !selectedLabel || release.release_label === selectedLabel);
 
   if (view === "home") {
     const published = publicReleases.filter((release) => release.status !== "presave").slice(0, 4);

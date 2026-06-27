@@ -1,12 +1,31 @@
-<div class="hidden" data-home-latest-live>
+---
+interface Props {
+  label?: string;
+  catalogueHref?: string;
+  presaveHeading?: string;
+  fallbackMark?: string;
+  releaseCopy?: string;
+}
+
+const {
+  label = "mbp",
+  catalogueHref = "/releases/",
+  presaveHeading = "Open MBP pre-saves",
+  fallbackMark = "MBP",
+  releaseCopy = "Choose your preferred streaming service or open the full MBP release page."
+} = Astro.props;
+const catalogEndpoint = `/api/catalog?view=home&label=${encodeURIComponent(label)}`;
+---
+
+<div class="hidden" data-home-latest-live data-home-catalog-endpoint={catalogEndpoint} data-home-fallback-mark={fallbackMark} data-home-release-copy={releaseCopy}>
   <div class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4" data-home-published-grid></div>
   <div class="mt-16 hidden" data-home-presave-section>
     <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <p class="eyebrow">Upcoming pre-saves</p>
-        <h3 class="mt-2 font-display text-3xl font-black uppercase leading-none text-white sm:text-4xl">Open MBP pre-saves</h3>
+        <h3 class="mt-2 font-display text-3xl font-black uppercase leading-none text-white sm:text-4xl">{presaveHeading}</h3>
       </div>
-      <a class="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-haze transition hover:border-neon-cyan hover:text-white" href="/releases/">
+      <a class="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-haze transition hover:border-neon-cyan hover:text-white" href={catalogueHref}>
         View catalogue
       </a>
     </div>
@@ -27,6 +46,9 @@
   const homeRegionCounts = document.querySelector("[data-home-region-counts]");
   const homeRegionCountValues = [...document.querySelectorAll("[data-home-region-count]")];
   const homeRegionLabels = [...document.querySelectorAll("[data-home-region-label]")];
+  const homeCatalogEndpoint = homeLatestLive?.getAttribute("data-home-catalog-endpoint") || "/api/catalog?view=home&label=mbp";
+  const homeFallbackMark = homeLatestLive?.getAttribute("data-home-fallback-mark") || "MBP";
+  const homeReleaseCopy = homeLatestLive?.getAttribute("data-home-release-copy") || "Choose your preferred streaming service or open the full release page.";
 
   const escapeLatestHtml = (value) =>
     String(value ?? "")
@@ -53,7 +75,7 @@
             ${
               release.artwork_url
                 ? `<img src="${escapeLatestHtml(release.artwork_url)}" alt="${escapeLatestHtml(release.title)} artwork" class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" loading="${loading}" decoding="async" sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw" />`
-                : `<div class="grid h-full w-full place-items-center bg-black font-display text-5xl font-black text-white">MBP</div>`
+                : `<div class="grid h-full w-full place-items-center bg-black font-display text-5xl font-black text-white">${escapeLatestHtml(homeFallbackMark)}</div>`
             }
           </a>
           <div class="p-5">
@@ -61,7 +83,7 @@
             <p class="mt-2 inline-flex rounded border px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.14em]" style="border-color:${escapeLatestHtml(regionColor)}66; color:${escapeLatestHtml(regionColor)}">${escapeLatestHtml(regionLabel)}</p>
             <h3 class="mt-3 font-display text-2xl font-black uppercase leading-none text-white"><a class="hover:text-neon-cyan" href="${escapeLatestHtml(releasePath)}">${escapeLatestHtml(release.title)}</a></h3>
             <p class="mt-2 text-sm font-semibold text-haze">${escapeLatestHtml(release.artist_display)}</p>
-            <p class="mt-4 text-sm leading-6 text-steel">${isPresave ? "Pre-save is open. Streaming platform links update automatically when FFM publishes destinations." : "Choose your preferred streaming service or open the full MBP release page."}</p>
+            <p class="mt-4 text-sm leading-6 text-steel">${isPresave ? "Pre-save is open. Streaming platform links update automatically when FFM publishes destinations." : escapeLatestHtml(homeReleaseCopy)}</p>
             <div class="mt-5 flex flex-wrap gap-2 text-xs font-bold uppercase tracking-[0.12em] text-white/80">
               ${smartLink ? `<a class="rounded bg-white/10 px-2.5 py-1.5 hover:bg-neon-cyan hover:text-black" href="${escapeLatestHtml(smartLink)}" target="_blank" rel="noreferrer">${isPresave ? "Pre-save" : "Smart link"}</a>` : ""}
               <a class="rounded bg-white/10 px-2.5 py-1.5 hover:bg-neon-cyan hover:text-black" href="${escapeLatestHtml(releasePath)}">Details</a>
@@ -97,7 +119,7 @@
     if (!homeLatestLive || !homePublishedGrid) return;
 
     try {
-      const response = await fetch("/api/catalog?view=home", { cache: "no-store" });
+      const response = await fetch(homeCatalogEndpoint, { cache: "no-store" });
       const data = await response.json();
       const published = Array.isArray(data.releases) ? data.releases.slice(0, 4) : [];
       const presaves = Array.isArray(data.presaves) ? data.presaves.slice(0, 4) : [];

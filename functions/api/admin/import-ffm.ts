@@ -1,4 +1,5 @@
-import { catalogNumberFromIndex, parseFfmRelease, remixCatalogNumberFromIndex } from "../_ffm";
+import { parseFfmRelease } from "../_ffm";
+import { catalogCandidatesForImport, isRemixCatalogNumber, labelDetails, normalizeLabelKey } from "../_labels";
 import { id, inferReleaseRegion, isResponse, json, methodNotAllowed, readJson, requireAdmin, requireDb, slugify, syncReleaseArtistCredits, type Env } from "../_shared";
 
 async function releaseRegionFromCredits(db: D1Database, releaseId: string) {
@@ -18,7 +19,7 @@ async function upsertParsedRelease(db: D1Database, parsed: NonNullable<ReturnTyp
   let release = await db.prepare("SELECT id FROM releases WHERE catalog_number = ?").bind(parsed.catalogNumber).first<{ id: string }>();
   const releaseId = release?.id ?? id("rel");
   const slug = slugify(`${parsed.catalogNumber}-${parsed.artist}-${parsed.trackTitle}`);
-  const releaseType = parsed.catalogNumber.endsWith("R") ? "remix" : "single";
+  const releaseType = isRemixCatalogNumber(parsed.catalogNumber) ? "remix" : "single";
 
   if (release) {
     await db
@@ -72,39 +73,50 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
   const from = Number(body.from);
   const to = Number(body.to);
+  const label = normalizeLabelKey(body.label);
+  if (label === "all") {
+    return json({ ok: false, error: "Choose one label for FFM import: MBP, MBH or S7." }, { status: 400 });
+  }
+  const selectedLabel = labelDetails(label);
   if (!Number.isInteger(from) || !Number.isInteger(to) || from < 1 || to < from) {
-    return json({ ok: false, error: "from and to must be valid MBP numeric ranges." }, { status: 400 });
+    return json({ ok: false, error: "from and to must be valid numeric catalogue ranges." }, { status: 400 });
   }
   if (to > 1000) {
-    return json({ ok: false, error: "FFM import is limited to MBP1000 for this dashboard." }, { status: 400 });
+    return json({ ok: false, error: "FFM import is limited to catalogue number 1000 for this dashboard." }, { status: 400 });
   }
-  if (to - from > 24) {
-    return json({ ok: false, error: "Import max 25 releases at a time to avoid Cloudflare timeout. Run multiple batches." }, { status: 400 });
+  const maxCatalogs = label === "mbp" ? 25 : 5;
+  if (to - from > maxCatalogs - 1) {
+    return json(
+      {
+        ok: false,
+        error: `Import max ${maxCatalogs} ${selectedLabel.shortName} catalogue numbers at a time. Remix suffixes are checked in the same batch.`
+      },
+      { status: 400 }
+    );
   }
 
   const imported = [];
   const skipped = [];
 
   for (let index = from; index <= to; index += 1) {
-    const catalogNumbers = [catalogNumberFromIndex(index), remixCatalogNumberFromIndex(index)];
-    for (const catalogNumber of catalogNumbers) {
-      const isRemix = catalogNumber.endsWith("R");
+    for (const candidate of catalogCandidatesForImport(label, index)) {
+      const catalogNumber = candidate.catalogNumber;
       const ffmUrl = `https://ffm.to/${catalogNumber.toLowerCase()}`;
       const response = await fetch(ffmUrl, { headers: { "user-agent": "The MasterBeat Project catalog importer" } });
       if (!response.ok) {
-        skipped.push({ catalogNumber, remix: isRemix, status: response.status });
+        skipped.push({ label, catalogNumber, remix: candidate.remix, status: response.status });
         continue;
       }
 
       const html = await response.text();
       const parsed = parseFfmRelease(catalogNumber, ffmUrl, html);
       if (!parsed) {
-        skipped.push({ catalogNumber, remix: isRemix, status: "not_found" });
+        skipped.push({ label, catalogNumber, remix: candidate.remix, status: "not_found" });
         continue;
       }
 
       const saved = await upsertParsedRelease(db, parsed);
-      imported.push({ catalogNumber, remix: isRemix, title: parsed.title, artist: parsed.artist, trackTitle: parsed.trackTitle, ...saved });
+      imported.push({ label, catalogNumber, remix: candidate.remix, title: parsed.title, artist: parsed.artist, trackTitle: parsed.trackTitle, ...saved });
     }
   }
 

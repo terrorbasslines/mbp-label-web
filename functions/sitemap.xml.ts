@@ -21,6 +21,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
     urlEntry("/", "1.0", "weekly"),
     urlEntry("/news/", "0.8", "daily"),
     urlEntry("/releases/", "0.9", "daily"),
+    urlEntry("/horizon/", "0.8", "daily"),
+    urlEntry("/section7/", "0.8", "daily"),
     urlEntry("/artists/", "0.9", "daily"),
     urlEntry("/demo-submission/", "0.8", "monthly"),
     urlEntry("/about/", "0.7", "monthly"),

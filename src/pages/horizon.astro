@@ -1,0 +1,54 @@
+---
+import LabelLanding from "../components/LabelLanding.astro";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { siteConfig } from "../data/site";
+
+const title = "The MasterBeat Horizon";
+const description =
+  "The MasterBeat Horizon is the MBH label lane for EDM, melodic festival energy and future-facing electronic releases inside The MasterBeat ecosystem.";
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "MusicGroup",
+  name: title,
+  url: `${siteConfig.url}/horizon/`,
+  genre: ["EDM", "Electronic Dance Music", "Melodic EDM", "Festival Electronic"],
+  description,
+  parentOrganization: { "@id": `${siteConfig.url}/#organization` }
+};
+---
+
+<BaseLayout title={title} description={description} image="/assets/labels/horizon-hero.png" jsonLd={jsonLd}>
+  <LabelLanding
+    labelKey="mbh"
+    labelName="The MasterBeat Horizon"
+    shortName="MBH"
+    path="/horizon/"
+    heroImage="/assets/labels/horizon-hero.png"
+    logoImage="/assets/labels/horizon-logo.png"
+    accent="#7eb7ff"
+    secondaryAccent="#ffffff"
+    eyebrow="EDM label lane"
+    headline="The MasterBeat Horizon"
+    copy="A clean EDM-focused extension of The MasterBeat ecosystem, built for melodic electronic records, festival energy and polished digital releases."
+    pillars={[
+      { value: "EDM", label: "festival-first electronic direction" },
+      { value: "Bright", label: "melodic and emotional release language" },
+      { value: "Clean", label: "separate MBH catalogue and smartlink flow" }
+    ]}
+    latestTitle="Newest MBH releases"
+    latestCopy="Listen through the newest The MasterBeat Horizon catalogue releases, pre-saves and remix entries imported from MBH FFM smartlinks."
+    catalogTitle="MBH releases"
+    catalogCopy="Browse The MasterBeat Horizon releases with MBH catalogue numbers, artwork, artist credits and platform links."
+    catalogSearchPlaceholder="Search artist, track or MBH001"
+    artistTitle="MBH artists"
+    artistSearchPlaceholder="Search MBH artist, EDM or festival sound"
+    demoTitle="Send EDM with release intent"
+    demoCopy="Submit melodic EDM, festival electronic and clean club records for the MBH lane. The same review process keeps demos, agreement flow and release slots organized."
+    aboutTitle="Built for the horizon lane"
+    aboutCopy={[
+      "The MasterBeat Horizon separates the EDM-facing catalogue from the core MBP hard dance identity while keeping the same professional release infrastructure.",
+      "MBH releases use their own catalogue prefix, smartlink import rules and artist view, so listeners and artists can navigate the Horizon sound without mixing it into the MBP catalogue."
+    ]}
+    catalogRules={["Base: MBH001", "Single remix: MBH001R", "Multi remix: MBH001-R1 ... MBH001-R10"]}
+  />
+</BaseLayout>

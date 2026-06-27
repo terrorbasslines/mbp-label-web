@@ -1,14 +1,25 @@
 ---
-import { navItems, siteConfig } from "../data/site";
+import { labelNavItems, navItems, siteConfig } from "../data/site";
 
 const pathname = Astro.url.pathname.replace(/\/$/, "") || "/";
 const loginActive = pathname === "/artist-dashboard";
 const adminActive = pathname === "/admin";
+const labelsActive = labelNavItems.some((item) => pathname === normalizeHref(item.href));
 
 function normalizeHref(href: string) {
   return href.replace(/\/$/, "") || "/";
 }
 ---
+
+<style>
+  [data-labels-menu] > summary {
+    list-style: none;
+  }
+
+  [data-labels-menu] > summary::-webkit-details-marker {
+    display: none;
+  }
+</style>
 
 <header class="sticky top-0 z-40 border-b border-white/10 bg-obsidian/82 backdrop-blur-xl">
   <div class="section-shell flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -28,6 +39,7 @@ function normalizeHref(href: string) {
           const itemPath = normalizeHref(item.href);
           const active = itemPath === "/" ? pathname === "/" : pathname === itemPath;
           return (
+            <>
             <a
               href={item.href}
               class:list={[
@@ -37,6 +49,40 @@ function normalizeHref(href: string) {
             >
               {item.label}
             </a>
+            {
+              item.label === "Releases" && (
+                <details data-labels-menu class="group relative">
+                  <summary
+                    class:list={[
+                      "cursor-pointer rounded-md px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] transition duration-200",
+                      labelsActive ? "bg-white text-black" : "text-haze hover:bg-white/10 hover:text-white"
+                    ]}
+                  >
+                    Labels
+                  </summary>
+                  <div class="mt-2 grid min-w-56 gap-1 rounded-md border border-white/10 bg-carbon/95 p-2 shadow-2xl shadow-black/40 sm:absolute sm:right-0 sm:top-full sm:z-50">
+                    {
+                      labelNavItems.map((labelItem) => {
+                        const labelPath = normalizeHref(labelItem.href);
+                        const labelActive = pathname === labelPath;
+                        return (
+                          <a
+                            href={labelItem.href}
+                            class:list={[
+                              "rounded px-3 py-2 text-xs font-black uppercase tracking-[0.12em] transition",
+                              labelActive ? "bg-white text-black" : "text-haze hover:bg-white/10 hover:text-white"
+                            ]}
+                          >
+                            {labelItem.shortLabel}
+                          </a>
+                        );
+                      })
+                    }
+                  </div>
+                </details>
+              )
+            }
+            </>
           );
         })
       }

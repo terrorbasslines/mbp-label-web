@@ -1,0 +1,54 @@
+---
+import LabelLanding from "../components/LabelLanding.astro";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { siteConfig } from "../data/site";
+
+const title = "Section 7";
+const description =
+  "Section 7 is the futuristic hardstyle and experimental hard dance label lane for dreamy, forward-looking records inside The MasterBeat ecosystem.";
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "MusicGroup",
+  name: title,
+  url: `${siteConfig.url}/section7/`,
+  genre: ["Futuristic Hardstyle", "Dreamy Hardstyle", "Experimental Hard Dance", "Electronic Music"],
+  description,
+  parentOrganization: { "@id": `${siteConfig.url}/#organization` }
+};
+---
+
+<BaseLayout title={title} description={description} image="/assets/labels/section7-hero.png" jsonLd={jsonLd}>
+  <LabelLanding
+    labelKey="s7"
+    labelName="Section 7"
+    shortName="S7"
+    path="/section7/"
+    heroImage="/assets/labels/section7-hero.png"
+    logoImage="/assets/labels/section7-logo.png"
+    accent="#e7ff00"
+    secondaryAccent="#ff2a1f"
+    eyebrow="Future hardstyle label lane"
+    headline="Section 7"
+    copy="A forward hardstyle lane for futuristic, dreamy and experimental records that push the harder sound into a new visual and emotional direction."
+    pillars={[
+      { value: "Future", label: "new hardstyle direction" },
+      { value: "Dream", label: "atmospheric and emotional pressure" },
+      { value: "S7", label: "separate catalogue and remix system" }
+    ]}
+    latestTitle="Newest Section 7 releases"
+    latestCopy="Listen through the newest Section 7 catalogue releases, pre-saves and remix entries imported from S7 FFM smartlinks."
+    catalogTitle="Section 7 releases"
+    catalogCopy="Browse Section 7 releases with S7 catalogue numbers, artwork, artist credits and platform links."
+    catalogSearchPlaceholder="Search artist, track or S7-001"
+    artistTitle="Section 7 artists"
+    artistSearchPlaceholder="Search S7 artist, futuristic hardstyle or experimental"
+    demoTitle="Send future hardstyle"
+    demoCopy="Submit futuristic hardstyle, dreamy hardstyle and experimental hard dance records for the Section 7 lane. The same demo review and agreement flow keeps releases organized."
+    aboutTitle="Built for the next hard direction"
+    aboutCopy={[
+      "Section 7 gives the hardest experimental ideas their own identity, catalogue prefix and public release surface inside the wider The MasterBeat ecosystem.",
+      "The lane is built for artists defining a new hardstyle direction: futuristic leads, dreamy atmospheres, unusual structure and clean release metadata from the first smartlink onward."
+    ]}
+    catalogRules={["Base: S7-001", "Single remix: S7-001R", "Multi remix: S7-001-R1 ... S7-001-R10"]}
+  />
+</BaseLayout>

@@ -1,20 +1,47 @@
-<section class="py-20" data-live-artists-section>
+---
+interface Props {
+  label?: string;
+  labelName?: string;
+  eyebrow?: string;
+  title?: string;
+  searchPlaceholder?: string;
+  allRegionLabel?: string;
+  showRegionFilters?: boolean;
+}
+
+const {
+  label = "mbp",
+  labelName = "The MasterBeat Project",
+  eyebrow = "Label roster",
+  title = "MBP artists",
+  searchPlaceholder = "Search Terror Basslines, Romee Storm or hardstyle",
+  allRegionLabel = "All MBP",
+  showRegionFilters = true
+} = Astro.props;
+const catalogEndpoint = `/api/catalog?label=${encodeURIComponent(label)}`;
+---
+
+<section class="py-20" data-live-artists-section data-artist-catalog-endpoint={catalogEndpoint} data-label-name={labelName} data-show-region-filters={String(showRegionFilters)}>
   <div class="section-shell">
-    <p class="eyebrow">Label roster</p>
-    <h2 class="mt-3 font-display text-3xl font-black uppercase leading-none text-white sm:text-5xl">MBP artists</h2>
+    <p class="eyebrow">{eyebrow}</p>
+    <h2 class="mt-3 font-display text-3xl font-black uppercase leading-none text-white sm:text-5xl">{title}</h2>
     <div class="mt-8 rounded-lg border border-white/10 bg-carbon/75 p-4">
       <label>
         <span class="field-label">Search artist roster</span>
-        <input class="field-control" type="search" placeholder="Search Terror Basslines, Romee Storm or hardstyle" data-artist-search />
+        <input class="field-control" type="search" placeholder={searchPlaceholder} data-artist-search />
       </label>
-      <div class="mt-4 flex flex-wrap gap-2" aria-label="MBP region artist filter">
-        <button class="rounded-md bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-black" data-artist-region="all" type="button">All MBP</button>
-        <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-haze hover:text-white" data-artist-region="europe" type="button">Europe</button>
-        <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-haze hover:text-white" data-artist-region="america" type="button">America</button>
-        <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-haze hover:text-white" data-artist-region="asia" type="button">Asia</button>
-        <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-haze hover:text-white" data-artist-region="world" type="button">World</button>
-        <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-haze hover:text-white" data-artist-region="australia" type="button">Australia</button>
-      </div>
+      {
+        showRegionFilters && (
+          <div class="mt-4 flex flex-wrap gap-2" aria-label="MBP region artist filter">
+            <button class="rounded-md bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-black" data-artist-region="all" type="button">{allRegionLabel}</button>
+            <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-haze hover:text-white" data-artist-region="europe" type="button">Europe</button>
+            <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-haze hover:text-white" data-artist-region="america" type="button">America</button>
+            <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-haze hover:text-white" data-artist-region="asia" type="button">Asia</button>
+            <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-haze hover:text-white" data-artist-region="world" type="button">World</button>
+            <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-haze hover:text-white" data-artist-region="australia" type="button">Australia</button>
+          </div>
+        )
+      }
     </div>
     <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
       <p class="text-sm text-steel" data-artist-count>Loading artists...</p>
@@ -35,6 +62,9 @@
   const artistCount = document.querySelector("[data-artist-count]");
   const artistPager = document.querySelector("[data-artist-pager]");
   const artistRegionButtons = [...document.querySelectorAll("[data-artist-region]")];
+  const artistCatalogEndpoint = liveArtistsSection?.getAttribute("data-artist-catalog-endpoint") || "/api/catalog?label=mbp";
+  const artistLabelName = liveArtistsSection?.getAttribute("data-label-name") || "The MasterBeat Project";
+  const showArtistRegionFilters = liveArtistsSection?.getAttribute("data-show-region-filters") !== "false";
   let allArtists = [];
   let visibleArtists = [];
   let artistPage = 1;
@@ -50,7 +80,8 @@
       .replaceAll("'", "&#39;");
 
   function searchableArtistText(artist) {
-    return [artist.name, artist.country, artist.profile, artist.mbp_region, artist.mbp_region_label]
+    const labels = Array.isArray(artist.labels) ? artist.labels.map((label) => `${label.name || ""} ${label.shortName || ""}`).join(" ") : "";
+    return [artist.name, artist.country, artist.profile, artist.mbp_region, artist.mbp_region_label, artist.release_label_name, artist.release_label_short_name, labels]
       .filter(Boolean)
       .join(" ")
       .toLowerCase();
@@ -68,7 +99,7 @@
   function filterArtists() {
     const query = String(artistSearch?.value || "").trim().toLowerCase();
     visibleArtists = allArtists.filter((artist) => {
-      const regionMatch = artistRegionFilter === "all" || artist.mbp_region === artistRegionFilter;
+      const regionMatch = !showArtistRegionFilters || artistRegionFilter === "all" || artist.mbp_region === artistRegionFilter;
       const searchMatch = !query || searchableArtistText(artist).includes(query);
       return regionMatch && searchMatch;
     });
@@ -77,8 +108,8 @@
 
   function renderArtist(artist) {
     const artistPath = `/artist/${encodeURIComponent(String(artist.slug || artist.name || "").toLowerCase())}`;
-    const regionColor = artist.mbp_region_color || "#bd00ff";
-    const regionLabel = artist.mbp_region_label || "MBP World";
+    const regionColor = (!showArtistRegionFilters && artist.release_label_color) || artist.mbp_region_color || "#bd00ff";
+    const regionLabel = showArtistRegionFilters ? artist.mbp_region_label || "MBP World" : artist.release_label_name || artistLabelName;
     return `
       <article class="rounded-lg border bg-carbon/80 p-5" style="border-color:${escapeArtistHtml(regionColor)}66; box-shadow:0 0 22px ${escapeArtistHtml(regionColor)}14;">
         <div class="flex items-center gap-4">
@@ -138,7 +169,7 @@
   async function loadLiveArtists() {
     if (!liveArtistsSection || !liveArtists) return;
     try {
-      const response = await fetch("/api/catalog", { cache: "no-store" });
+      const response = await fetch(artistCatalogEndpoint, { cache: "no-store" });
       const data = await response.json();
       if (!data.ok || !Array.isArray(data.artists) || data.artists.length === 0) {
         staticArtists?.classList.remove("hidden");

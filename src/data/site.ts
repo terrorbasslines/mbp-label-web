@@ -31,6 +31,11 @@ export const navItems = [
   { label: "Contact", href: "/contact/" }
 ];
 
+export const labelNavItems = [
+  { label: "The MasterBeat Horizon", shortLabel: "MBH", href: "/horizon/" },
+  { label: "Section 7", shortLabel: "Section 7", href: "/section7/" }
+];
+
 export const releases = [
   {
     title: "Saved My Life",
