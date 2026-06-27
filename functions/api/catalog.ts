@@ -1,5 +1,6 @@
 import { inferReleaseRegion, isCollabArtistName, isResponse, json, MBP_REGION_KEYS, mbpRegionDetails, normalizeMbpRegion, requireDb, syncReleaseArtistCredits, type Env } from "./_shared";
 import { parseFfmRelease } from "./_ffm";
+import { isPlayableReleaseLink, normalizeReleasePlatformLinks } from "./_release_links";
 
 type ReleaseRow = Record<string, unknown> & { id: string };
 type ArtistRow = Record<string, unknown> & { id: string; links_json?: string };
@@ -194,8 +195,14 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env, waitUntil
     }))
     .sort((left, right) => artistSortRank(left) - artistSortRank(right) || String(left.name ?? "").localeCompare(String(right.name ?? "")));
   const publicReleases = (releases.results ?? []).map((release) => {
-    const platform_links = (links.results ?? []).filter((link) => link.release_id === release.id);
-    const playableLinks = platform_links.filter((link) => !/email|subscribe/i.test(`${link.platform ?? ""} ${link.label ?? ""}`));
+    const rawPlatformLinks = (links.results ?? []).filter((link) => link.release_id === release.id);
+    const rawPlayableLinks = rawPlatformLinks.filter((link) => !/email|subscribe/i.test(`${link.platform ?? ""} ${link.label ?? ""}`));
+    const platform_links = normalizeReleasePlatformLinks(rawPlatformLinks, {
+      artistDisplay: String(release.artist_display ?? ""),
+      title: String(release.title ?? ""),
+      addSpotifyFallback: release.status !== "presave" && rawPlayableLinks.length > 0
+    });
+    const playableLinks = platform_links.filter(isPlayableReleaseLink);
     const storedRegion = normalizeMbpRegion(release.mbp_region);
     const linkedRegion = inferReleaseRegion(artistRegionsByRelease.get(release.id) ?? [], storedRegion);
     const releaseRegion = storedRegion !== "world" ? storedRegion : linkedRegion;

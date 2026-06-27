@@ -1,4 +1,5 @@
 import { id, isResponse, json, methodNotAllowed, normalizeMbpRegion, optionalString, readJson, requireAdmin, requireDb, requiredString, slugify, syncReleaseArtistCredits, type Env } from "../_shared";
+import { isPlayableReleaseLink, normalizeReleasePlatformLinks } from "../_release_links";
 
 type ReleaseRow = {
   id: string;
@@ -24,9 +25,9 @@ async function replaceLinks(db: D1Database, releaseId: string, links: unknown) {
   await db.prepare("DELETE FROM release_platform_links WHERE release_id = ?").bind(releaseId).run();
   if (!Array.isArray(links)) return;
 
-  for (let index = 0; index < links.length; index += 1) {
-    const link = links[index] as Record<string, unknown>;
-    if (typeof link.url !== "string" || typeof link.platform !== "string") continue;
+  const normalizedLinks = normalizeReleasePlatformLinks(links as Record<string, unknown>[]);
+  for (let index = 0; index < normalizedLinks.length; index += 1) {
+    const link = normalizedLinks[index];
     await db
       .prepare(
         `INSERT INTO release_platform_links (id, release_id, platform, label, url, is_playable, sort_order)
@@ -35,9 +36,9 @@ async function replaceLinks(db: D1Database, releaseId: string, links: unknown) {
       .bind(
         id("lnk"),
         releaseId,
-        link.platform.trim().toLowerCase(),
-        typeof link.label === "string" && link.label.trim() ? link.label.trim() : link.platform.trim(),
-        link.url.trim(),
+        link.platform,
+        link.label,
+        link.url,
         link.is_playable === false ? 0 : 1,
         index
       )
@@ -62,8 +63,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   return json({
     ok: true,
     releases: (releases.results ?? []).map((release) => {
-      const platformLinks = (links.results ?? []).filter((link) => link.release_id === release.id);
-      const playableLinks = platformLinks.filter((link) => !/email|subscribe/i.test(`${link.platform ?? ""} ${link.label ?? ""}`));
+      const rawPlatformLinks = (links.results ?? []).filter((link) => link.release_id === release.id);
+      const platformLinks = normalizeReleasePlatformLinks(rawPlatformLinks);
+      const playableLinks = platformLinks.filter(isPlayableReleaseLink);
       return {
         ...release,
         status: playableLinks.length > 0 ? "published" : "presave",

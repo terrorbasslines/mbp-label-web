@@ -1,3 +1,5 @@
+import { canonicalReleasePlatform, normalizeReleasePlatformLinks, releasePlatformLabel } from "./_release_links";
+
 export type ParsedFfmRelease = {
   catalogNumber: string;
   ffmUrl: string;
@@ -58,6 +60,22 @@ function decodeBase64Json(value: string) {
   return JSON.parse(atob(padded));
 }
 
+function decodedDestination(url: string) {
+  try {
+    const decodedUrl = new URL(url.replace(/\\\//g, "/"));
+    const cd = decodedUrl.searchParams.get("cd");
+    if (!cd) return null;
+    const decoded = decodeBase64Json(cd) as { destUrl?: string; srvc?: string };
+    if (!decoded.destUrl || !decoded.destUrl.startsWith("http")) return null;
+    return {
+      platform: decoded.srvc || "",
+      url: decoded.destUrl
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function parseFfmRelease(catalogNumber: string, ffmUrl: string, html: string): ParsedFfmRelease | null {
   if (/not found|page does not exist/i.test(html) && !html.includes("og:title")) {
     return null;
@@ -72,34 +90,39 @@ export function parseFfmRelease(catalogNumber: string, ffmUrl: string, html: str
   const [artistPart, ...trackParts] = title.split(" - ");
   const artist = artistPart?.trim() || "Unknown Artist";
   const trackTitle = trackParts.join(" - ").trim() || title;
-  const links = new Map<string, ParsedFfmRelease["platformLinks"][number]>();
+  const linkCandidates: ParsedFfmRelease["platformLinks"] = [];
+  const seenFfmUrls = new Set<string>();
   const serviceRegex = /service:"([^"]+)".{0,500}?serviceName:"([^"]+)".{0,2500}?url:"(https:\/\/api\.ffm\.to\/sl\/e\/c\/[^"]+)"/gs;
 
   for (const match of normalized.matchAll(serviceRegex)) {
     const [, platformRaw, labelRaw, urlRaw] = match;
-    const url = urlRaw.replace(/\\\//g, "/");
-    try {
-      const decodedUrl = new URL(url);
-      const cd = decodedUrl.searchParams.get("cd");
-      if (!cd) continue;
-      const decoded = decodeBase64Json(cd) as { destUrl?: string; srvc?: string };
-      if (!decoded.destUrl || !decoded.destUrl.startsWith("http")) continue;
-
-      const platform = (decoded.srvc || platformRaw).toLowerCase();
-      if (!links.has(platform)) {
-        links.set(platform, {
-          platform,
-          label: labelRaw,
-          url: decoded.destUrl,
-          is_playable: true
-        });
-      }
-    } catch {
-      // FFM occasionally embeds services without a direct destination URL. Ignore those.
-    }
+    const decoded = decodedDestination(urlRaw);
+    if (!decoded) continue;
+    seenFfmUrls.add(urlRaw.replace(/\\\//g, "/"));
+    const platform = canonicalReleasePlatform(decoded.platform || platformRaw, labelRaw, decoded.url);
+    linkCandidates.push({
+      platform,
+      label: releasePlatformLabel(platform, labelRaw),
+      url: decoded.url,
+      is_playable: true
+    });
   }
 
-  const platformLinks = [...links.values()];
+  for (const match of normalized.matchAll(/https:\/\/api\.ffm\.to\/sl\/e\/c\/[^"'<>\\\s]+/gi)) {
+    const urlRaw = match[0].replace(/\\\//g, "/");
+    if (seenFfmUrls.has(urlRaw)) continue;
+    const decoded = decodedDestination(urlRaw);
+    if (!decoded) continue;
+    const platform = canonicalReleasePlatform(decoded.platform, decoded.platform, decoded.url);
+    linkCandidates.push({
+      platform,
+      label: releasePlatformLabel(platform, decoded.platform),
+      url: decoded.url,
+      is_playable: true
+    });
+  }
+
+  const platformLinks = normalizeReleasePlatformLinks(linkCandidates);
   const publishedPlatformLinks = platformLinks.filter((link) => !/email|subscribe/i.test(`${link.platform} ${link.label}`));
   const status = publishedPlatformLinks.length > 0 ? "published" : "presave";
 

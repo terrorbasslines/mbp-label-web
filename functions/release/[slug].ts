@@ -1,5 +1,6 @@
 import type { Env } from "../api/_shared";
 import { inferReleaseRegion, mbpRegionDetails, normalizeMbpRegion, parseArtistCredits, syncReleaseArtistCredits } from "../api/_shared";
+import { isPlayableReleaseLink, normalizeReleasePlatformLinks } from "../api/_release_links";
 import { absoluteUrl, escapeHtml, htmlResponse, notFoundPage, pageShell, SITE_NAME, SITE_URL } from "../_seo";
 
 type ReleaseRow = {
@@ -125,8 +126,14 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
     })
   );
 
-  const platformLinks = links.results ?? [];
-  const playablePlatformLinks = platformLinks.filter((link) => !/email|subscribe/i.test(`${link.platform} ${link.label}`));
+  const rawPlatformLinks = links.results ?? [];
+  const rawPlayablePlatformLinks = rawPlatformLinks.filter((link) => !/email|subscribe/i.test(`${link.platform} ${link.label}`));
+  const platformLinks = normalizeReleasePlatformLinks(rawPlatformLinks, {
+    artistDisplay: release.artist_display,
+    title: release.title,
+    addSpotifyFallback: release.status !== "presave" && rawPlayablePlatformLinks.length > 0
+  });
+  const playablePlatformLinks = platformLinks.filter(isPlayableReleaseLink);
   const isPresave = playablePlatformLinks.length === 0;
   const storedRegion = normalizeMbpRegion(release.mbp_region);
   const linkedRegion = inferReleaseRegion(
