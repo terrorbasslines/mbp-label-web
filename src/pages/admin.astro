@@ -131,6 +131,9 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                 <h3 class="mt-2 font-display text-2xl font-black uppercase text-white">Label calendar</h3>
                 <p class="mt-2 text-sm leading-6 text-steel">Plan MBP, MBH and S7 release windows with agreement, artwork, delivery and promo deadlines.</p>
               </div>
+              <a class="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-haze transition hover:border-neon-cyan hover:text-white" href="/admin/release-calendar/">
+                Calendar import
+              </a>
             </div>
             <form data-calendar-generate class="mt-5 grid gap-3 md:grid-cols-[1fr_1fr_1fr_1fr_auto]">
               <label>
@@ -697,6 +700,48 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       .replaceAll(">", "&gt;")
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#39;");
+
+  function normalizeArtistUrl(value) {
+    const text = String(value || "").trim().replace(/[)\],.]+$/g, "");
+    if (!text) return null;
+    if (/^https?:\/\//i.test(text)) return text;
+    if (/^www\./i.test(text)) return `https://${text}`;
+    if (/^[a-z0-9.-]+\.[a-z]{2,}(?:\/\S*)?$/i.test(text)) return `https://${text}`;
+    return null;
+  }
+
+  function parseArtistLinks(value) {
+    const lines = String(value || "")
+      .split(/\r?\n/)
+      .flatMap((line) => line.split(/\s*,\s*(?=(?:https?:\/\/|www\.|[a-z0-9.-]+\.[a-z]{2,}))/i))
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    return lines
+      .map((line, index) => {
+        const match = line.match(/(?:https?:\/\/|www\.)[^\s<>"']+|[a-z0-9.-]+\.[a-z]{2,}(?:\/[^\s<>"']*)?/i);
+        const url = normalizeArtistUrl(match?.[0] || line);
+        if (!url) return null;
+        const rawLabel = match?.index ? line.slice(0, match.index).replace(/[:|\-]+$/g, "").trim() : "";
+        return { label: rawLabel || `Artist link ${index + 1}`, url };
+      })
+      .filter(Boolean);
+  }
+
+  function renderArtistLinks(value) {
+    const links = parseArtistLinks(value);
+    if (links.length) {
+      return links
+        .map(
+          (link) =>
+            `<a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:border-neon-cyan hover:text-white" href="${escapeHtml(link.url)}" target="_blank" rel="noreferrer">${escapeHtml(link.label)}</a>`
+        )
+        .join("");
+    }
+    const text = String(value || "").trim();
+    if (!text) return "";
+    return `<details class="rounded border border-white/10 px-3 py-2 text-xs text-haze"><summary class="cursor-pointer font-bold uppercase">Artist links</summary><pre class="mt-2 whitespace-pre-wrap break-words font-sans text-xs leading-5 text-steel">${escapeHtml(text)}</pre></details>`;
+  }
 
   const managementAdmins = new Set(["romee storm", "alexair", "rodrigo stadt"]);
 
@@ -1353,7 +1398,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                           ? `<a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:text-white" href="${escapeHtml(submission.streaming_link)}" target="_blank" rel="noreferrer">Private stream</a>`
                           : ""
                       }
-                      ${submission.links ? `<a class="rounded border border-white/10 px-2 py-1 text-xs text-haze hover:text-white" href="${escapeHtml(submission.links)}" target="_blank" rel="noreferrer">Artist links</a>` : ""}
+                      ${renderArtistLinks(submission.links)}
                     </div>
                   </div>
                   <form class="min-w-full space-y-2 lg:min-w-80" data-decision-form="${escapeHtml(submission.id)}">
@@ -1421,7 +1466,8 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   }
 
   function slotLabel(slot) {
-    return `${slot.brand || "MBP"} ${formatCalendarDate(slot.release_date)}${slot.catalog_number ? ` | ${slot.catalog_number}` : ""}`;
+    const capacity = `${Number(slot.current_release_count || 0)}/${Number(slot.max_releases || 1)}`;
+    return `${slot.brand || "MBP"} ${formatCalendarDate(slot.release_date)} | ${capacity} used${slot.catalog_number ? ` | ${slot.catalog_number}` : ""}`;
   }
 
   function resetCalendarEditor() {
@@ -1483,7 +1529,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                     <h4 class="mt-2 font-display text-xl font-black uppercase text-white">${escapeHtml(formatCalendarDate(slot.release_date))}</h4>
                     <p class="mt-1 text-sm text-steel">${escapeHtml(slot.catalog_number || "No catalog")} ${slot.artist_name ? `| ${escapeHtml(slot.artist_name)}` : ""}</p>
                     <p class="mt-3 text-sm leading-6 text-haze">${escapeHtml(slot.track_title || slot.internal_notes || "Open release slot.")}</p>
-                    <p class="mt-3 text-xs leading-5 text-steel">Agreement ${escapeHtml(formatCalendarDate(slot.agreement_deadline))} | Assets ${escapeHtml(formatCalendarDate(slot.asset_deadline))} | Distributor ${escapeHtml(formatCalendarDate(slot.distributor_delivery_deadline))}</p>
+                    <p class="mt-3 text-xs leading-5 text-steel">Occupancy ${escapeHtml(Number(slot.current_release_count || 0))}/${escapeHtml(Number(slot.max_releases || 1))} | Agreement ${escapeHtml(formatCalendarDate(slot.agreement_deadline))} | Assets ${escapeHtml(formatCalendarDate(slot.asset_deadline))} | Distributor ${escapeHtml(formatCalendarDate(slot.distributor_delivery_deadline))}</p>
                   </div>
                   <div class="flex shrink-0 gap-2">
                     <button class="text-xs font-bold uppercase text-neon-cyan hover:text-white" data-calendar-edit="${escapeHtml(slot.id)}" type="button">Edit</button>
@@ -1522,8 +1568,9 @@ import BaseLayout from "../layouts/BaseLayout.astro";
               <article class="rounded-md border bg-black/35 p-4" style="border-color:${escapeHtml(color)}66;">
                 <p class="font-mono text-xs font-bold uppercase tracking-[0.16em]" style="color:${escapeHtml(color)};">${escapeHtml(agreement.brand || "MBP")} | ${escapeHtml(agreement.status || "draft")}</p>
                 <h4 class="mt-2 font-display text-xl font-black uppercase text-white">${escapeHtml(agreement.release_title || "Untitled release")}</h4>
-                <p class="mt-1 text-sm text-steel">${escapeHtml(agreement.artist_name || "Unknown artist")} | ${escapeHtml(agreement.catalog_number || "No catalog")} | ${escapeHtml(formatCalendarDate(agreement.release_date))}</p>
+                <p class="mt-1 text-sm text-steel">${escapeHtml(agreement.artist_name || "Unknown artist")} | ${escapeHtml(agreement.slot_catalog_number || agreement.catalog_number || "No catalog")} | ${escapeHtml(formatCalendarDate(agreement.planned_release_date || agreement.slot_release_date || agreement.release_date))}</p>
                 <div class="mt-4 flex flex-wrap gap-2">
+                  <button class="rounded border border-white/10 px-3 py-2 text-xs font-black uppercase text-haze hover:border-neon-cyan hover:text-white" data-agreement-artist-link="${escapeHtml(agreement.id)}" type="button">Artist link</button>
                   ${canSign ? `<button class="rounded border border-neon-green/50 px-3 py-2 text-xs font-black uppercase text-neon-green hover:bg-neon-green hover:text-black" data-agreement-sign-label="${escapeHtml(agreement.id)}" type="button">Label sign</button>` : ""}
                   <button class="rounded border border-white/10 px-3 py-2 text-xs font-black uppercase text-haze hover:border-neon-red hover:text-white" data-agreement-cancel="${escapeHtml(agreement.id)}" type="button">Cancel</button>
                 </div>
@@ -1750,7 +1797,13 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       });
       agreementForm.reset();
       const emailStatus = result.email?.status ? ` Email: ${result.email.status}.` : "";
-      if (agreementStatus) agreementStatus.textContent = `Agreement created for artist review.${emailStatus}`;
+      if (agreementStatus) {
+        agreementStatus.innerHTML = `Agreement created for artist review.${escapeHtml(emailStatus)} ${
+          result.review_url
+            ? `<a class="text-neon-cyan hover:text-white" href="${escapeHtml(result.review_url)}" target="_blank" rel="noreferrer">Open artist link</a>`
+            : ""
+        }`;
+      }
       await loadDashboard();
     } catch (error) {
       if (agreementStatus) agreementStatus.textContent = error.message;
@@ -2012,6 +2065,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     const newsStatusId = target.getAttribute("data-news-status");
     const editCalendarId = target.getAttribute("data-calendar-edit");
     const deleteCalendarId = target.getAttribute("data-calendar-delete");
+    const artistLinkAgreementId = target.getAttribute("data-agreement-artist-link");
     const signLabelAgreementId = target.getAttribute("data-agreement-sign-label");
     const cancelAgreementId = target.getAttribute("data-agreement-cancel");
     if (editCalendarId) {
@@ -2027,6 +2081,18 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       });
       resetCalendarEditor();
       await loadDashboard();
+      return;
+    }
+    if (artistLinkAgreementId) {
+      if (agreementStatus) agreementStatus.textContent = "Creating artist review link...";
+      const result = await api(`/api/admin/agreements/${artistLinkAgreementId}`, {
+        method: "POST",
+        body: JSON.stringify({ action: "send_artist_link" })
+      });
+      if (agreementStatus) {
+        agreementStatus.innerHTML = `Artist review link ready. Email: ${escapeHtml(result.email?.status || "not sent")}. <a class="text-neon-cyan hover:text-white" href="${escapeHtml(result.review_url)}" target="_blank" rel="noreferrer">Open link</a>`;
+      }
+      window.prompt("Artist review link", result.review_url);
       return;
     }
     if (signLabelAgreementId) {

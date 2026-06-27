@@ -1,54 +1,20 @@
-import { id, isResponse, json, methodNotAllowed, optionalString, readJson, requireAdmin, requireDb, type Env } from "../../_shared";
+import {
+  id,
+  isResponse,
+  json,
+  methodNotAllowed,
+  optionalString,
+  readJson,
+  requireAdmin,
+  requireDb,
+  sendAgreementReviewEmail,
+  type Env
+} from "../../_shared";
 import {
   createAuditEvent,
-  serializeAgreement,
-  type AgreementPartyRow,
-  type AgreementRow,
-  type AgreementSplitRow,
   type AgreementVersionRow,
-  type ChecklistRow
 } from "../../_agreements";
-
-function migrationMissing(error: unknown) {
-  return String((error as Error)?.message ?? error).toLowerCase().includes("no such table");
-}
-
-async function loadAgreementDetail(db: D1Database, agreementId: string) {
-  const agreement = await db
-    .prepare(
-      `SELECT a.*, s.release_date AS slot_release_date, s.status AS slot_status, s.catalog_number AS slot_catalog_number,
-              s.agreement_deadline, s.asset_deadline, s.distributor_delivery_deadline, s.promo_start_date
-       FROM release_agreements a
-       LEFT JOIN release_calendar_slots s ON s.id = a.calendar_slot_id
-       WHERE a.id = ?
-       LIMIT 1`
-    )
-    .bind(agreementId)
-    .first<AgreementRow & Record<string, unknown>>();
-  if (!agreement) return null;
-
-  const [parties, splits, checklist, versions, signatures, audit] = await Promise.all([
-    db.prepare("SELECT * FROM agreement_parties WHERE agreement_id = ? ORDER BY created_at ASC").bind(agreementId).all<AgreementPartyRow>(),
-    db.prepare("SELECT * FROM agreement_splits WHERE agreement_id = ? ORDER BY created_at ASC").bind(agreementId).all<AgreementSplitRow>(),
-    db.prepare("SELECT * FROM agreement_checklist_items WHERE agreement_id = ? ORDER BY created_at ASC").bind(agreementId).all<ChecklistRow>(),
-    db
-      .prepare("SELECT id, agreement_id, version_number, snapshot_hash, created_by_email, created_by_role, created_at FROM agreement_versions WHERE agreement_id = ? ORDER BY version_number DESC")
-      .bind(agreementId)
-      .all<Omit<AgreementVersionRow, "snapshot_html">>(),
-    db.prepare("SELECT * FROM agreement_signatures WHERE agreement_id = ? ORDER BY datetime(signed_at) DESC").bind(agreementId).all(),
-    db.prepare("SELECT * FROM agreement_audit_events WHERE agreement_id = ? ORDER BY datetime(created_at) DESC LIMIT 50").bind(agreementId).all()
-  ]);
-
-  return {
-    agreement: serializeAgreement(agreement),
-    parties: parties.results ?? [],
-    splits: splits.results ?? [],
-    checklist: checklist.results ?? [],
-    versions: versions.results ?? [],
-    signatures: signatures.results ?? [],
-    audit: audit.results ?? []
-  };
-}
+import { createAgreementAccessToken, loadAgreementDetail, migrationMissing } from "../../_agreement_review";
 
 export const onRequestGet: PagesFunction<Env> = async ({ params, request, env }) => {
   const admin = await requireAdmin(request, env);
@@ -58,7 +24,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
   if (isResponse(db)) return db;
 
   try {
-    const detail = await loadAgreementDetail(db, String(params.id ?? ""));
+    const detail = await loadAgreementDetail(db, String(params.id ?? ""), true);
     if (!detail) return json({ ok: false, error: "Agreement not found." }, { status: 404 });
     return json({ ok: true, ...detail });
   } catch (error) {
@@ -90,6 +56,29 @@ export const onRequestPost: PagesFunction<Env> = async ({ params, request, env }
         reason: optionalString(body.reason, 1000)
       });
       return json({ ok: true, detail: await loadAgreementDetail(db, agreementId) });
+    }
+
+    if (action === "send_artist_link") {
+      const access = await createAgreementAccessToken(
+        db,
+        request,
+        agreementId,
+        String(detail.agreement.artist_email || ""),
+        admin.email ?? "admin"
+      );
+      const email = await sendAgreementReviewEmail(env, {
+        to: String(detail.agreement.artist_email || ""),
+        artistName: String(detail.agreement.artist_name || "Artist"),
+        trackTitle: String(detail.agreement.release_title || "Release agreement"),
+        brand: String(detail.agreement.brand || "MBP"),
+        releaseDate: String(detail.agreement.planned_release_date || ""),
+        agreementUrl: access.review_url
+      });
+      await createAuditEvent(db, request, agreementId, "artist_review_link_created", "admin", admin.email ?? "admin", {
+        email_status: email.status,
+        expires_at: access.expires_at
+      });
+      return json({ ok: true, review_url: access.review_url, access_expires_at: access.expires_at, email });
     }
 
     if (action === "sign_label") {

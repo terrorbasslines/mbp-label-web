@@ -23,6 +23,7 @@ import {
   type AgreementSplitRow,
   type ChecklistRow
 } from "../_agreements";
+import { createAgreementAccessToken, loadAgreementDetail, migrationMissing } from "../_agreement_review";
 
 type DemoRow = {
   id: string;
@@ -46,10 +47,6 @@ type SlotRow = {
   artist_name: string | null;
   track_title: string | null;
 };
-
-function migrationMissing(error: unknown) {
-  return String((error as Error)?.message ?? error).toLowerCase().includes("no such table");
-}
 
 async function listAgreements(db: D1Database) {
   const result = await db
@@ -83,31 +80,14 @@ async function listOpenSlots(db: D1Database) {
     .prepare(
       `SELECT *
        FROM release_calendar_slots
-       WHERE status IN ('available', 'reserved', 'confirmed', 'locked')
-         AND date(release_date) >= date('now', '-30 days')
+       WHERE status NOT IN ('locked', 'released', 'cancelled')
+         AND current_release_count < max_releases
+         AND date(release_date) >= date('now')
        ORDER BY date(release_date) ASC, brand ASC
        LIMIT 300`
     )
     .all<SlotRow>();
   return result.results ?? [];
-}
-
-async function loadBaseAgreement(db: D1Database, agreementId: string) {
-  const agreement = await db.prepare("SELECT * FROM release_agreements WHERE id = ? LIMIT 1").bind(agreementId).first<AgreementRow>();
-  if (!agreement) return null;
-  const party = await db
-    .prepare("SELECT * FROM agreement_parties WHERE agreement_id = ? AND role = 'artist' ORDER BY created_at ASC LIMIT 1")
-    .bind(agreementId)
-    .first<AgreementPartyRow>();
-  const splits = await db
-    .prepare("SELECT * FROM agreement_splits WHERE agreement_id = ? ORDER BY created_at ASC")
-    .bind(agreementId)
-    .all<AgreementSplitRow>();
-  const checklist = await db
-    .prepare("SELECT * FROM agreement_checklist_items WHERE agreement_id = ? ORDER BY created_at ASC")
-    .bind(agreementId)
-    .all<ChecklistRow>();
-  return { agreement, party, splits: splits.results ?? [], checklist: checklist.results ?? [] };
 }
 
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
@@ -155,7 +135,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
     const slot = await db.prepare("SELECT * FROM release_calendar_slots WHERE id = ? LIMIT 1").bind(calendarSlotId).first<SlotRow>();
     if (!slot) return json({ ok: false, error: "Calendar slot not found." }, { status: 404 });
-    if (slot.status === "cancelled" || slot.status === "released") {
+    if (slot.status === "cancelled" || slot.status === "released" || slot.status === "locked" || slot.current_release_count >= slot.max_releases) {
       return json({ ok: false, error: "This calendar slot is not open for a new agreement." }, { status: 400 });
     }
 
@@ -213,10 +193,19 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       .bind(demo.artist_name, demo.track_title, slot.id)
       .run();
 
-    const base = await loadBaseAgreement(db, agreementId);
-    if (base?.party) {
-      const version = await createAgreementVersion(db, base.agreement, base.party, base.splits, base.checklist, "admin", admin.email ?? "admin");
-      await buildAgreementSnapshot(base.agreement, base.party, base.splits, base.checklist);
+    const base = await loadAgreementDetail(db, agreementId);
+    const baseParty = base?.parties.find((party) => party.role === "artist") as AgreementPartyRow | undefined;
+    if (base?.agreement && baseParty) {
+      const version = await createAgreementVersion(
+        db,
+        base.agreement as AgreementRow,
+        baseParty,
+        base.splits as AgreementSplitRow[],
+        base.checklist as ChecklistRow[],
+        "admin",
+        admin.email ?? "admin"
+      );
+      await buildAgreementSnapshot(base.agreement as AgreementRow, baseParty, base.splits as AgreementSplitRow[], base.checklist as ChecklistRow[]);
       await createAuditEvent(db, request, agreementId, "agreement_created", "admin", admin.email ?? "admin", {
         demo_submission_id: demo.id,
         calendar_slot_id: slot.id,
@@ -224,7 +213,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       });
     }
 
-    const agreementUrl = new URL(`/artist-dashboard/?agreement=${encodeURIComponent(agreementId)}`, request.url).toString();
+    const access = await createAgreementAccessToken(db, request, agreementId, demo.email, admin.email ?? "admin");
+    const agreementUrl = access.review_url;
     const email = await sendAgreementReviewEmail(env, {
       to: demo.email,
       artistName: demo.artist_name,
@@ -234,7 +224,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       agreementUrl
     });
 
-    return json({ ok: true, agreement_id: agreementId, email, agreements: await listAgreements(db) });
+    return json({ ok: true, agreement_id: agreementId, review_url: agreementUrl, access_expires_at: access.expires_at, email, agreements: await listAgreements(db) });
   } catch (error) {
     if (migrationMissing(error)) {
       return json({ ok: false, error: "Run D1 migration 0014_release_calendar_agreements.sql first." }, { status: 409 });

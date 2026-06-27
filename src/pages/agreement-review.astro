@@ -1,0 +1,411 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<style is:global>
+  .contract-document {
+    background: #f8f6f1;
+    color: #171717;
+    border-radius: 4px;
+    padding: 34px;
+    font-family: Georgia, "Times New Roman", serif;
+    line-height: 1.55;
+  }
+  .contract-document h1,
+  .contract-document h2,
+  .contract-document h3 {
+    color: #111;
+    font-family: Georgia, "Times New Roman", serif;
+    letter-spacing: 0;
+  }
+  .contract-document h1 {
+    font-size: 1.75rem;
+    line-height: 1.15;
+    text-align: center;
+    text-transform: uppercase;
+  }
+  .contract-cover p {
+    margin-top: 0.4rem;
+    text-align: center;
+    font-weight: 700;
+  }
+  .contract-document h2 {
+    margin-top: 1.75rem;
+    border-bottom: 1px solid #d5d0c7;
+    padding-bottom: 0.35rem;
+    font-size: 1.25rem;
+  }
+  .contract-document h3 {
+    margin-top: 1.3rem;
+    font-size: 1.05rem;
+  }
+  .contract-document p {
+    margin-top: 0.75rem;
+  }
+  .contract-document table {
+    margin-top: 0.9rem;
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+  }
+  .contract-document th,
+  .contract-document td {
+    border: 1px solid #c8c1b5;
+    padding: 0.55rem 0.65rem;
+    vertical-align: top;
+  }
+  .contract-document th {
+    width: 32%;
+    background: #e8e2d8;
+    text-align: left;
+  }
+  .contract-typed-signature {
+    display: inline-block;
+    min-width: 220px;
+    border-bottom: 1px solid #111;
+    font-family: "Brush Script MT", "Segoe Script", cursive;
+    font-size: 1.3rem;
+    line-height: 1.3;
+  }
+  .contract-signature-image {
+    display: block;
+    max-width: 260px;
+    max-height: 90px;
+  }
+  .contract-signature-line {
+    letter-spacing: 0.08em;
+  }
+</style>
+
+<BaseLayout title="Agreement Review" description="Review and sign a The MasterBeat Project release agreement." noindex={true}>
+  <section class="border-b border-white/10 bg-black/50 py-14">
+    <div class="section-shell">
+      <p class="eyebrow">Release agreement</p>
+      <h1 class="page-title mt-4">Agreement review</h1>
+      <p class="mt-5 max-w-3xl text-lg leading-8 text-haze">
+        Review the release agreement, complete artist details, confirm rights clearance and sign electronically.
+      </p>
+    </div>
+  </section>
+
+  <section class="py-10">
+    <div class="section-shell">
+      <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div class="surface rounded-lg p-4">
+          <div data-document-status class="p-4 text-sm text-steel">Loading agreement...</div>
+          <div data-contract-document></div>
+        </div>
+
+        <aside class="surface self-start rounded-lg p-5">
+          <p class="eyebrow">Artist action</p>
+          <h2 class="mt-2 font-display text-2xl font-black uppercase text-white" data-panel-title>Complete agreement</h2>
+          <p class="mt-3 text-sm leading-6 text-steel" data-access-status></p>
+
+          <form class="mt-5 grid gap-4" data-details-form hidden>
+            <label>
+              <span class="field-label">Release title</span>
+              <input class="field-control" name="release_title" required />
+            </label>
+            <label>
+              <span class="field-label">Genre</span>
+              <input class="field-control" name="genre" />
+            </label>
+            <label>
+              <span class="field-label">Legal name</span>
+              <input class="field-control" name="legal_name" required />
+            </label>
+            <label>
+              <span class="field-label">Payment email</span>
+              <input class="field-control" name="payment_email" type="email" />
+            </label>
+            <label>
+              <span class="field-label">SplitShare email</span>
+              <input class="field-control" name="splitshare_email" type="email" />
+            </label>
+            <label>
+              <span class="field-label">Street address</span>
+              <input class="field-control" name="street_address" />
+            </label>
+            <div class="grid gap-3 sm:grid-cols-2">
+              <label>
+                <span class="field-label">City</span>
+                <input class="field-control" name="city" />
+              </label>
+              <label>
+                <span class="field-label">Postal code</span>
+                <input class="field-control" name="postal_code" />
+              </label>
+            </div>
+            <label>
+              <span class="field-label">State / province</span>
+              <input class="field-control" name="state_province" />
+            </label>
+            <label>
+              <span class="field-label">Country</span>
+              <input class="field-control" name="country" required />
+            </label>
+            <label>
+              <span class="field-label">Collaborators and splits, one per line: name|role|email|share</span>
+              <textarea class="field-control min-h-32" name="splits_text"></textarea>
+            </label>
+            <fieldset class="rounded-md border border-white/10 p-4">
+              <legend class="field-label px-2">Rights checklist</legend>
+              <div class="grid gap-3" data-checklist></div>
+            </fieldset>
+            <button class="rounded-md bg-white px-5 py-3 text-sm font-black uppercase tracking-[0.14em] text-black hover:bg-neon-cyan" type="submit">
+              Save details
+            </button>
+            <p class="text-sm text-steel" data-details-status></p>
+          </form>
+
+          <form class="mt-6 grid gap-4 border-t border-white/10 pt-5" data-sign-form hidden>
+            <div class="grid grid-cols-2 gap-2 rounded-md border border-white/10 bg-black/30 p-1">
+              <label class="cursor-pointer rounded px-3 py-2 text-center text-xs font-black uppercase tracking-[0.14em] text-haze has-[:checked]:bg-white has-[:checked]:text-black">
+                <input class="sr-only" type="radio" name="signature_mode" value="typed" checked />
+                Typed
+              </label>
+              <label class="cursor-pointer rounded px-3 py-2 text-center text-xs font-black uppercase tracking-[0.14em] text-haze has-[:checked]:bg-white has-[:checked]:text-black">
+                <input class="sr-only" type="radio" name="signature_mode" value="drawn" />
+                Draw
+              </label>
+            </div>
+            <label data-typed-signature>
+              <span class="field-label">Typed artist signature</span>
+              <input class="field-control" name="signature_text" placeholder="Type your legal name to sign" />
+            </label>
+            <div data-drawn-signature hidden>
+              <span class="field-label">Draw signature</span>
+              <canvas class="mt-2 block h-40 w-full rounded-md border border-white/10 bg-white touch-none" width="760" height="220" data-signature-canvas></canvas>
+              <button class="mt-2 rounded-md border border-white/10 px-3 py-2 text-xs font-black uppercase text-haze hover:border-neon-cyan hover:text-white" type="button" data-clear-signature>
+                Clear signature
+              </button>
+            </div>
+            <label>
+              <span class="field-label">Signer name</span>
+              <input class="field-control" name="signer_name" required />
+            </label>
+            <button class="rounded-md border border-neon-cyan px-5 py-3 text-sm font-black uppercase tracking-[0.14em] text-neon-cyan hover:bg-neon-cyan hover:text-black" type="submit">
+              Sign agreement
+            </button>
+            <p class="text-sm text-steel" data-sign-status></p>
+          </form>
+        </aside>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  // @ts-nocheck
+  const token = new URL(location.href).searchParams.get("token") || "";
+  const documentStatus = document.querySelector("[data-document-status]");
+  const contractDocument = document.querySelector("[data-contract-document]");
+  const accessStatus = document.querySelector("[data-access-status]");
+  const detailsForm = document.querySelector("[data-details-form]");
+  const signForm = document.querySelector("[data-sign-form]");
+  const checklistEl = document.querySelector("[data-checklist]");
+  const detailsStatus = document.querySelector("[data-details-status]");
+  const signStatus = document.querySelector("[data-sign-status]");
+  const typedSignature = document.querySelector("[data-typed-signature]");
+  const drawnSignature = document.querySelector("[data-drawn-signature]");
+  const signatureCanvas = document.querySelector("[data-signature-canvas]");
+  const clearSignature = document.querySelector("[data-clear-signature]");
+  let detail = null;
+  let drawing = false;
+  let hasDrawing = false;
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  async function api(path, options = {}) {
+    const response = await fetch(path, {
+      credentials: "same-origin",
+      cache: "no-store",
+      ...options,
+      headers: { "content-type": "application/json", "cache-control": "no-cache", ...(options.headers || {}) }
+    });
+    const data = await response.json().catch(() => ({ ok: false, error: "Invalid API response." }));
+    if (!response.ok || data.ok === false) throw new Error(data.error || `Request failed: ${response.status}`);
+    return data;
+  }
+
+  function fillForm() {
+    if (!(detailsForm instanceof HTMLFormElement) || !detail) return;
+    const agreement = detail.agreement || {};
+    const artistParty = (detail.parties || []).find((party) => party.role === "artist") || {};
+    const splits = detail.splits || [];
+    detailsForm.release_title.value = agreement.release_title || "";
+    detailsForm.genre.value = agreement.genre || "";
+    detailsForm.legal_name.value = artistParty.legal_name || "";
+    detailsForm.payment_email.value = artistParty.payment_email || artistParty.email || "";
+    detailsForm.splitshare_email.value = artistParty.splitshare_email || artistParty.email || "";
+    detailsForm.street_address.value = artistParty.street_address || "";
+    detailsForm.city.value = artistParty.city || "";
+    detailsForm.state_province.value = artistParty.state_province || "";
+    detailsForm.postal_code.value = artistParty.postal_code || "";
+    detailsForm.country.value = artistParty.country || "";
+    detailsForm.splits_text.value = splits.length
+      ? splits.map((split) => `${split.payee_name || ""}|${split.role || "artist"}|${split.email || ""}|${split.share_of_artist_pool ?? 0}`).join("\n")
+      : `${agreement.artist_name || ""}|artist|${agreement.artist_email || ""}|100`;
+    const signerName = signForm?.querySelector('input[name="signer_name"]');
+    if (signerName instanceof HTMLInputElement) signerName.value = artistParty.legal_name || artistParty.name || agreement.artist_name || "";
+    if (checklistEl) {
+      checklistEl.innerHTML = (detail.checklist || [])
+        .map(
+          (item) => `<label class="flex gap-3 text-sm leading-6 text-haze">
+            <input class="mt-1 h-4 w-4 accent-neon-cyan" type="checkbox" name="checklist" value="${escapeHtml(item.item_key)}" ${item.status === "confirmed" ? "checked" : ""} />
+            <span>${escapeHtml(item.label)}</span>
+          </label>`
+        )
+        .join("");
+    }
+  }
+
+  function render() {
+    if (!detail) return;
+    if (documentStatus) documentStatus.hidden = true;
+    if (contractDocument) contractDocument.innerHTML = detail.document_html || "";
+    if (accessStatus) accessStatus.textContent = detail.access?.expires_at ? `Secure review link expires ${new Date(detail.access.expires_at).toLocaleDateString()}.` : "";
+    detailsForm?.removeAttribute("hidden");
+    const status = String(detail.agreement?.status || "").toLowerCase();
+    if (!["waiting_label_signature", "completed", "cancelled", "expired"].includes(status)) {
+      signForm?.removeAttribute("hidden");
+    } else {
+      signForm?.setAttribute("hidden", "");
+    }
+    fillForm();
+  }
+
+  async function loadAgreement() {
+    if (!token) throw new Error("Missing agreement review token.");
+    const data = await api(`/api/agreement-review/${encodeURIComponent(token)}`, { method: "GET", headers: {} });
+    detail = data;
+    render();
+  }
+
+  detailsForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const formData = new FormData(detailsForm);
+    const checklist = Array.from(detailsForm.querySelectorAll('input[name="checklist"]:checked')).map((input) => input.value);
+    if (detailsStatus) detailsStatus.textContent = "Saving details...";
+    try {
+      const result = await api(`/api/agreement-review/${encodeURIComponent(token)}`, {
+        method: "POST",
+        body: JSON.stringify({
+          action: "save_details",
+          release_title: formData.get("release_title"),
+          genre: formData.get("genre"),
+          legal_name: formData.get("legal_name"),
+          payment_email: formData.get("payment_email"),
+          splitshare_email: formData.get("splitshare_email"),
+          street_address: formData.get("street_address"),
+          city: formData.get("city"),
+          state_province: formData.get("state_province"),
+          postal_code: formData.get("postal_code"),
+          country: formData.get("country"),
+          splits_text: formData.get("splits_text"),
+          checklist
+        })
+      });
+      detail = result.detail;
+      if (detailsStatus) detailsStatus.textContent = "Details saved.";
+      render();
+    } catch (error) {
+      if (detailsStatus) detailsStatus.textContent = error.message;
+    }
+  });
+
+  function canvasPoint(event) {
+    const rect = signatureCanvas.getBoundingClientRect();
+    const point = event.touches?.[0] || event;
+    return {
+      x: ((point.clientX - rect.left) / rect.width) * signatureCanvas.width,
+      y: ((point.clientY - rect.top) / rect.height) * signatureCanvas.height
+    };
+  }
+
+  function setupCanvas() {
+    if (!(signatureCanvas instanceof HTMLCanvasElement)) return;
+    const ctx = signatureCanvas.getContext("2d");
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+    ctx.strokeStyle = "#111";
+    ctx.lineWidth = 4;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    const start = (event) => {
+      event.preventDefault();
+      drawing = true;
+      hasDrawing = true;
+      const point = canvasPoint(event);
+      ctx.beginPath();
+      ctx.moveTo(point.x, point.y);
+    };
+    const move = (event) => {
+      if (!drawing) return;
+      event.preventDefault();
+      const point = canvasPoint(event);
+      ctx.lineTo(point.x, point.y);
+      ctx.stroke();
+    };
+    const end = () => {
+      drawing = false;
+    };
+    signatureCanvas.addEventListener("pointerdown", start);
+    signatureCanvas.addEventListener("pointermove", move);
+    signatureCanvas.addEventListener("pointerup", end);
+    signatureCanvas.addEventListener("pointerleave", end);
+  }
+
+  signForm?.addEventListener("change", () => {
+    const mode = new FormData(signForm).get("signature_mode");
+    if (typedSignature) typedSignature.hidden = mode === "drawn";
+    if (drawnSignature) drawnSignature.hidden = mode !== "drawn";
+  });
+
+  clearSignature?.addEventListener("click", () => {
+    if (!(signatureCanvas instanceof HTMLCanvasElement)) return;
+    const ctx = signatureCanvas.getContext("2d");
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+    hasDrawing = false;
+  });
+
+  signForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const formData = new FormData(signForm);
+    const mode = String(formData.get("signature_mode") || "typed");
+    if (signStatus) signStatus.textContent = "Signing agreement...";
+    try {
+      const image = mode === "drawn" && hasDrawing && signatureCanvas instanceof HTMLCanvasElement ? signatureCanvas.toDataURL("image/png") : null;
+      const result = await api(`/api/agreement-review/${encodeURIComponent(token)}`, {
+        method: "POST",
+        body: JSON.stringify({
+          action: "sign_artist",
+          signature_type: mode,
+          signer_name: formData.get("signer_name"),
+          signature_text: formData.get("signature_text"),
+          signature_image_data_url: image
+        })
+      });
+      detail = result.detail;
+      if (signStatus) signStatus.textContent = "Agreement signed. Label countersignature is next.";
+      render();
+    } catch (error) {
+      if (signStatus) signStatus.textContent = error.message;
+    }
+  });
+
+  setupCanvas();
+  loadAgreement().catch((error) => {
+    if (documentStatus) documentStatus.textContent = error.message || "Agreement could not be loaded.";
+    detailsForm?.setAttribute("hidden", "");
+    signForm?.setAttribute("hidden", "");
+  });
+</script>

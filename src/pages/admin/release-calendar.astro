@@ -1,0 +1,425 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Release Calendar Import" description="Import and review MBP, MBH and S7 release calendar slots." noindex={true}>
+  <section class="border-b border-white/10 bg-black/50 py-14">
+    <div class="section-shell">
+      <p class="eyebrow">Admin calendar</p>
+      <h1 class="page-title mt-4">Release calendar</h1>
+      <p class="mt-5 max-w-3xl text-lg leading-8 text-haze">
+        Import MBP, MBH and S7 release rows from the Excel calendar and review occupied or open slots by label.
+      </p>
+    </div>
+  </section>
+
+  <section class="py-10">
+    <div class="section-shell">
+      <div class="surface rounded-lg p-5" data-calendar-import-app>
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p class="eyebrow">Excel import</p>
+            <h2 class="mt-2 font-display text-2xl font-black uppercase text-white">Upload release calendar</h2>
+          </div>
+          <a class="inline-flex min-h-10 items-center justify-center rounded-md border border-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-haze transition hover:border-neon-cyan hover:text-white" href="/admin/">
+            Back to admin
+          </a>
+        </div>
+
+        <form class="mt-5 grid gap-4 lg:grid-cols-[1fr_auto_auto]" data-import-form>
+          <label>
+            <span class="field-label">Excel file</span>
+            <input class="field-control" name="calendar_file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required />
+          </label>
+          <button class="self-end rounded-md border border-white/10 px-5 py-3 text-sm font-black uppercase tracking-[0.14em] text-haze hover:border-neon-cyan hover:text-white" type="button" data-preview-button>
+            Preview
+          </button>
+          <button class="self-end rounded-md bg-white px-5 py-3 text-sm font-black uppercase tracking-[0.14em] text-black hover:bg-neon-cyan disabled:cursor-not-allowed disabled:opacity-50" type="submit" data-import-button disabled>
+            Import rows
+          </button>
+        </form>
+
+        <p class="mt-4 text-sm text-steel" data-import-status>Checking admin session...</p>
+
+        <div class="mt-5 grid gap-3 sm:grid-cols-3" data-import-summary></div>
+
+        <div class="mt-6 flex flex-wrap gap-2" data-brand-tabs>
+          <button class="rounded-md border border-white/10 bg-white px-3 py-2 text-xs font-bold uppercase text-black" data-brand-tab="MBP" type="button">MBP</button>
+          <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-bold uppercase text-haze hover:border-neon-cyan hover:text-white" data-brand-tab="MBH" type="button">MBH</button>
+          <button class="rounded-md border border-white/10 px-3 py-2 text-xs font-bold uppercase text-haze hover:border-neon-cyan hover:text-white" data-brand-tab="S7" type="button">S7</button>
+        </div>
+
+        <div class="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3" data-preview-list></div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  // @ts-nocheck
+  const app = document.querySelector("[data-calendar-import-app]");
+  const form = document.querySelector("[data-import-form]");
+  const fileInput = form?.querySelector('input[name="calendar_file"]');
+  const previewButton = document.querySelector("[data-preview-button]");
+  const importButton = document.querySelector("[data-import-button]");
+  const statusEl = document.querySelector("[data-import-status]");
+  const summaryEl = document.querySelector("[data-import-summary]");
+  const previewList = document.querySelector("[data-preview-list]");
+  const brandTabs = document.querySelector("[data-brand-tabs]");
+  const decoder = new TextDecoder("utf-8");
+  let parsedRows = [];
+  let calendarRows = [];
+  let activeBrand = "MBP";
+  let activeFileName = "";
+
+  const brandColors = { MBP: "#bd00ff", MBH: "#00e5ff", S7: "#ffd000" };
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  async function api(path, options = {}) {
+    const response = await fetch(path, {
+      credentials: "same-origin",
+      cache: "no-store",
+      ...options,
+      headers: { "content-type": "application/json", "cache-control": "no-cache", ...(options.headers || {}) }
+    });
+    const data = await response.json().catch(() => ({ ok: false, error: "Invalid API response." }));
+    if (!response.ok || data.ok === false) throw new Error(data.error || `Request failed: ${response.status}`);
+    return data;
+  }
+
+  function findEocd(view) {
+    for (let offset = view.byteLength - 22; offset >= 0; offset -= 1) {
+      if (view.getUint32(offset, true) === 0x06054b50) return offset;
+    }
+    throw new Error("This file is not a readable .xlsx archive.");
+  }
+
+  async function inflateRaw(bytes) {
+    if (!("DecompressionStream" in window)) {
+      throw new Error("This browser cannot decompress .xlsx files. Use current Chrome or Edge.");
+    }
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+
+  async function unzipXlsx(file) {
+    const buffer = await file.arrayBuffer();
+    const view = new DataView(buffer);
+    const eocd = findEocd(view);
+    const totalEntries = view.getUint16(eocd + 10, true);
+    let cursor = view.getUint32(eocd + 16, true);
+    const entries = new Map();
+
+    for (let index = 0; index < totalEntries; index += 1) {
+      if (view.getUint32(cursor, true) !== 0x02014b50) throw new Error("Invalid .xlsx central directory.");
+      const method = view.getUint16(cursor + 10, true);
+      const compressedSize = view.getUint32(cursor + 20, true);
+      const nameLength = view.getUint16(cursor + 28, true);
+      const extraLength = view.getUint16(cursor + 30, true);
+      const commentLength = view.getUint16(cursor + 32, true);
+      const localOffset = view.getUint32(cursor + 42, true);
+      const name = decoder.decode(new Uint8Array(buffer, cursor + 46, nameLength)).replace(/\\/g, "/");
+
+      const localNameLength = view.getUint16(localOffset + 26, true);
+      const localExtraLength = view.getUint16(localOffset + 28, true);
+      const dataStart = localOffset + 30 + localNameLength + localExtraLength;
+      const compressed = new Uint8Array(buffer, dataStart, compressedSize);
+      const bytes = method === 0 ? compressed : method === 8 ? await inflateRaw(compressed) : null;
+      if (!bytes) throw new Error(`Unsupported .xlsx compression method ${method}.`);
+      entries.set(name, decoder.decode(bytes));
+
+      cursor += 46 + nameLength + extraLength + commentLength;
+    }
+
+    return entries;
+  }
+
+  function xmlDoc(text) {
+    return new DOMParser().parseFromString(text, "application/xml");
+  }
+
+  function nodes(root, name) {
+    return Array.from(root.getElementsByTagName("*")).filter((node) => node.localName === name);
+  }
+
+  function firstNode(root, name) {
+    return nodes(root, name)[0] || null;
+  }
+
+  function textOf(root, name) {
+    return firstNode(root, name)?.textContent || "";
+  }
+
+  function resolveWorkbookTarget(target) {
+    const clean = String(target || "").replace(/^\/+/, "");
+    return clean.startsWith("xl/") ? clean : `xl/${clean}`;
+  }
+
+  function parseSharedStrings(entries) {
+    const xml = entries.get("xl/sharedStrings.xml");
+    if (!xml) return [];
+    return nodes(xmlDoc(xml), "si").map((item) => nodes(item, "t").map((t) => t.textContent || "").join(""));
+  }
+
+  function columnIndex(ref) {
+    const letters = String(ref || "").match(/[A-Z]+/i)?.[0]?.toUpperCase() || "A";
+    let index = 0;
+    for (const letter of letters) index = index * 26 + letter.charCodeAt(0) - 64;
+    return index - 1;
+  }
+
+  function cellValue(cell, sharedStrings) {
+    const type = cell.getAttribute("t");
+    if (type === "s") return sharedStrings[Number(textOf(cell, "v"))] || "";
+    if (type === "inlineStr") return nodes(cell, "t").map((node) => node.textContent || "").join("");
+    return textOf(cell, "v");
+  }
+
+  function excelSerialDate(value) {
+    const serial = Number(value);
+    if (!Number.isFinite(serial) || serial < 20000 || serial > 60000) return null;
+    const date = new Date(Date.UTC(1899, 11, 30));
+    date.setUTCDate(date.getUTCDate() + Math.floor(serial));
+    return date.toISOString().slice(0, 10);
+  }
+
+  function normalizeDate(value) {
+    const text = String(value || "").trim();
+    if (!text) return null;
+    const serial = excelSerialDate(text);
+    if (serial) return serial;
+    const iso = text.match(/\d{4}-\d{1,2}-\d{1,2}/)?.[0];
+    if (iso) {
+      const [year, month, day] = iso.split("-").map((part) => part.padStart(2, "0"));
+      return `${year}-${month}-${day}`;
+    }
+    const date = new Date(text);
+    return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
+  }
+
+  function normalizeBrand(sheetName) {
+    const upper = String(sheetName || "").toUpperCase();
+    if (upper.startsWith("MBH")) return "MBH";
+    if (upper.startsWith("S7")) return "S7";
+    return "MBP";
+  }
+
+  function headerMap(row) {
+    const map = {};
+    row.forEach((value, index) => {
+      const key = String(value || "").trim().toLowerCase();
+      if (key) map[key] = index;
+    });
+    return map;
+  }
+
+  function get(row, headers, names) {
+    for (const name of names) {
+      const index = headers[name];
+      if (Number.isInteger(index)) return String(row[index] || "").trim();
+    }
+    return "";
+  }
+
+  function parseSheetRows(sheetName, sheetXml, sharedStrings) {
+    const brand = normalizeBrand(sheetName);
+    const rows = nodes(xmlDoc(sheetXml), "row").map((rowNode) => {
+      const row = [];
+      for (const cell of nodes(rowNode, "c")) row[columnIndex(cell.getAttribute("r"))] = cellValue(cell, sharedStrings);
+      return { number: Number(rowNode.getAttribute("r") || 0), values: row };
+    });
+    const headerRow = rows.find((row) => row.values.some((value) => String(value || "").trim().toLowerCase() === "date"));
+    if (!headerRow) return [];
+    const headers = headerMap(headerRow.values);
+    return rows
+      .filter((row) => row.number > headerRow.number)
+      .map((row) => {
+        const date = normalizeDate(get(row.values, headers, ["date"]));
+        const artist = get(row.values, headers, ["artist"]);
+        const track = get(row.values, headers, ["track/album", "track", "release / track title"]);
+        const remix = get(row.values, headers, ["remix"]);
+        const catalog = get(row.values, headers, ["catalog number", "catalog"]);
+        const status = get(row.values, headers, ["status"]);
+        return {
+          brand,
+          source_sheet: sheetName,
+          source_row: row.number,
+          release_date: date,
+          artist_name: artist,
+          track_title: track,
+          remix,
+          catalog_number: catalog,
+          status
+        };
+      })
+      .filter((row) => row.release_date && (row.artist_name || row.track_title || row.catalog_number || row.status));
+  }
+
+  async function parseWorkbook(file) {
+    const entries = await unzipXlsx(file);
+    const workbook = xmlDoc(entries.get("xl/workbook.xml") || "");
+    const rels = xmlDoc(entries.get("xl/_rels/workbook.xml.rels") || "");
+    const sharedStrings = parseSharedStrings(entries);
+    const relMap = new Map(nodes(rels, "Relationship").map((rel) => [rel.getAttribute("Id"), resolveWorkbookTarget(rel.getAttribute("Target"))]));
+    const output = [];
+
+    for (const sheet of nodes(workbook, "sheet")) {
+      const name = sheet.getAttribute("name") || "";
+      if (!/^(MBP|MBH|S7)/i.test(name)) continue;
+      const relId = sheet.getAttribute("r:id") || sheet.getAttribute("id");
+      const path = relMap.get(relId);
+      const sheetXml = path ? entries.get(path) : null;
+      if (!sheetXml) continue;
+      output.push(...parseSheetRows(name, sheetXml, sharedStrings));
+    }
+
+    return output;
+  }
+
+  function statusFor(row) {
+    const occupied = Boolean(row.artist_name || row.track_title);
+    const raw = String(row.status || "").toLowerCase();
+    if (raw.includes("cancel")) return "cancelled";
+    if (!occupied) return "available";
+    if (row.release_date < new Date().toISOString().slice(0, 10)) return "released";
+    if (raw.includes("signed")) return "locked";
+    return "confirmed";
+  }
+
+  function renderSummary(rows) {
+    const brands = ["MBP", "MBH", "S7"];
+    if (!summaryEl) return;
+    summaryEl.innerHTML = brands
+      .map((brand) => {
+        const brandRows = rows.filter((row) => row.brand === brand);
+        const occupied = brandRows.filter((row) => row.artist_name || row.track_title).length;
+        return `<article class="rounded-md border border-white/10 bg-black/30 p-4">
+          <p class="font-mono text-xs font-bold uppercase tracking-[0.16em]" style="color:${brandColors[brand]}">${brand}</p>
+          <p class="mt-2 font-display text-2xl font-black text-white">${brandRows.length}</p>
+          <p class="mt-1 text-xs text-steel">${occupied} occupied / ${Math.max(0, brandRows.length - occupied)} open catalog rows</p>
+        </article>`;
+      })
+      .join("");
+  }
+
+  function renderRows(rows) {
+    if (!previewList) return;
+    const filtered = rows.filter((row) => row.brand === activeBrand).slice(0, 120);
+    previewList.innerHTML = filtered.length
+      ? filtered
+          .map((row) => {
+            const color = brandColors[row.brand] || "#bd00ff";
+            return `<article class="rounded-md border bg-black/35 p-4" style="border-color:${color}66;">
+              <p class="font-mono text-xs font-bold uppercase tracking-[0.16em]" style="color:${color};">${escapeHtml(row.brand)} | ${escapeHtml(statusFor(row))}</p>
+              <h3 class="mt-2 font-display text-xl font-black uppercase text-white">${escapeHtml(row.release_date)}</h3>
+              <p class="mt-1 text-sm text-steel">${escapeHtml(row.catalog_number || "No catalog")} ${row.artist_name ? `| ${escapeHtml(row.artist_name)}` : ""}</p>
+              <p class="mt-3 text-sm leading-6 text-haze">${escapeHtml(row.track_title || "Open release slot")}${row.remix ? ` (${escapeHtml(row.remix)})` : ""}</p>
+              <p class="mt-3 text-xs text-steel">${escapeHtml(row.source_sheet)} row ${escapeHtml(row.source_row)}${row.status ? ` | ${escapeHtml(row.status)}` : ""}</p>
+            </article>`;
+          })
+          .join("")
+      : `<p class="text-sm text-steel">No ${escapeHtml(activeBrand)} rows found in the current preview/import.</p>`;
+  }
+
+  function renderTabs() {
+    brandTabs?.querySelectorAll("[data-brand-tab]").forEach((button) => {
+      const active = button.getAttribute("data-brand-tab") === activeBrand;
+      button.classList.toggle("bg-white", active);
+      button.classList.toggle("text-black", active);
+      button.classList.toggle("text-haze", !active);
+    });
+  }
+
+  function render() {
+    const rows = parsedRows.length ? parsedRows : calendarRows;
+    renderTabs();
+    renderSummary(rows);
+    renderRows(rows);
+  }
+
+  async function loadCalendar() {
+    const result = await api("/api/admin/calendar?from=2025-01-01&to=2027-12-31");
+    calendarRows = (result.slots || []).map((slot) => ({
+      brand: String(slot.brand || "MBP").toUpperCase(),
+      release_date: slot.release_date,
+      artist_name: slot.artist_name || "",
+      track_title: slot.track_title || "",
+      catalog_number: slot.catalog_number || "",
+      status: slot.status || "",
+      source_sheet: slot.source_sheet || slot.imported_source_file || "D1",
+      source_row: slot.imported_row_number || ""
+    }));
+    render();
+  }
+
+  async function ensureAdmin() {
+    const session = await api("/api/admin/session", { method: "GET", headers: {} });
+    if (!session.authenticated) throw new Error("Admin login required. Open /admin first and log in.");
+  }
+
+  previewButton?.addEventListener("click", async () => {
+    const file = fileInput?.files?.[0];
+    if (!file) {
+      if (statusEl) statusEl.textContent = "Choose an .xlsx file first.";
+      return;
+    }
+    if (statusEl) statusEl.textContent = "Parsing Excel calendar...";
+    try {
+      parsedRows = await parseWorkbook(file);
+      activeFileName = file.name;
+      if (importButton instanceof HTMLButtonElement) importButton.disabled = parsedRows.length === 0;
+      if (statusEl) statusEl.textContent = `Preview ready: ${parsedRows.length} importable rows from ${file.name}.`;
+      render();
+    } catch (error) {
+      if (statusEl) statusEl.textContent = error.message || "Excel preview failed.";
+      if (importButton instanceof HTMLButtonElement) importButton.disabled = true;
+    }
+  });
+
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!parsedRows.length) {
+      if (statusEl) statusEl.textContent = "Preview the Excel file before importing.";
+      return;
+    }
+    if (statusEl) statusEl.textContent = "Importing rows into D1...";
+    if (importButton instanceof HTMLButtonElement) importButton.disabled = true;
+    try {
+      const result = await api("/api/admin/calendar-import", {
+        method: "POST",
+        body: JSON.stringify({ source_file: activeFileName, rows: parsedRows })
+      });
+      if (statusEl) statusEl.textContent = `Imported ${result.imported} rows. Reloading calendar...`;
+      parsedRows = [];
+      await loadCalendar();
+      if (statusEl) statusEl.textContent = `Import complete. MBP ${result.summary?.MBP?.imported || 0}, MBH ${result.summary?.MBH?.imported || 0}, S7 ${result.summary?.S7?.imported || 0}.`;
+    } catch (error) {
+      if (statusEl) statusEl.textContent = error.message || "Calendar import failed.";
+      if (importButton instanceof HTMLButtonElement) importButton.disabled = false;
+    }
+  });
+
+  brandTabs?.addEventListener("click", (event) => {
+    const button = event.target instanceof Element ? event.target.closest("[data-brand-tab]") : null;
+    if (!button) return;
+    activeBrand = button.getAttribute("data-brand-tab") || "MBP";
+    render();
+  });
+
+  ensureAdmin()
+    .then(loadCalendar)
+    .then(() => {
+      if (statusEl) statusEl.textContent = "Calendar loaded. Choose an Excel file to preview/import.";
+    })
+    .catch((error) => {
+      if (statusEl) statusEl.innerHTML = `${escapeHtml(error.message)} <a class="text-neon-cyan hover:text-white" href="/admin/">Admin login</a>`;
+    });
+</script>
