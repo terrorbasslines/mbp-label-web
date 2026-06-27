@@ -167,7 +167,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
           <section class="card share-panel">
             <p class="eyebrow">Share article</p>
             <h2>Social-ready story</h2>
-            <p>Share this MBP news update directly. On mobile, Instagram post and story assets open the system share sheet as PNG files; on desktop they download as PNG.</p>
+            <p>Share this MBP news update directly. Instagram post and story assets export as JPEG; Android downloads the file for Instagram import, while supported mobile browsers can open the system share sheet.</p>
             ${
               isDraftPreview
                 ? `<p class="status" style="font-size:13px;color:var(--muted)">Draft previews are private. Publish this article before using public social share links.</p>`
@@ -180,8 +180,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
             }
             <div class="thumb-links">
               <a href="${escapeHtml(ogAsset)}" target="_blank" rel="noreferrer">Open Graph 1200x630</a>
-              <button data-social-asset data-social-url="${escapeHtml(instagramPostAsset)}" data-social-width="1080" data-social-height="1080" data-social-name="${escapeHtml(`${socialFileSlug}-instagram-post.png`)}" type="button">Instagram post 1080x1080</button>
-              <button data-social-asset data-social-url="${escapeHtml(instagramStoryAsset)}" data-social-width="1080" data-social-height="1920" data-social-name="${escapeHtml(`${socialFileSlug}-instagram-story.png`)}" type="button">Instagram story 1080x1920</button>
+              <button data-social-asset data-social-url="${escapeHtml(instagramPostAsset)}" data-social-width="1080" data-social-height="1080" data-social-name="${escapeHtml(`${socialFileSlug}-instagram-post.jpg`)}" type="button">Instagram post 1080x1080</button>
+              <button data-social-asset data-social-url="${escapeHtml(instagramStoryAsset)}" data-social-width="1080" data-social-height="1920" data-social-name="${escapeHtml(`${socialFileSlug}-instagram-story.jpg`)}" type="button">Instagram story 1080x1920</button>
             </div>
             <p class="share-status" data-social-share-status></p>
             <div class="card" style="margin-top:22px;padding:18px">
@@ -228,6 +228,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
             function isLikelyMobile() {
               return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
             }
+            function isAndroid() {
+              return /Android/i.test(navigator.userAgent);
+            }
             function loadImage(src) {
               return new Promise(function (resolve, reject) {
                 var image = new Image();
@@ -236,19 +239,19 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
                 image.src = src;
               });
             }
-            function blobFromCanvas(canvas) {
+            function blobFromCanvas(canvas, mimeType) {
               return new Promise(function (resolve, reject) {
                 canvas.toBlob(function (blob) {
                   if (blob) resolve(blob);
-                  else reject(new Error("PNG export is not available in this browser."));
-                }, "image/png", 0.96);
+                  else reject(new Error("Image export is not available in this browser."));
+                }, mimeType || "image/jpeg", 0.92);
               });
             }
             function downloadBlob(blob, filename) {
               var url = URL.createObjectURL(blob);
               var link = document.createElement("a");
               link.href = url;
-              link.download = filename || "mbp-news.png";
+              link.download = filename || "mbp-news.jpg";
               document.body.appendChild(link);
               link.click();
               link.remove();
@@ -309,7 +312,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
               }
               return output;
             }
-            async function renderSocialPng(assetUrl, width, height) {
+            async function renderSocialImage(assetUrl, width, height) {
               var response = await fetch(assetUrl, { credentials: "same-origin", cache: "no-store" });
               if (!response.ok) throw new Error("Social artwork is not available.");
               var svg = await inlineSvgImageAssets(await response.text());
@@ -321,8 +324,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
                 canvas.height = height;
                 var context = canvas.getContext("2d");
                 if (!context) throw new Error("Canvas is not available in this browser.");
+                context.fillStyle = "#050508";
+                context.fillRect(0, 0, width, height);
                 context.drawImage(image, 0, 0, width, height);
-                return await blobFromCanvas(canvas);
+                return await blobFromCanvas(canvas, "image/jpeg");
               } finally {
                 URL.revokeObjectURL(svgUrl);
               }
@@ -331,33 +336,34 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
               var assetUrl = button.getAttribute("data-social-url") || "";
               var width = Number(button.getAttribute("data-social-width") || 1080);
               var height = Number(button.getAttribute("data-social-height") || 1080);
-              var filename = button.getAttribute("data-social-name") || "mbp-news.png";
+              var filename = button.getAttribute("data-social-name") || "mbp-news.jpg";
               var isStoryAsset = height > width;
               var originalText = button.textContent;
               button.disabled = true;
-              button.textContent = "Preparing PNG...";
+              button.textContent = "Preparing image...";
               setSocialStatus("");
               try {
-                var blob = await renderSocialPng(assetUrl, width, height);
-                var file = typeof File !== "undefined" ? new File([blob], filename, { type: "image/png" }) : null;
+                var blob = await renderSocialImage(assetUrl, width, height);
+                var file = typeof File !== "undefined" ? new File([blob], filename.replace(/\\.png$/i, ".jpg"), { type: "image/jpeg" }) : null;
                 var shareData = file
                   ? {
-                    files: [file],
-                    title: shareTitle,
-                    text: shareTitle
+                    files: [file]
                   }
                   : null;
-                if (isLikelyMobile() && shareData && navigator.canShare && navigator.canShare(shareData)) {
+                if (isAndroid()) {
+                  downloadBlob(blob, filename);
+                  setSocialStatus(isStoryAsset ? "Story image downloaded. Open Instagram, create a Story, and choose this image from Downloads/Gallery." : "Post image downloaded. Open Instagram and choose this image from Downloads/Gallery.");
+                } else if (isLikelyMobile() && shareData && navigator.canShare && navigator.canShare(shareData)) {
                   try {
                     await navigator.share(shareData);
-                    setSocialStatus(isStoryAsset ? "Story PNG shared. If Instagram only shows Feed, save this file and choose Story manually inside Instagram." : "Instagram post PNG shared through the system share sheet.");
+                    setSocialStatus(isStoryAsset ? "Story image shared. If Instagram only shows Feed, save this file and choose Story manually inside Instagram." : "Instagram post image shared through the system share sheet.");
                   } catch (shareError) {
                     downloadBlob(blob, filename);
-                    setSocialStatus(isStoryAsset ? "Story share was cancelled. The 1080x1920 PNG was downloaded so you can add it manually as an Instagram Story." : "Share was cancelled. The PNG was downloaded instead.");
+                    setSocialStatus(isStoryAsset ? "Story share was cancelled. The 1080x1920 image was downloaded so you can add it manually as an Instagram Story." : "Share was cancelled. The image was downloaded instead.");
                   }
                 } else {
                   downloadBlob(blob, filename);
-                  setSocialStatus(isStoryAsset ? "Story PNG downloaded. Open Instagram and add it manually as a Story." : "PNG downloaded. Upload it to Instagram from the downloaded file.");
+                  setSocialStatus(isStoryAsset ? "Story image downloaded. Open Instagram and add it manually as a Story." : "Image downloaded. Upload it to Instagram from the downloaded file.");
                 }
               } catch (error) {
                 setSocialStatus(error && error.message ? error.message : "Social artwork export failed. Opening the source image instead.");
