@@ -473,10 +473,32 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                   <span class="field-label">Image URL</span>
                   <input class="field-control" name="image_url" type="text" inputmode="url" />
                 </label>
-                <label>
-                  <span class="field-label">Links, one per line: label|url</span>
-                  <textarea class="field-control min-h-24" name="links"></textarea>
-                </label>
+                <fieldset class="rounded-lg border border-white/10 p-4">
+                  <legend class="px-2 text-sm font-semibold text-haze">Official social links</legend>
+                  <div class="grid gap-3 sm:grid-cols-2">
+                    {[
+                      ["spotify", "Spotify"],
+                      ["instagram", "Instagram"],
+                      ["youtube", "YouTube"],
+                      ["facebook", "Facebook"],
+                      ["soundcloud", "SoundCloud"],
+                      ["tiktok", "TikTok"],
+                      ["x", "X / Twitter"],
+                      ["threads", "Threads"],
+                      ["apple_music", "Apple Music"],
+                      ["beatport", "Beatport"],
+                      ["bandcamp", "Bandcamp"],
+                      ["audiomack", "Audiomack"],
+                      ["linktree", "Linktree"],
+                      ["website", "Website"]
+                    ].map(([key, label]) => (
+                      <label>
+                        <span class="field-label">{label}</span>
+                        <input class="field-control" name={`link_${key}`} type="url" inputmode="url" placeholder="https://" />
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
                 <label class="flex items-center gap-3 text-sm text-haze">
                   <input name="is_featured" type="checkbox" />
                   Featured artist
@@ -1040,16 +1062,44 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     `;
   }
 
-  function parseLinks(value) {
-    return String(value ?? "")
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => {
-        const [label, url] = line.split("|").map((item) => item.trim());
-        return { label, url };
-      })
-      .filter((link) => link.label && link.url);
+  const socialFields = [
+    { key: "spotify", label: "Spotify", aliases: ["spotify"] },
+    { key: "instagram", label: "Instagram", aliases: ["instagram", "ig"] },
+    { key: "youtube", label: "YouTube", aliases: ["youtube", "you tube"] },
+    { key: "facebook", label: "Facebook", aliases: ["facebook", "fb"] },
+    { key: "soundcloud", label: "SoundCloud", aliases: ["soundcloud", "sound cloud"] },
+    { key: "tiktok", label: "TikTok", aliases: ["tiktok", "tik tok"] },
+    { key: "x", label: "X / Twitter", aliases: ["x", "twitter", "x / twitter"] },
+    { key: "threads", label: "Threads", aliases: ["threads"] },
+    { key: "apple_music", label: "Apple Music", aliases: ["apple music", "apple", "itunes"] },
+    { key: "beatport", label: "Beatport", aliases: ["beatport"] },
+    { key: "bandcamp", label: "Bandcamp", aliases: ["bandcamp"] },
+    { key: "audiomack", label: "Audiomack", aliases: ["audiomack"] },
+    { key: "linktree", label: "Linktree", aliases: ["linktree"] },
+    { key: "website", label: "Website", aliases: ["website", "web", "official", "site"] }
+  ];
+
+  function normalizedSocialLabel(value) {
+    return String(value || "").trim().toLowerCase().replace(/[_-]+/g, " ");
+  }
+
+  function setSocialLinks(links) {
+    const list = Array.isArray(links) ? links : [];
+    for (const field of socialFields) {
+      const input = artistForm?.querySelector(`[name="link_${field.key}"]`);
+      if (!(input instanceof HTMLInputElement)) continue;
+      const found = list.find((link) => field.aliases.includes(normalizedSocialLabel(link.label)));
+      input.value = found?.url || "";
+    }
+  }
+
+  function collectSocialLinks(formData) {
+    return socialFields
+      .map((field) => ({
+        label: field.label,
+        url: String(formData.get(`link_${field.key}`) || "").trim()
+      }))
+      .filter((link) => link.url);
   }
 
   function parsePlatformLinks(value) {
@@ -1062,10 +1112,6 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         return { platform, label: label || platform, url, is_playable: true };
       })
       .filter((link) => link.platform && link.url);
-  }
-
-  function linksToText(links) {
-    return Array.isArray(links) ? links.map((link) => `${link.label || ""}|${link.url || ""}`).join("\n") : "";
   }
 
   function searchableText(values) {
@@ -1293,7 +1339,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     artistForm.elements.mbp_region.value = artist.mbp_region || "world";
     artistForm.elements.profile.value = artist.profile || "";
     artistForm.elements.image_url.value = artist.image_url || "";
-    artistForm.elements.links.value = linksToText(artist.links || []);
+    setSocialLinks(artist.links || []);
     artistForm.elements.is_featured.checked = Boolean(artist.is_featured);
     if (artistFormTitle) artistFormTitle.textContent = `Edit ${artist.name}`;
     if (artistSubmit) artistSubmit.textContent = "Update artist";
@@ -1948,7 +1994,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         country: formData.get("country"),
         profile: formData.get("profile"),
         image_url: formData.get("image_url"),
-        links: parseLinks(formData.get("links")),
+        links: collectSocialLinks(formData),
         mbp_region: formData.get("mbp_region"),
         is_featured: formData.get("is_featured") === "on"
       })
