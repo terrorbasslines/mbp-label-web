@@ -4,7 +4,7 @@ Production-ready public label platform for **The MasterBeat Project**, including
 
 Built with Astro, TypeScript and Tailwind CSS for Cloudflare Pages. The public frontend is static; admin, catalogue APIs, demo submissions, agreement review and News workflows run through Cloudflare Pages Functions with D1.
 
-Current PageSpeed target status after the latest optimization pass: `100` performance, `100` accessibility, `100` best practices and `100` SEO on the tested homepage mobile report.
+Current PageSpeed target status after the latest optimization pass: `100` performance, `100` accessibility, `100` best practices and `100` SEO on the tested homepage mobile and desktop report.
 
 ## Stack
 
