@@ -1,8 +1,10 @@
 # The MasterBeat Project Label Website
 
-Production-ready first version of the public label website for **The MasterBeat Project**.
+Production-ready public label platform for **The MasterBeat Project**, including the MBP catalogue, News, demo review, artist dashboards, release agreements and separate label lanes for **The MasterBeat Horizon** and **Section 7**.
 
-Built with Astro, TypeScript and Tailwind CSS for Cloudflare Pages. The public frontend is static; admin, catalogue APIs and demo submissions run through Cloudflare Pages Functions with D1.
+Built with Astro, TypeScript and Tailwind CSS for Cloudflare Pages. The public frontend is static; admin, catalogue APIs, demo submissions, agreement review and News workflows run through Cloudflare Pages Functions with D1.
+
+Current PageSpeed target status after the latest optimization pass: `100` performance, `100` accessibility, `100` best practices and `100` SEO on the tested homepage mobile report.
 
 ## Stack
 
@@ -12,6 +14,7 @@ Built with Astro, TypeScript and Tailwind CSS for Cloudflare Pages. The public f
 - Cloudflare Pages Functions for admin, catalogue and demo submissions
 - Cloudflare D1 for catalogue, demo and account metadata
 - Cloudflare R2 for private demo upload files
+- Resend-compatible outbound email for demo decisions, artist invites, agreements and News notifications
 
 ## Local Setup
 
@@ -54,6 +57,16 @@ CLI deployment:
 npm run cf:deploy
 ```
 
+GitHub deployment:
+
+```bash
+git add functions src public scripts migrations package.json README.md
+git commit -m "Update site documentation"
+git push origin main
+```
+
+Cloudflare Pages is expected to deploy automatically from the `main` branch.
+
 Manual drag-and-drop deployment:
 
 1. Run `npm run build`.
@@ -62,14 +75,16 @@ Manual drag-and-drop deployment:
 
 Direct upload is static only. Use Git deployment or Wrangler so the `functions/` API routes run on Cloudflare Pages.
 
-## Backend Plan
+## Backend/API Surface
 
-Planned endpoint:
+Implemented endpoint areas:
 
 - `POST /api/demo-submission`
 - `/admin`
 - `/api/admin/*`
 - `/api/catalog`
+- `/admin/release-calendar`
+- `/api/admin/calendar-import`
 - `/news`
 - `/api/news`
 - `/api/admin/news`
@@ -77,6 +92,9 @@ Planned endpoint:
 - `/artist-dashboard`
 - `/api/auth/claim`
 - `/api/artist/profile`
+- `/agreement-review`
+- `/api/admin/agreements`
+- `/api/agreement-review/*`
 
 Planned Cloudflare resources:
 
@@ -95,7 +113,10 @@ Current status:
 - Optional demo file uploads are stored privately in Cloudflare R2 when `DEMO_BUCKET` is bound.
 - Demo approval/rejection is implemented in admin. Email sending is active only when Resend env variables are configured.
 - Artist claim invitations and artist profile editing are implemented with email/password login. Google OAuth can be added after OAuth credentials are created.
-- News articles are implemented with admin publishing, public article pages, generated social thumbnails, artist reactions and artist comments.
+- News articles are implemented with admin publishing, public article pages, generated Open Graph and Instagram assets, artist reactions, artist comments and account email notifications.
+- Release calendar import is implemented from admin with MBP, MBH and S7 label separation.
+- Agreement workflow is implemented for approved demos and calendar slots with artist review tokens and signature capture.
+- MBH and Section 7 have separate public label pages, catalogues, artist lists and smartlink import logic.
 
 ## D1 Setup
 
@@ -167,11 +188,14 @@ https://themasterbeatproject.com/admin
 Use the admin dashboard to:
 
 - import FFM smartlinks in batches, for example `1` to `25`
+- import MBP, MBH and Section 7 catalogue ranges
 - add artists and profiles
 - add releases and playable platform links
+- import release calendar rows and filter calendar slots by label
 - publish News articles with generated Open Graph, Instagram post and Instagram story thumbnails
 - create artist claim links with artist or admin role
 - approve or reject demos with a reason
+- create release agreements after demo approval and slot selection
 
 Artist claim flow:
 
@@ -182,7 +206,17 @@ Artist claim flow:
 
 ## FFM Catalogue Import
 
-The admin can import `https://ffm.to/mbp001` style links in batches of 25. As checked on May 27, 2026, the current live FFM range is `MBP001` through `MBP185`; `MBP186` through `MBP200` returned 404.
+The admin can import FFM smartlinks in batches.
+
+Supported catalogue patterns:
+
+- MBP base releases: `https://ffm.to/mbp001`
+- MBP remixes: `https://ffm.to/mbp001r`
+- MBH base releases: `https://ffm.to/mbh001`
+- MBH single remix: `https://ffm.to/mbh001r`
+- MBH multi-remix slots: `https://ffm.to/mbh001-r1` through `https://ffm.to/mbh001-r10`
+- Section 7 base releases: `https://ffm.to/s7-001`
+- Section 7 remixes: `https://ffm.to/s7-001r` and `https://ffm.to/s7-001-r1` through `https://ffm.to/s7-001-r10`
 
 Local helper:
 
@@ -202,7 +236,15 @@ The refresh helper prefers the real FFM cover image (`imagestore.ffm.to`) instea
 
 ## Cache Notes
 
-The public catalogue is loaded from `/api/catalog` with `cache: "no-store"` and `/api/*` responses are sent with `Cache-Control: no-store`. Static HTML uses `Cache-Control: public, max-age=0, must-revalidate`, while hashed Astro assets stay immutable. This avoids showing old static release fallback cards while still letting Cloudflare cache versioned JS/CSS safely.
+The public catalogue is loaded dynamically and most `/api/*` responses are sent with `Cache-Control: no-store`. Static HTML uses `Cache-Control: public, max-age=0, must-revalidate`, while Astro output and optimized static assets are served as immutable.
+
+Performance notes:
+
+- Homepage and label heroes use generated AVIF/WebP responsive images.
+- Navigation logo uses small generated assets instead of the full-resolution brand PNG.
+- Google Analytics is delayed until interaction or late idle fallback.
+- Below-the-fold catalogue, News and management sections lazy-load their API data.
+- `npm run optimize:assets` regenerates optimized image variants from source PNG files.
 
 ## Environment Notes
 
@@ -223,8 +265,10 @@ When D1 and R2 resources exist, add the bindings in Cloudflare Pages settings or
 ```text
 public/
   assets/brand/          Brand images used by the site
+  assets/labels/         MBH and Section 7 brand images
 migrations/              Cloudflare D1 schema
 functions/api/           Cloudflare Pages Functions
+scripts/                 Local import and asset optimization helpers
 src/components/          Reusable Astro UI components
 src/data/                Static site content and typed data
 src/layouts/             Base page layout
@@ -237,14 +281,20 @@ src/styles/              Tailwind and global design tokens
 - Home
 - Releases
 - Artists
+- Labels
+- The MasterBeat Horizon
+- Section 7
 - Demo Submission
 - About
 - Contact
 - Privacy Policy
 - Admin
+- Admin Release Calendar
+- Agreement Review
 
 ## Remaining TODO
 
 - Confirm final public social URLs and contact mailboxes.
 - Keep release artwork refreshed from FFM when new catalogue numbers are imported.
 - Configure a verified outbound email provider domain so demo responses and claim invites avoid spam.
+- Proxy or store third-party FFM artwork thumbnails through Cloudflare/R2 for even tighter long-term performance control.
