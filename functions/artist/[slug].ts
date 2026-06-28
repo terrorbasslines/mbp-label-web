@@ -96,7 +96,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
   const description =
     publicProfile(artist) ||
     `${artist.name} is an artist connected to ${SITE_NAME}, a hardstyle, hard dance and electronic music label.`;
-  const image = artist.image_url || "/assets/brand/logo-official-purple.png";
+  const image = artist.image_url || "/assets/brand/logo-nav.png";
   const title = `${artist.name} - ${SITE_NAME} artist`;
   const jsonLd = [
     {

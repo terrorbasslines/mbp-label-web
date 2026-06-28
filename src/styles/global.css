@@ -111,6 +111,11 @@
       linear-gradient(110deg, transparent 0 78%, rgba(41, 243, 255, 0.14) 78.2% 78.7%, transparent 79%);
     opacity: 0.8;
   }
+
+  .content-auto {
+    content-visibility: auto;
+    contain-intrinsic-size: 800px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

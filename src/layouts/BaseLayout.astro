@@ -29,17 +29,16 @@ const ogImageUrl = new URL(image, siteUrl).toString();
 const logoUrl = new URL(siteConfig.logo, siteUrl).toString();
 const robots = noindex ? "noindex, nofollow" : "index, follow, max-image-preview:large";
 const normalizedPath = Astro.url.pathname.replace(/\/$/, "") || "/";
-const labelCatalogPreloads: Record<string, string> = {
-  "/horizon": "/api/catalog?view=home&label=mbh",
-  "/section7": "/api/catalog?view=home&label=s7"
+const shouldPreconnectFfm = normalizedPath === "/releases";
+const heroPreloadBaseByPath: Record<string, string> = {
+  "/": "/assets/brand/stage-hero",
+  "/horizon": "/assets/labels/horizon-hero",
+  "/section7": "/assets/labels/section7-hero"
 };
-const catalogPreloadHref =
-  normalizedPath === "/"
-    ? "/api/catalog?view=home&label=mbp"
-    : ["/releases", "/artists"].includes(normalizedPath)
-      ? "/api/catalog?label=mbp"
-      : labelCatalogPreloads[normalizedPath] ?? null;
-const newsPreloadHref = normalizedPath === "/" ? "/api/news?limit=3" : normalizedPath === "/news" ? "/api/news?limit=48" : null;
+const heroPreloadBase = heroPreloadBaseByPath[normalizedPath] ?? null;
+const heroPreloadSrcset = heroPreloadBase
+  ? [640, 960, 1440, 1920].map((width) => `${heroPreloadBase}-${width}.avif ${width}w`).join(", ")
+  : "";
 const sameAs = siteConfig.socials.filter((social) => social.href.startsWith("http")).map((social) => social.href);
 const pageJsonLd = Array.isArray(jsonLd) ? jsonLd : [jsonLd];
 const structuredData = [
@@ -70,13 +69,6 @@ const structuredData = [
 <!doctype html>
 <html lang="en">
   <head>
-    <script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-P3CVW360V0"></script>
-    <script is:inline>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-P3CVW360V0');
-    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
@@ -84,10 +76,12 @@ const structuredData = [
     <meta name="theme-color" content="#050508" />
     <link rel="canonical" href={canonicalUrl} />
     <link rel="icon" type="image/png" href={siteConfig.logo} />
-    <link rel="preconnect" href="https://cloudinary-cdn.ffm.to" crossorigin />
-    <link rel="preconnect" href="https://imagestore.ffm.to" crossorigin />
-    {catalogPreloadHref && <link rel="preload" as="fetch" href={catalogPreloadHref} crossorigin="anonymous" />}
-    {newsPreloadHref && <link rel="preload" as="fetch" href={newsPreloadHref} crossorigin="anonymous" />}
+    {
+      heroPreloadBase && (
+        <link rel="preload" as="image" type="image/avif" href={`${heroPreloadBase}-960.avif`} imagesrcset={heroPreloadSrcset} imagesizes="100vw" fetchpriority="high" />
+      )
+    }
+    {shouldPreconnectFfm && <link rel="preconnect" href="https://imagestore.ffm.to" crossorigin />}
     <meta property="og:site_name" content={siteConfig.name} />
     <meta property="og:type" content={type} />
     <meta property="og:title" content={pageTitle} />
@@ -115,5 +109,40 @@ const structuredData = [
       <slot />
     </main>
     <Footer />
+    <script is:inline>
+      (() => {
+        const id = "G-P3CVW360V0";
+        let loaded = false;
+        const loadAnalytics = () => {
+          if (loaded) return;
+          loaded = true;
+          window.dataLayer = window.dataLayer || [];
+          window.gtag = function gtag(){ window.dataLayer.push(arguments); };
+          window.gtag("js", new Date());
+          window.gtag("config", id, {
+            allow_google_signals: false,
+            allow_ad_personalization_signals: false,
+            transport_type: "beacon"
+          });
+          const script = document.createElement("script");
+          script.async = true;
+          script.src = `https://www.googletagmanager.com/gtag/js?id=${id}`;
+          document.head.appendChild(script);
+        };
+        const cleanup = () => {
+          ["pointerdown", "keydown", "touchstart", "scroll"].forEach((eventName) => {
+            window.removeEventListener(eventName, loadAnalytics);
+          });
+        };
+        const onInteraction = () => {
+          cleanup();
+          loadAnalytics();
+        };
+        ["pointerdown", "keydown", "touchstart", "scroll"].forEach((eventName) => {
+          window.addEventListener(eventName, onInteraction, { once: true, passive: true });
+        });
+        window.addEventListener("load", () => window.setTimeout(loadAnalytics, 12000), { once: true });
+      })();
+    </script>
   </body>
 </html>

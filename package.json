@@ -9,6 +9,7 @@
     "preview": "astro preview",
     "cf:dev": "wrangler pages dev dist --compatibility-date=2026-05-26",
     "cf:deploy": "npm run build && wrangler pages deploy dist --project-name mbp-label-web",
+    "optimize:assets": "node scripts/optimize-static-assets.mjs",
     "import:ffm": "node scripts/import-ffm-catalog.mjs --from=1 --to=185",
     "refresh:ffm-artwork": "node scripts/refresh-ffm-artwork.mjs"
   },

@@ -447,9 +447,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
     title: article.social_title || article.title,
     description: article.social_description || articleExcerpt(article),
     category: article.category || "MBP News",
-    cover: absoluteUrl(article.cover_image_url || "/assets/brand/season4-banner.png"),
+    cover: absoluteUrl(article.cover_image_url || "/assets/brand/season4-banner-960.webp"),
     accent: /^#[0-9a-f]{6}$/i.test(article.accent_color || "") ? article.accent_color : "#bd00ff",
-    logo: `${SITE_URL}/assets/brand/logo-official-purple.png`,
+    logo: `${SITE_URL}/assets/brand/logo-nav.png`,
     domain: SITE_URL.replace("https://", "")
   };
 

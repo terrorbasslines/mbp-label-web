@@ -39,7 +39,7 @@ export const MBP_REGION_META: Record<MbpRegion, { label: string; color: string }
   america: { label: "MBP America", color: "#23df1e" },
   asia: { label: "MBP Asia", color: "#ff1808" },
   world: { label: "MBP World", color: "#bd00ff" },
-  australia: { label: "MBP Australia", color: "#1d27ff" }
+  australia: { label: "MBP Australia", color: "#6f8cff" }
 };
 
 export function normalizeMbpRegion(value: unknown, fallback: MbpRegion = "world"): MbpRegion {

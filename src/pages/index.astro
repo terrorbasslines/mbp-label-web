@@ -6,6 +6,7 @@ import ReleaseCard from "../components/ReleaseCard.astro";
 import HomeLatestReleases from "../components/HomeLatestReleases.astro";
 import HomeManagementTeam from "../components/HomeManagementTeam.astro";
 import HomeRecentNews from "../components/HomeRecentNews.astro";
+import OptimizedPicture from "../components/OptimizedPicture.astro";
 import { labelStats, releases, siteConfig } from "../data/site";
 
 const homeJsonLd = {
@@ -23,13 +24,23 @@ const mbpRegionCards = [
   { key: "asia", label: "MBP Asia", color: "#ff1808" },
   { key: "america", label: "MBP America", color: "#23df1e" },
   { key: "world", label: "MBP World", color: "#bd00ff" },
-  { key: "australia", label: "MBP Australia", color: "#1d27ff" }
+  { key: "australia", label: "MBP Australia", color: "#6f8cff" }
 ];
 ---
 
 <BaseLayout title={siteConfig.name} description={siteConfig.seoDescription} jsonLd={homeJsonLd}>
   <section class="stage-rail relative min-h-[92svh] overflow-hidden border-b border-white/10">
-    <img src="/assets/brand/stage-hero.png" alt="" class="absolute inset-0 h-full w-full object-cover" fetchpriority="high" />
+    <OptimizedPicture
+      basePath="/assets/brand/stage-hero"
+      alt=""
+      pictureClass="absolute inset-0 block h-full w-full"
+      imageClass="h-full w-full object-cover"
+      sizes="100vw"
+      width={1920}
+      height={1098}
+      loading="eager"
+      fetchpriority="high"
+    />
     <div class="absolute inset-0 bg-gradient-to-r from-black via-black/65 to-black/20"></div>
     <div class="absolute inset-0 bg-gradient-to-t from-obsidian via-transparent to-black/30"></div>
     <div class="section-shell relative flex min-h-[92svh] items-center py-20">
@@ -84,7 +95,7 @@ const mbpRegionCards = [
     </div>
   </section>
 
-  <section class="py-20">
+  <section class="content-auto py-20">
     <div class="section-shell">
       <div class="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
         <SectionHeader eyebrow="Latest releases" title="Newest MBP releases" copy="Listen through the newest official MBP catalogue releases with artwork, catalogue numbers and direct links to each available music platform." />
@@ -97,13 +108,13 @@ const mbpRegionCards = [
     </div>
   </section>
 
-  <section class="border-y border-white/10 bg-black/40 py-20">
+  <section class="content-auto border-y border-white/10 bg-black/40 py-20">
     <div class="section-shell">
       <HomeRecentNews />
     </div>
   </section>
 
-  <section class="border-y border-white/10 bg-black/40 py-20">
+  <section class="content-auto border-y border-white/10 bg-black/40 py-20">
     <div class="section-shell">
       <div class="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
         <SectionHeader eyebrow="Label management" title="Management and A&R team" copy="The core MBP leadership team behind label strategy, A&R, demo review, catalogue quality and artist relations." />
@@ -113,7 +124,7 @@ const mbpRegionCards = [
     </div>
   </section>
 
-  <section class="py-20">
+  <section class="content-auto py-20">
     <div class="section-shell grid gap-10 lg:grid-cols-[0.92fr_1.08fr] lg:items-center">
       <div>
         <SectionHeader eyebrow="Demo submission" title="Send music with intent" copy="Send private streaming links or audio files directly to the MBP A&R inbox. Every serious demo is reviewed by the label team and answered by email." />
@@ -123,12 +134,21 @@ const mbpRegionCards = [
         </div>
       </div>
       <div class="clip-diagonal overflow-hidden border border-white/10 bg-black">
-        <img src="/assets/brand/season4-banner.png" alt="The MasterBeat Project purple stage banner" class="h-full min-h-72 w-full object-cover" loading="lazy" />
+        <OptimizedPicture
+          basePath="/assets/brand/season4-banner"
+          alt="The MasterBeat Project purple stage banner"
+          widths={[640, 960, 1440]}
+          pictureClass="block h-full min-h-72 w-full"
+          imageClass="h-full min-h-72 w-full object-cover"
+          sizes="(min-width: 1024px) 50vw, 100vw"
+          width={1440}
+          height={824}
+        />
       </div>
     </div>
   </section>
 
-  <section class="border-t border-white/10 bg-rail-grid bg-[length:100%_100%,44px_44px] py-20">
+  <section class="content-auto border-t border-white/10 bg-rail-grid bg-[length:100%_100%,44px_44px] py-20">
     <div class="section-shell grid gap-8 lg:grid-cols-[0.7fr_1fr]">
       <SectionHeader eyebrow="About the label" title="Built for hard electronic releases" />
       <div class="max-w-3xl text-pretty text-lg leading-8 text-haze">

@@ -1,3 +1,4 @@
+<div data-home-news-sentinel></div>
 <div class="hidden" data-home-news-section>
   <div class="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
     <div>
@@ -26,6 +27,7 @@
     url?: string;
   };
 
+  const sentinel = document.querySelector("[data-home-news-sentinel]");
   const section = document.querySelector("[data-home-news-section]");
   const grid = document.querySelector("[data-home-news-grid]");
 
@@ -44,9 +46,10 @@
     return date.toLocaleDateString("en", { year: "numeric", month: "short", day: "numeric" });
   }
 
-  fetch("/api/news?limit=3")
-    .then((response) => response.json())
-    .then((data) => {
+  function loadHomeNews() {
+    fetch("/api/news?limit=3")
+      .then((response) => response.json())
+      .then((data) => {
       const payload = data as { articles?: NewsArticle[] };
       const articles = payload.articles || [];
       if (!section || !grid || !articles.length) return;
@@ -59,7 +62,7 @@
           return `
             <article class="clip-diagonal border bg-carbon/90" style="border-color:${escapeHtml(accent)}55; box-shadow:0 0 24px ${escapeHtml(accent)}10;">
               <a href="${escapeHtml(url)}" class="block aspect-[16/9] overflow-hidden border-b border-white/10 bg-black">
-                <img src="${escapeHtml(image)}" alt="${escapeHtml(article.title)} article cover" class="h-full w-full object-cover transition duration-500 hover:scale-[1.03]" loading="lazy" />
+                <img src="${escapeHtml(image)}" alt="${escapeHtml(article.title)} article cover" class="h-full w-full object-cover transition duration-500 hover:scale-[1.03]" loading="lazy" decoding="async" fetchpriority="low" />
               </a>
               <div class="p-5">
                 <p class="font-mono text-xs font-bold uppercase tracking-[0.16em]" style="color:${escapeHtml(accent)};">${escapeHtml(article.category || "News")} | ${escapeHtml(formatDate(article.published_at))}</p>
@@ -73,6 +76,21 @@
           `;
         })
         .join("");
-    })
-    .catch(() => {});
+      })
+      .catch(() => {});
+  }
+
+  if ("IntersectionObserver" in window && sentinel) {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        observer.disconnect();
+        loadHomeNews();
+      },
+      { rootMargin: "700px 0px" }
+    );
+    observer.observe(sentinel);
+  } else {
+    window.setTimeout(loadHomeNews, 1800);
+  }
 </script>

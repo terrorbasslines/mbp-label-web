@@ -4,8 +4,44 @@ export const SITE_URL = "https://themasterbeatproject.com";
 export const SITE_NAME = "The MasterBeat Project";
 export const SITE_DESCRIPTION =
   "The MasterBeat Project is a hardstyle, hard dance and electronic music label releasing high-energy tracks, artist profiles and official MBP catalogue links.";
-export const DEFAULT_IMAGE = `${SITE_URL}/assets/brand/stage-hero.png`;
-export const LOGO_IMAGE = `${SITE_URL}/assets/brand/logo-official-purple.png`;
+export const DEFAULT_IMAGE = `${SITE_URL}/assets/brand/stage-hero-og.jpg`;
+export const LOGO_IMAGE = `${SITE_URL}/assets/brand/logo-nav.png`;
+
+const ANALYTICS_SCRIPT = `<script>
+      (function () {
+        var id = "G-P3CVW360V0";
+        var loaded = false;
+        function loadAnalytics() {
+          if (loaded) return;
+          loaded = true;
+          window.dataLayer = window.dataLayer || [];
+          window.gtag = function gtag(){ window.dataLayer.push(arguments); };
+          window.gtag("js", new Date());
+          window.gtag("config", id, {
+            allow_google_signals: false,
+            allow_ad_personalization_signals: false,
+            transport_type: "beacon"
+          });
+          var script = document.createElement("script");
+          script.async = true;
+          script.src = "https://www.googletagmanager.com/gtag/js?id=" + id;
+          document.head.appendChild(script);
+        }
+        function cleanup() {
+          ["pointerdown", "keydown", "touchstart", "scroll"].forEach(function (eventName) {
+            window.removeEventListener(eventName, loadAnalytics);
+          });
+        }
+        function onInteraction() {
+          cleanup();
+          loadAnalytics();
+        }
+        ["pointerdown", "keydown", "touchstart", "scroll"].forEach(function (eventName) {
+          window.addEventListener(eventName, onInteraction, { once: true, passive: true });
+        });
+        window.addEventListener("load", function () { window.setTimeout(loadAnalytics, 12000); }, { once: true });
+      })();
+    </script>`;
 
 export function escapeHtml(value: unknown) {
   return String(value ?? "")
@@ -119,20 +155,13 @@ export function pageShell(input: {
   return `<!doctype html>
 <html lang="en">
   <head>
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-P3CVW360V0"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-P3CVW360V0');
-    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${escapeHtml(title)}</title>
     <meta name="description" content="${escapeHtml(input.description)}" />
     <meta name="robots" content="${robots}" />
     <link rel="canonical" href="${escapeHtml(canonical)}" />
-    <link rel="icon" type="image/png" href="/assets/brand/logo-official-purple.png" />
+    <link rel="icon" type="image/png" href="/assets/brand/logo-nav.png" />
     <meta property="og:site_name" content="${SITE_NAME}" />
     <meta property="og:type" content="${escapeHtml(input.ogType || "website")}" />
     <meta property="og:title" content="${escapeHtml(title)}" />
@@ -157,7 +186,7 @@ export function pageShell(input: {
     </style>
   </head>
   <body>
-    <header class="top"><div class="wrap"><a class="brand" href="/" aria-label="${SITE_NAME} home"><span class="mark"><img src="/assets/brand/logo-official-purple.png" alt="" /></span><span><strong>The MasterBeat</strong><span class="sub">Project</span></span></a><nav class="nav" aria-label="Primary navigation">${navMarkup}<span class="contents" data-auth-nav><a class="${path === "/artist-dashboard" ? "active" : ""}" href="/artist-dashboard/" data-nav-login>Login</a><a class="${path === "/artist-dashboard" ? "active" : ""}" href="/artist-dashboard/" data-nav-dashboard hidden>Artist Dashboard</a><a class="${path === "/admin" ? "active" : ""}" href="/admin/" data-nav-admin hidden>Admin</a></span></nav></div></header>
+    <header class="top"><div class="wrap"><a class="brand" href="/" aria-label="${SITE_NAME} home"><span class="mark"><img src="/assets/brand/logo-nav.png" alt="" width="40" height="40" decoding="async" /></span><span><strong>The MasterBeat</strong><span class="sub">Project</span></span></a><nav class="nav" aria-label="Primary navigation">${navMarkup}<span class="contents" data-auth-nav><a class="${path === "/artist-dashboard" ? "active" : ""}" href="/artist-dashboard/" data-nav-login>Login</a><a class="${path === "/artist-dashboard" ? "active" : ""}" href="/artist-dashboard/" data-nav-dashboard hidden>Artist Dashboard</a><a class="${path === "/admin" ? "active" : ""}" href="/admin/" data-nav-admin hidden>Admin</a></span></nav></div></header>
     <main class="wrap">${input.content}</main>
     <footer class="footer"><div class="wrap">${SITE_NAME} - Hardstyle, hard dance and electronic music label.</div></footer>
     <script>
@@ -179,6 +208,7 @@ export function pageShell(input: {
           .catch(function () {});
       })();
     </script>
+    ${ANALYTICS_SCRIPT}
   </body>
 </html>`;
 }

@@ -5,8 +5,8 @@ export const siteConfig = {
   email: "contact@themasterbeatproject.com",
   demoEmail: "demos@themasterbeatproject.com",
   url: "https://themasterbeatproject.com",
-  logo: "/assets/brand/logo-official-purple.png",
-  defaultImage: "/assets/brand/stage-hero.png",
+  logo: "/assets/brand/logo-nav.png",
+  defaultImage: "/assets/brand/stage-hero-og.jpg",
   seoDescription:
     "The MasterBeat Project is a hardstyle, hard dance and electronic music label releasing high-energy tracks, artist profiles and official MBP catalogue links.",
   socials: [
@@ -44,7 +44,7 @@ export const releases = [
     format: "Single",
     sound: "Euphoric hardstyle",
     accent: "violet",
-    artwork: "/assets/brand/logo-official-purple.png",
+    artwork: "/assets/brand/logo-nav.png",
     description: "A focused hardstyle release with emotional lift, bright lead work and a polished MBP presentation."
   },
   {
@@ -54,7 +54,7 @@ export const releases = [
     format: "Single",
     sound: "Melodic hardstyle",
     accent: "blue",
-    artwork: "/assets/brand/logo-official-asia.png",
+    artwork: "/assets/brand/logo-nav.png",
     description: "A melodic hard dance record built around strong atmosphere, clean hooks and a direct festival pulse."
   },
   {
@@ -64,7 +64,7 @@ export const releases = [
     format: "Single",
     sound: "Hardstyle / vocal energy",
     accent: "amber",
-    artwork: "/assets/brand/logo-official-australia.png",
+    artwork: "/assets/brand/logo-nav.png",
     description: "Vocal-led energy with an uplifting label fit, precise build tension and clean electronic finishing."
   },
   {
@@ -74,7 +74,7 @@ export const releases = [
     format: "Single",
     sound: "Hard dance anthem",
     accent: "red",
-    artwork: "/assets/brand/logo-official-america.png",
+    artwork: "/assets/brand/logo-nav.png",
     description: "A hard electronic anthem lane with bold hooks, stacked synths and a strong visual identity fit."
   }
 ] as const;
@@ -85,7 +85,7 @@ export const artists = [
     origin: "Euphoric hardstyle",
     role: "Featured artist",
     accent: "violet",
-    image: "/assets/brand/logo-official-purple.png",
+    image: "/assets/brand/logo-nav.png",
     description: "Peak-time sound design shaped around powerful kick movement, bright leads and direct crowd connection."
   },
   {
@@ -93,7 +93,7 @@ export const artists = [
     origin: "Electronic / anthem focus",
     role: "Featured artist",
     accent: "green",
-    image: "/assets/brand/logo-official-australia.png",
+    image: "/assets/brand/logo-nav.png",
     description: "Energetic production language made for bold hooks, stacked synths and polished label releases."
   },
   {
@@ -101,7 +101,7 @@ export const artists = [
     origin: "Hard dance / darker club pressure",
     role: "Featured artist",
     accent: "red",
-    image: "/assets/brand/logo-official-america.png",
+    image: "/assets/brand/logo-nav.png",
     description: "A harder electronic profile with dramatic tension, heavy low-end decisions and late-night momentum."
   },
   {
@@ -109,7 +109,7 @@ export const artists = [
     origin: "Hardstyle / melodic drive",
     role: "Featured artist",
     accent: "blue",
-    image: "/assets/brand/logo-official-europe.png",
+    image: "/assets/brand/logo-nav.png",
     description: "Melodic hardstyle direction with emotional hooks, clean arrangements and release-ready impact."
   }
 ] as const;

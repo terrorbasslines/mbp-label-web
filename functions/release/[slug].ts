@@ -146,7 +146,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, env }) => {
   const description =
     release.description ||
     `${release.artist_display} - ${release.title} is an official ${SITE_NAME} ${release.catalog_number} release in the hardstyle, hard dance and electronic music catalogue.`;
-  const image = release.artwork_url || "/assets/brand/stage-hero.png";
+  const image = release.artwork_url || "/assets/brand/stage-hero-960.webp";
   const title = `${release.artist_display} - ${release.title} (${release.catalog_number})`;
   const jsonLd = [
     {

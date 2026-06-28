@@ -1,0 +1,46 @@
+---
+interface Props {
+  basePath: string;
+  alt?: string;
+  widths?: number[];
+  sizes?: string;
+  pictureClass?: string;
+  imageClass?: string;
+  width?: number;
+  height?: number;
+  loading?: "eager" | "lazy";
+  fetchpriority?: "high" | "low" | "auto";
+}
+
+const {
+  basePath,
+  alt = "",
+  widths = [640, 960, 1440, 1920],
+  sizes = "100vw",
+  pictureClass = "block",
+  imageClass = "h-full w-full object-cover",
+  width = widths.at(-1) ?? 1920,
+  height = Math.round(width * 0.5625),
+  loading = "lazy",
+  fetchpriority = loading === "eager" ? "high" : "low"
+} = Astro.props;
+
+const fallbackWidth = widths.includes(1440) ? 1440 : (widths.at(-1) ?? width);
+const avifSrcset = widths.map((item) => `${basePath}-${item}.avif ${item}w`).join(", ");
+const webpSrcset = widths.map((item) => `${basePath}-${item}.webp ${item}w`).join(", ");
+---
+
+<picture class={pictureClass}>
+  <source type="image/avif" srcset={avifSrcset} sizes={sizes} />
+  <source type="image/webp" srcset={webpSrcset} sizes={sizes} />
+  <img
+    src={`${basePath}-${fallbackWidth}.webp`}
+    alt={alt}
+    class={imageClass}
+    width={width}
+    height={height}
+    loading={loading}
+    decoding={loading === "eager" ? "sync" : "async"}
+    fetchpriority={fetchpriority}
+  />
+</picture>

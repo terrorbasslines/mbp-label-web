@@ -3,6 +3,7 @@ import ButtonLink from "./ButtonLink.astro";
 import HomeLatestReleases from "./HomeLatestReleases.astro";
 import LiveArtists from "./LiveArtists.astro";
 import LiveCatalog from "./LiveCatalog.astro";
+import OptimizedPicture from "./OptimizedPicture.astro";
 import SectionHeader from "./SectionHeader.astro";
 
 interface LabelPillar {
@@ -61,17 +62,40 @@ const {
   aboutTitle,
   aboutCopy
 } = Astro.props;
+
+const heroBasePath = heroImage.replace(/\.(png|jpe?g|webp|avif)$/i, "");
+const logoBasePath = logoImage.replace(/\.(png|jpe?g|webp|avif)$/i, "");
 ---
 
 <section class="stage-rail relative min-h-[92svh] overflow-hidden border-b border-white/10">
-  <img src={heroImage} alt="" class="absolute inset-0 h-full w-full object-cover" fetchpriority="high" />
+  <OptimizedPicture
+    basePath={heroBasePath}
+    alt=""
+    pictureClass="absolute inset-0 block h-full w-full"
+    imageClass="h-full w-full object-cover"
+    sizes="100vw"
+    width={1920}
+    height={1098}
+    loading="eager"
+    fetchpriority="high"
+  />
   <div class="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-black/25"></div>
   <div class="absolute inset-0 bg-gradient-to-t from-obsidian via-transparent to-black/35"></div>
   <div class="absolute inset-x-0 bottom-0 h-28" style={`background:linear-gradient(0deg, ${accent}24, transparent);`}></div>
   <div class="section-shell relative flex min-h-[92svh] items-center py-20">
     <div class="max-w-5xl">
       <div class="mb-8 flex max-w-xl items-center gap-4 rounded-lg border border-white/10 bg-black/45 p-4 backdrop-blur">
-        <img src={logoImage} alt="" class="h-16 w-16 rounded-md border border-white/10 object-cover" />
+        <OptimizedPicture
+          basePath={logoBasePath}
+          alt=""
+          widths={[96, 192]}
+          sizes="64px"
+          pictureClass="block h-16 w-16 shrink-0 overflow-hidden rounded-md border border-white/10"
+          imageClass="h-16 w-16 object-cover"
+          width={96}
+          height={96}
+          loading="eager"
+        />
         <div>
           <p class="font-mono text-xs font-black uppercase tracking-[0.22em]" style={`color:${accent};`}>{shortName}</p>
           <p class="mt-1 font-display text-2xl font-black uppercase leading-none text-white">{labelName}</p>
@@ -160,7 +184,15 @@ const {
       </div>
     </div>
     <div class="clip-diagonal overflow-hidden border bg-black" style={`border-color:${accent}55;`}>
-      <img src={heroImage} alt="" class="h-full min-h-72 w-full object-cover" loading="lazy" />
+      <OptimizedPicture
+        basePath={heroBasePath}
+        alt=""
+        pictureClass="block h-full min-h-72 w-full"
+        imageClass="h-full min-h-72 w-full object-cover"
+        sizes="(min-width: 1024px) 50vw, 100vw"
+        width={1440}
+        height={824}
+      />
     </div>
   </div>
 </section>

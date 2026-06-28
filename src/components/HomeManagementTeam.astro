@@ -6,7 +6,7 @@ const leaders = [
 ];
 ---
 
-<div data-management-team>
+<div data-management-team data-management-sentinel>
   <div class="mt-10 grid gap-5 md:grid-cols-2" data-management-grid>
     {
       leaders.map((leader) => (
@@ -62,7 +62,7 @@ const leaders = [
             <article class="rounded-lg border border-white/10 bg-carbon/80 p-5">
               <div class="flex items-center gap-4">
                 <a href="${escapeTeamHtml(artistPath)}" class="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-md border border-white/10 bg-black font-display text-3xl font-black text-white" aria-label="${escapeTeamHtml(leader.name)} profile">
-                  ${artist?.image_url ? `<img src="${escapeTeamHtml(artist.image_url)}" alt="" class="h-full w-full object-contain" loading="lazy" />` : escapeTeamHtml(leader.name.slice(0, 1))}
+                  ${artist?.image_url ? `<img src="${escapeTeamHtml(artist.image_url)}" alt="" class="h-full w-full object-contain" loading="lazy" decoding="async" fetchpriority="low" />` : escapeTeamHtml(leader.name.slice(0, 1))}
                 </a>
                 <div>
                   <p class="text-xs font-bold uppercase tracking-[0.18em] text-neon-cyan">${escapeTeamHtml(leader.role)}</p>
@@ -80,5 +80,22 @@ const leaders = [
     }
   }
 
-  loadManagementTeam();
+  function scheduleManagementTeam() {
+    const sentinel = document.querySelector("[data-management-sentinel]");
+    if ("IntersectionObserver" in window && sentinel) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (!entries.some((entry) => entry.isIntersecting)) return;
+          observer.disconnect();
+          loadManagementTeam();
+        },
+        { rootMargin: "700px 0px" }
+      );
+      observer.observe(sentinel);
+      return;
+    }
+    window.setTimeout(loadManagementTeam, 2200);
+  }
+
+  scheduleManagementTeam();
 </script>

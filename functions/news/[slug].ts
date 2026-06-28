@@ -101,7 +101,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
   const ogAsset = `/news/${article.slug}/social-image.svg?platform=og${previewImageParam}`;
   const instagramPostAsset = `/news/${article.slug}/social-image.svg?platform=instagram-post${previewImageParam}`;
   const instagramStoryAsset = `/news/${article.slug}/social-image.svg?platform=instagram-story${previewImageParam}`;
-  const articleCoverImage = article.cover_image_url || "/assets/brand/season4-banner.png";
+  const articleCoverImage = article.cover_image_url || "/assets/brand/season4-banner-960.webp";
   const image = ogAsset;
   const socialFileSlug = article.slug.replace(/[^a-z0-9-]+/gi, "-").replace(/^-+|-+$/g, "") || "mbp-news";
   const publishedDate = formatDate(article.published_at || article.created_at);
@@ -274,7 +274,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ params, request, env })
               });
             }
             function fallbackImageFor(href) {
-              return /logo/i.test(href) ? "/assets/brand/logo-official-purple.png" : "/assets/brand/season4-banner.png";
+              return /logo/i.test(href) ? "/assets/brand/logo-nav.png" : "/assets/brand/season4-banner-960.webp";
             }
             async function fetchImageDataUrl(href) {
               var decodedHref = decodeSvgAttribute(href);

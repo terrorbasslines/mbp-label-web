@@ -17,6 +17,7 @@ const {
 const catalogEndpoint = `/api/catalog?view=home&label=${encodeURIComponent(label)}`;
 ---
 
+<div data-home-latest-sentinel></div>
 <div
   class="hidden"
   data-home-latest-live
@@ -43,6 +44,7 @@ const catalogEndpoint = `/api/catalog?view=home&label=${encodeURIComponent(label
 <script>
   // @ts-nocheck
   const homeLatestLive = document.querySelector("[data-home-latest-live]");
+  const homeLatestSentinel = document.querySelector("[data-home-latest-sentinel]");
   const homePublishedGrid = document.querySelector("[data-home-published-grid]");
   const homePresaveSection = document.querySelector("[data-home-presave-section]");
   const homePresaveGrid = document.querySelector("[data-home-presave-grid]");
@@ -73,7 +75,7 @@ const catalogEndpoint = `/api/catalog?view=home&label=${encodeURIComponent(label
     const playableLinks = links.filter((link) => !/email|subscribe/i.test(`${link.platform || ""} ${link.label || ""}`));
     const isPresave = release.status === "presave" && playableLinks.length === 0;
     const smartLink = release.presave_url || release.ffm_url;
-    const loading = index === 0 ? "eager" : "lazy";
+    const loading = "lazy";
     const badgeColor = homeUseLabelBadge ? release.release_label_color || "#bd00ff" : release.mbp_region_color || "#bd00ff";
     const badgeLabel = homeUseLabelBadge ? release.release_label_name || homeFallbackMark : release.mbp_region_label || "MBP World";
 
@@ -83,7 +85,7 @@ const catalogEndpoint = `/api/catalog?view=home&label=${encodeURIComponent(label
           <a class="aspect-square overflow-hidden border-b border-white/10 bg-black/70" href="${escapeLatestHtml(releasePath)}">
             ${
               release.artwork_url
-                ? `<img src="${escapeLatestHtml(release.artwork_url)}" alt="${escapeLatestHtml(release.title)} artwork" class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" loading="${loading}" decoding="async" sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw" />`
+                ? `<img src="${escapeLatestHtml(release.artwork_url)}" alt="${escapeLatestHtml(release.title)} artwork" class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" loading="${loading}" decoding="async" fetchpriority="low" sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw" />`
                 : `<div class="grid h-full w-full place-items-center bg-black font-display text-5xl font-black text-white">${escapeLatestHtml(homeFallbackMark)}</div>`
             }
           </a>
@@ -152,5 +154,21 @@ const catalogEndpoint = `/api/catalog?view=home&label=${encodeURIComponent(label
     }
   }
 
-  loadHomeLatestReleases();
+  function scheduleHomeLatestReleases() {
+    if ("IntersectionObserver" in window && homeLatestSentinel) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (!entries.some((entry) => entry.isIntersecting)) return;
+          observer.disconnect();
+          loadHomeLatestReleases();
+        },
+        { rootMargin: "700px 0px" }
+      );
+      observer.observe(homeLatestSentinel);
+      return;
+    }
+    window.setTimeout(loadHomeLatestReleases, 1500);
+  }
+
+  scheduleHomeLatestReleases();
 </script>
