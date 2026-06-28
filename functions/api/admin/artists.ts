@@ -1,4 +1,5 @@
-import { id, inferMbpRegionFromArtistName, inferMbpRegionFromCountry, isCollabArtistName, isResponse, json, methodNotAllowed, normalizeMbpRegion, optionalString, readJson, requireAdmin, requireDb, requiredString, slugify, type Env } from "../_shared";
+import { id, inferMbpRegionFromArtistName, inferMbpRegionFromCountry, isCollabArtistName, isReleaseTitleArtistName, isResponse, json, methodNotAllowed, normalizeMbpRegion, optionalString, readJson, requireAdmin, requireDb, requiredString, slugify, type Env } from "../_shared";
+import { labelDetails, labelFromCatalogNumber, type LabelKey } from "../_labels";
 
 type ArtistRow = {
   id: string;
@@ -20,6 +21,11 @@ type ArtistClaimRow = {
   role: string;
 };
 
+type ArtistReleaseLabelRow = {
+  artist_id: string;
+  catalog_number: string;
+};
+
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const admin = await requireAdmin(request, env);
   if (isResponse(admin)) return admin;
@@ -35,18 +41,39 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
        INNER JOIN users u ON u.id = ua.user_id`
     )
     .all<ArtistClaimRow>();
+  const artistReleaseLabelResult = await db
+    .prepare(
+      `SELECT ra.artist_id, r.catalog_number
+       FROM release_artists ra
+       INNER JOIN releases r ON r.id = ra.release_id`
+    )
+    .all<ArtistReleaseLabelRow>();
   const claimsByArtist = new Map((claimResult.results ?? []).map((claim) => [claim.artist_id, claim]));
+  const labelsByArtist = new Map<string, Set<LabelKey>>();
+  for (const row of artistReleaseLabelResult.results ?? []) {
+    const labels = labelsByArtist.get(row.artist_id) ?? new Set<LabelKey>();
+    labels.add(labelFromCatalogNumber(row.catalog_number));
+    labelsByArtist.set(row.artist_id, labels);
+  }
 
   return json({
     ok: true,
     artists: (result.results ?? [])
       .filter((artist) => !isCollabArtistName(artist.name))
+      .filter((artist) => !isReleaseTitleArtistName(artist.name))
       .map((artist) => {
         const claim = claimsByArtist.get(artist.id);
+        const artistLabels = Array.from(labelsByArtist.get(artist.id) ?? new Set<LabelKey>(["mbp"]));
+        const primaryLabel = labelDetails(artistLabels[0] ?? "mbp");
         return {
           ...artist,
           links: JSON.parse(artist.links_json || "[]"),
           is_featured: Boolean(artist.is_featured),
+          release_label: primaryLabel.key,
+          release_label_name: primaryLabel.name,
+          release_label_short_name: primaryLabel.shortName,
+          release_label_color: primaryLabel.color,
+          labels: artistLabels.map((label) => labelDetails(label)),
           claimed: Boolean(claim),
           claimed_email: claim?.email ?? null,
           claimed_role: claim?.role ?? null

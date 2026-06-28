@@ -1,4 +1,5 @@
 import { id, isResponse, json, methodNotAllowed, normalizeMbpRegion, optionalString, readJson, requireAdmin, requireDb, requiredString, slugify, syncReleaseArtistCredits, type Env } from "../_shared";
+import { labelDetails, labelFromCatalogNumber } from "../_labels";
 import { isPlayableReleaseLink, normalizeReleasePlatformLinks } from "../_release_links";
 
 type ReleaseRow = {
@@ -66,8 +67,13 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
       const rawPlatformLinks = (links.results ?? []).filter((link) => link.release_id === release.id);
       const platformLinks = normalizeReleasePlatformLinks(rawPlatformLinks);
       const playableLinks = platformLinks.filter(isPlayableReleaseLink);
+      const releaseLabel = labelDetails(labelFromCatalogNumber(release.catalog_number));
       return {
         ...release,
+        release_label: releaseLabel.key,
+        release_label_name: releaseLabel.name,
+        release_label_short_name: releaseLabel.shortName,
+        release_label_color: releaseLabel.color,
         status: playableLinks.length > 0 ? "published" : "presave",
         platform_links: platformLinks
       };

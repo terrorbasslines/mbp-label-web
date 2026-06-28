@@ -1,4 +1,4 @@
-import { inferReleaseRegion, isCollabArtistName, isResponse, json, MBP_REGION_KEYS, mbpRegionDetails, normalizeMbpRegion, requireDb, syncReleaseArtistCredits, type Env } from "./_shared";
+import { inferReleaseRegion, isCollabArtistName, isReleaseTitleArtistName, isResponse, json, MBP_REGION_KEYS, mbpRegionDetails, normalizeMbpRegion, requireDb, syncReleaseArtistCredits, type Env } from "./_shared";
 import { parseFfmRelease } from "./_ffm";
 import { labelDetails, labelFromCatalogNumber, normalizeLabelKey, type LabelKey } from "./_labels";
 import { isPlayableReleaseLink, normalizeReleasePlatformLinks } from "./_release_links";
@@ -40,16 +40,6 @@ function publicArtistProfile(artist: ArtistRow) {
 
 function artistSortRank(artist: { name?: unknown }) {
   return ARTIST_PRIORITY.get(String(artist.name ?? "").toLowerCase()) ?? 1000;
-}
-
-function isReleaseTitleArtistName(value: string) {
-  const normalized = value.trim().toLowerCase();
-  if (!normalized) return true;
-  if (/(?:^|[#&])x[0-9a-f]+;/.test(normalized)) return true;
-  if (normalized === "close to heaven (remixes)") return true;
-  if (/\((?:[^)]*\s)?remixes?\)?$/.test(normalized)) return true;
-  if (/\b(?:remix|remixes|compilation|compilations)\b/.test(normalized) && !/^(dj|mc)\b/.test(normalized)) return true;
-  return false;
 }
 
 async function updateReleaseRegionFromCredits(db: D1Database, releaseId: string) {

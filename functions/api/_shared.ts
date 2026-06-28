@@ -228,6 +228,16 @@ export function isCollabArtistName(value: string | null | undefined) {
   return FEATURE_MARKER_PATTERN.test(text) || parseArtistCredits(text).length > 1;
 }
 
+export function isReleaseTitleArtistName(value: string | null | undefined) {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (!normalized) return true;
+  if (/(?:^|[#&])x[0-9a-f]+;/.test(normalized)) return true;
+  if (normalized === "close to heaven (remixes)") return true;
+  if (/\((?:[^)]*\s)?remixes?\)?$/.test(normalized)) return true;
+  if (/\b(?:remix|remixes|compilation|compilations)\b/.test(normalized) && !/^(dj|mc)\b/.test(normalized)) return true;
+  return false;
+}
+
 export function json(data: unknown, init: ResponseInit = {}) {
   return new Response(JSON.stringify(data), {
     ...init,

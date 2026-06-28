@@ -486,15 +486,24 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                   <button class="rounded-md border border-white/10 px-4 py-3 text-sm font-bold uppercase text-haze hover:border-neon-cyan hover:text-white" data-artist-cancel hidden type="button">Cancel edit</button>
                 </div>
               </form>
-              <div class="mt-6 grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+              <div class="mt-6 grid gap-3 md:grid-cols-[1fr_auto_auto] md:items-end">
                 <label>
                   <span class="field-label">Search artists</span>
                   <input class="field-control" data-admin-artist-search type="search" placeholder="Search artist, country, role or profile" />
                 </label>
                 <label>
-                  <span class="field-label">Region</span>
+                  <span class="field-label">Label</span>
+                  <select class="field-control min-w-44" data-admin-artist-label>
+                    <option value="all">All labels</option>
+                    <option value="mbp">MBP</option>
+                    <option value="mbh">MBH</option>
+                    <option value="s7">Section 7</option>
+                  </select>
+                </label>
+                <label>
+                  <span class="field-label">MBP region</span>
                   <select class="field-control min-w-44" data-admin-artist-region>
-                    <option value="all">All MBP</option>
+                    <option value="all">All regions</option>
                     <option value="europe">MBP Europe</option>
                     <option value="america">MBP America</option>
                     <option value="asia">MBP Asia</option>
@@ -585,15 +594,24 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                 <p class="eyebrow">Catalogue</p>
                 <h3 class="mt-2 font-display text-2xl font-black uppercase text-white">Current releases</h3>
               </div>
-              <div class="grid w-full gap-3 md:max-w-2xl md:grid-cols-[1fr_auto]">
+              <div class="grid w-full gap-3 md:max-w-3xl md:grid-cols-[1fr_auto_auto]">
                 <label>
                   <span class="field-label">Search releases</span>
                   <input class="field-control" data-admin-release-search type="search" placeholder="Search MBP185, artist or track title" />
                 </label>
                 <label>
-                  <span class="field-label">Region</span>
+                  <span class="field-label">Label</span>
+                  <select class="field-control min-w-44" data-admin-release-label>
+                    <option value="all">All labels</option>
+                    <option value="mbp">MBP</option>
+                    <option value="mbh">MBH</option>
+                    <option value="s7">Section 7</option>
+                  </select>
+                </label>
+                <label>
+                  <span class="field-label">MBP region</span>
                   <select class="field-control min-w-44" data-admin-release-region>
-                    <option value="all">All MBP</option>
+                    <option value="all">All regions</option>
                     <option value="europe">MBP Europe</option>
                     <option value="america">MBP America</option>
                     <option value="asia">MBP Asia</option>
@@ -654,7 +672,9 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   const newsMediaStatus = document.querySelector("[data-news-media-status]");
   const adminArtistSearch = document.querySelector("[data-admin-artist-search]");
   const adminReleaseSearch = document.querySelector("[data-admin-release-search]");
+  const adminArtistLabel = document.querySelector("[data-admin-artist-label]");
   const adminArtistRegion = document.querySelector("[data-admin-artist-region]");
+  const adminReleaseLabel = document.querySelector("[data-admin-release-label]");
   const adminReleaseRegion = document.querySelector("[data-admin-release-region]");
   const calendarForm = document.querySelector("[data-calendar-form]");
   const calendarGenerateForm = document.querySelector("[data-calendar-generate]");
@@ -688,7 +708,9 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   let newsEditorPromise = null;
   let artistSearchTerm = "";
   let releaseSearchTerm = "";
+  let artistLabelTerm = "all";
   let artistRegionTerm = "all";
+  let releaseLabelTerm = "all";
   let releaseRegionTerm = "all";
   let submissionCounts = { pending: 0, archived: 0, total: 0 };
   const pages = { artists: 1, releases: 1, submissions: 1, news: 1 };
@@ -699,6 +721,11 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     asia: { label: "MBP Asia", color: "#ff1808" },
     world: { label: "MBP World", color: "#bd00ff" },
     australia: { label: "MBP Australia", color: "#1d27ff" }
+  };
+  const labelMeta = {
+    mbp: { label: "The MasterBeat Project", shortName: "MBP", color: "#bd00ff" },
+    mbh: { label: "The MasterBeat Horizon", shortName: "MBH", color: "#7eb7ff" },
+    s7: { label: "Section 7", shortName: "S7", color: "#e7ff00" }
   };
 
   const escapeHtml = (value) =>
@@ -1049,6 +1076,37 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     return mbpRegions[String(region || "").toLowerCase()] || mbpRegions.world;
   }
 
+  function itemLabelKeys(item) {
+    if (Array.isArray(item?.labels) && item.labels.length) {
+      return item.labels.map((label) => String(label.key || "").toLowerCase()).filter(Boolean);
+    }
+    return [String(item?.release_label || "mbp").toLowerCase()];
+  }
+
+  function itemLabelDetails(item) {
+    if (Array.isArray(item?.labels) && item.labels.length) {
+      return item.labels.map((label) => ({
+        key: String(label.key || "").toLowerCase(),
+        label: label.name || label.label || labelMeta[String(label.key || "").toLowerCase()]?.label || "The MasterBeat Project",
+        shortName: label.shortName || label.short_name || labelMeta[String(label.key || "").toLowerCase()]?.shortName || "MBP",
+        color: label.color || labelMeta[String(label.key || "").toLowerCase()]?.color || "#bd00ff"
+      }));
+    }
+
+    const key = String(item?.release_label || "mbp").toLowerCase();
+    const fallback = labelMeta[key] || labelMeta.mbp;
+    return [{
+      key,
+      label: item?.release_label_name || fallback.label,
+      shortName: item?.release_label_short_name || fallback.shortName,
+      color: item?.release_label_color || fallback.color
+    }];
+  }
+
+  function hasLabel(item, label) {
+    return itemLabelKeys(item).includes(label);
+  }
+
   function formatAdminDate(value) {
     if (!value) return "No date";
     const date = new Date(value);
@@ -1144,21 +1202,77 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     return `<span class="inline-flex rounded border px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.14em]" style="border-color:${escapeHtml(meta.color)}66; color:${escapeHtml(meta.color)}">${escapeHtml(meta.label)}</span>`;
   }
 
+  function renderLabelBadges(item) {
+    return itemLabelDetails(item)
+      .map((label) => `<span class="inline-flex rounded border px-2 py-1 text-[0.68rem] font-black uppercase tracking-[0.14em]" style="border-color:${escapeHtml(label.color)}66; color:${escapeHtml(label.color)}">${escapeHtml(label.shortName || label.label)}</span>`)
+      .join("");
+  }
+
+  function labelMatches(item, selectedLabel) {
+    return selectedLabel === "all" || hasLabel(item, selectedLabel);
+  }
+
+  function mbpRegionMatches(item, selectedRegion) {
+    return selectedRegion === "all" || (hasLabel(item, "mbp") && String(item.mbp_region || "world").toLowerCase() === selectedRegion);
+  }
+
+  function syncLabelRegionFilters() {
+    if (adminArtistRegion instanceof HTMLSelectElement) {
+      const disableArtistRegion = artistLabelTerm !== "all" && artistLabelTerm !== "mbp";
+      adminArtistRegion.disabled = disableArtistRegion;
+      if (disableArtistRegion) {
+        adminArtistRegion.value = "all";
+        artistRegionTerm = "all";
+      }
+    }
+    if (adminReleaseRegion instanceof HTMLSelectElement) {
+      const disableReleaseRegion = releaseLabelTerm !== "all" && releaseLabelTerm !== "mbp";
+      adminReleaseRegion.disabled = disableReleaseRegion;
+      if (disableReleaseRegion) {
+        adminReleaseRegion.value = "all";
+        releaseRegionTerm = "all";
+      }
+    }
+  }
+
   function filteredArtists() {
     const query = artistSearchTerm.trim().toLowerCase();
+    const label = artistLabelTerm;
     const region = artistRegionTerm;
     return artists.filter((artist) =>
-      (region === "all" || String(artist.mbp_region || "world").toLowerCase() === region) &&
-      (!query || searchableText([artist.name, artist.country, artist.profile, artist.claimed_email, artist.claimed_role, artist.mbp_region, regionMeta(artist.mbp_region).label]).includes(query))
+      labelMatches(artist, label) &&
+      mbpRegionMatches(artist, region) &&
+      (!query || searchableText([
+        artist.name,
+        artist.country,
+        artist.profile,
+        artist.claimed_email,
+        artist.claimed_role,
+        artist.mbp_region,
+        regionMeta(artist.mbp_region).label,
+        ...itemLabelDetails(artist).flatMap((item) => [item.label, item.shortName])
+      ]).includes(query))
     );
   }
 
   function filteredReleases() {
     const query = releaseSearchTerm.trim().toLowerCase();
+    const label = releaseLabelTerm;
     const region = releaseRegionTerm;
     return releases.filter((release) =>
-      (region === "all" || String(release.mbp_region || "world").toLowerCase() === region) &&
-      (!query || searchableText([release.catalog_number, release.title, release.artist_display, release.status, release.genre, release.description, release.mbp_region, regionMeta(release.mbp_region).label]).includes(query))
+      labelMatches(release, label) &&
+      mbpRegionMatches(release, region) &&
+      (!query || searchableText([
+        release.catalog_number,
+        release.title,
+        release.artist_display,
+        release.status,
+        release.genre,
+        release.description,
+        release.mbp_region,
+        regionMeta(release.mbp_region).label,
+        ...itemLabelDetails(release).flatMap((item) => [item.label, item.shortName])
+      ]).includes(query))
     );
   }
 
@@ -1308,13 +1422,15 @@ import BaseLayout from "../layouts/BaseLayout.astro";
             (artist) => {
               const artistPath = `/artist/${encodeURIComponent(String(artist.slug || artist.name || "").toLowerCase())}`;
               const defaultRole = managementAdmins.has(String(artist.name || "").toLowerCase()) ? "admin" : "artist";
+              const labelBadges = renderLabelBadges(artist);
+              const regionBadge = hasLabel(artist, "mbp") ? renderRegionBadge(artist.mbp_region) : "";
               return `
               <article class="rounded-md border border-white/10 bg-black/35 p-4">
                 <div class="flex items-start justify-between gap-3">
                   <div>
                     <p class="font-bold text-white"><a class="hover:text-neon-cyan" href="${escapeHtml(artistPath)}" target="_blank" rel="noreferrer">${escapeHtml(artist.name)}</a></p>
                     <p class="mt-1 text-sm text-steel">${escapeHtml(artist.country || "No country")} ${artist.is_featured ? " | Featured" : ""}</p>
-                    <div class="mt-2">${renderRegionBadge(artist.mbp_region)}</div>
+                    <div class="mt-2 flex flex-wrap gap-1.5">${labelBadges}${regionBadge}</div>
                   </div>
                   <div class="flex flex-wrap gap-2">
                     <a class="text-xs font-bold uppercase text-neon-cyan hover:text-white" href="${escapeHtml(artistPath)}" target="_blank" rel="noreferrer">Profile</a>
@@ -1356,12 +1472,14 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           .map(
             (release) => {
               const releasePath = `/release/${encodeURIComponent(String(release.slug || release.catalog_number || "").toLowerCase())}`;
+              const labelBadges = renderLabelBadges(release);
+              const regionBadge = hasLabel(release, "mbp") ? renderRegionBadge(release.mbp_region) : "";
               return `
               <article class="rounded-md border border-white/10 bg-black/35 p-4">
                 <div class="flex items-start justify-between gap-3">
                   <div>
                     <p class="font-mono text-xs font-bold uppercase tracking-[0.16em] text-neon-cyan">${escapeHtml(release.catalog_number)} | ${escapeHtml(release.status)}</p>
-                    <div class="mt-2">${renderRegionBadge(release.mbp_region)}</div>
+                    <div class="mt-2 flex flex-wrap gap-1.5">${labelBadges}${regionBadge}</div>
                     <h4 class="mt-2 font-display text-2xl font-black uppercase text-white"><a class="hover:text-neon-cyan" href="${escapeHtml(releasePath)}" target="_blank" rel="noreferrer">${escapeHtml(release.title)}</a></h4>
                     <p class="text-sm text-steel">${escapeHtml(release.artist_display)}</p>
                   </div>
@@ -1847,6 +1965,13 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     renderArtists();
   });
 
+  adminArtistLabel?.addEventListener("change", () => {
+    artistLabelTerm = adminArtistLabel.value || "all";
+    syncLabelRegionFilters();
+    pages.artists = 1;
+    renderArtists();
+  });
+
   adminArtistRegion?.addEventListener("change", () => {
     artistRegionTerm = adminArtistRegion.value || "all";
     pages.artists = 1;
@@ -1855,6 +1980,13 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
   adminReleaseSearch?.addEventListener("input", () => {
     releaseSearchTerm = adminReleaseSearch.value || "";
+    pages.releases = 1;
+    renderReleases();
+  });
+
+  adminReleaseLabel?.addEventListener("change", () => {
+    releaseLabelTerm = adminReleaseLabel.value || "all";
+    syncLabelRegionFilters();
     pages.releases = 1;
     renderReleases();
   });
@@ -2263,5 +2395,6 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     }
   });
 
+  syncLabelRegionFilters();
   checkSession();
 </script>
